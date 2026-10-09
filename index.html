@@ -12,57 +12,36 @@
   <body>
     <div class="island" role="region" aria-label="Nook">
       <header class="top">
-        <svg class="seed" viewBox="0 0 48 48" aria-hidden="true">
-          <path
-            class="seed-body"
-            d="M24 3c8 6 16 14 16 25a16 16 0 1 1-32 0C8 17 16 9 24 3z"
-          />
-          <ellipse class="eye" cx="24" cy="27" rx="6.5" ry="7.5" />
-          <circle class="pupil" cx="24" cy="27" r="2.6" />
-        </svg>
+        <canvas class="seed" width="64" height="64" aria-hidden="true"></canvas>
+        <p id="peek-line" class="peek-line"></p>
         <div class="titles">
           <strong id="word">Nook</strong>
-          <span class="live-dot" aria-hidden="true"></span>
-          <span class="pin" hidden>Pinned</span>
+          <span id="meters"></span>
+          <button type="button" id="week-grid" aria-label="GitHub week"></button>
+          <button type="button" id="pin" class="pin-mark" aria-label="Pin open"></button>
         </div>
       </header>
       <section class="details">
-        <div class="tabs" role="tablist">
-          <button type="button" class="tab is-selected" id="tab-agents">Agents</button>
-          <button type="button" class="tab" id="tab-chat">Chat</button>
-        </div>
-
-        <div id="panel-agents">
-          <p class="status" id="status">Quiet</p>
-          <p class="hint" id="hint">
-            Connect Claude and Cursor, or ask ChatGPT and Gemini.
-          </p>
-          <div id="approval" class="approval" hidden>
-            <p class="approval-title" id="approval-title"></p>
-            <p class="approval-detail" id="approval-detail"></p>
-            <div id="questions" class="questions"></div>
-            <div class="choices">
-              <button type="button" class="choice" id="tuck">Later</button>
-              <button type="button" class="choice allow" id="allow">Allow</button>
-              <button type="button" class="choice always" id="always" hidden>Always</button>
-              <button type="button" class="choice deny" id="deny">Deny</button>
-              <button type="button" class="choice" id="terminal">Reply in terminal</button>
-            </div>
+        <div id="card-approval" class="approval" hidden>
+          <p class="approval-title" id="approval-title"></p>
+          <p class="approval-detail" id="approval-detail"></p>
+          <div id="questions" class="questions"></div>
+          <div class="choices">
+            <button type="button" class="choice" id="tuck">Later</button>
+            <button type="button" class="choice allow" id="allow">Allow</button>
+            <button type="button" class="choice always" id="always" hidden>Always</button>
+            <button type="button" class="choice deny" id="deny">Deny</button>
+            <button type="button" class="choice" id="terminal">Reply in terminal</button>
           </div>
-          <div id="sessions" class="pills"></div>
-          <div id="extras" class="pills"></div>
-          <div id="github-list" class="github-list" hidden></div>
-          <pre id="diff" class="diff" hidden></pre>
-          <button type="button" class="text-button" id="open-diff" hidden>Open in VS Code</button>
-          <button type="button" class="text-button" id="open-terminal">Open terminal</button>
-          <ul id="activity" class="activity"></ul>
-          <button type="button" class="text-button" id="connect">Review hook changes</button>
-          <pre id="hook-diff" class="diff" hidden></pre>
-          <button type="button" class="choice allow" id="install-hooks" hidden>Install these hooks</button>
-          <p class="hint" id="connect-status"></p>
         </div>
 
-        <div id="panel-chat" hidden>
+        <div id="card-diff" hidden>
+          <button type="button" class="text-button" id="diff-back">Back</button>
+          <pre id="diff" class="diff"></pre>
+          <button type="button" class="text-button" id="open-diff" hidden>Open in VS Code</button>
+        </div>
+
+        <div id="card-chat" hidden>
           <label class="model-row">
             Model
             <select id="provider"></select>
@@ -82,15 +61,22 @@
           <p class="hint" id="key-status"></p>
         </div>
 
-        <div class="actions">
-          <button type="button" class="text-button" id="send-out">Send out</button>
-          <button type="button" class="text-button" id="customize">Customize</button>
-          <button type="button" class="text-button" id="pin">Pin open</button>
-          <button type="button" class="text-button" id="quit">Quit</button>
+        <div id="card-session">
+          <p class="status" id="status">Quiet</p>
+          <p class="hint" id="hint">Hover the top edge, or ask a model.</p>
+          <div class="pills">
+            <div id="sessions" class="pills"></div>
+            <button type="button" class="pill" id="chat-pill">Chat</button>
+          </div>
+          <div id="extras" class="pills"></div>
+          <div id="github-list" class="github-list" hidden></div>
+          <ul id="ticker" class="activity"></ul>
+          <button type="button" class="text-button" id="open-terminal">Open terminal</button>
         </div>
       </section>
     </div>
     <script src="lib/markdown.js"></script>
+    <script src="lib/seed.js"></script>
     <script src="renderer.js"></script>
   </body>
 </html>

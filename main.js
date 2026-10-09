@@ -26,6 +26,7 @@ const {
   mergeGeminiSettings,
   mergeAntigravityHooks,
   mergeStatusLine,
+  stripNook,
   hooksInstalled,
 } = require("./lib/install-hooks");
 const { createRelay } = require("./lib/relay");
@@ -46,6 +47,7 @@ const { summarizeHistory, recapSvg, weekKey, mondayDue } = require("./lib/histor
 const { QUERY, parseGithub, ciBadge, stateMap } = require("./lib/github");
 const { pickTerminal } = require("./lib/terminal");
 const { stripReasoning } = require("./lib/markdown");
+const { finalFromTranscript } = require("./lib/transcript");
 const { LANGUAGES, translate } = require("./lib/i18n");
 const { pluginSource, ampSource, hermesManifest } = require("./lib/plugins");
 const { takeSseEvents, deltaText } = require("./lib/stream");
@@ -53,8 +55,8 @@ const { takeSseEvents, deltaText } = require("./lib/stream");
 const GUTTER_X = 22;
 const GUTTER_BOTTOM = 28;
 const SIZES = {
-  asleep: { width: 140, height: 10, gutterX: 0, gutterBottom: 0 },
-  peek: { width: 188, height: 42, gutterX: GUTTER_X, gutterBottom: GUTTER_BOTTOM },
+  asleep: { width: 140, height: 4, gutterX: 0, gutterBottom: 0 },
+  peek: { width: 300, height: 48, gutterX: GUTTER_X, gutterBottom: GUTTER_BOTTOM },
   open: { width: 440, height: 520, gutterX: GUTTER_X, gutterBottom: GUTTER_BOTTOM },
 };
 const PIPE = "\\\\.\\pipe\\nook-companion";
@@ -124,8 +126,13 @@ if (!gotLock) {
 
 app.setAppUserModelId("com.nook.companion");
 
+let cardHeight = 360;
+
 function windowSize(nextMode) {
-  const content = SIZES[nextMode] || SIZES.asleep;
+  const content = { ...(SIZES[nextMode] || SIZES.asleep) };
+  if (nextMode === "open") {
+    content.height = cardHeight;
+  }
   return {
     width: content.width + content.gutterX * 2,
     height: content.height + content.gutterBottom,
@@ -136,8 +143,22 @@ function displayUnderCursor() {
   return screen.getDisplayNearestPoint(screen.getCursorScreenPoint());
 }
 
+function chosenDisplay() {
+  const prefs = readPrefs();
+  if (prefs.displayMode === "main") {
+    return screen.getPrimaryDisplay();
+  }
+  if (prefs.displayMode === "screen") {
+    const found = screen.getAllDisplays().find((item) => String(item.id) === String(prefs.displayId));
+    if (found) {
+      return found;
+    }
+  }
+  return displayUnderCursor();
+}
+
 function targetBounds(nextMode) {
-  const display = displayUnderCursor();
+  const display = chosenDisplay();
   const size = windowSize(nextMode);
   return {
     x: Math.round(display.bounds.x + (display.bounds.width - size.width) / 2),
@@ -187,8 +208,22 @@ function animateTo(nextMode) {
       clearInterval(anim);
       anim = null;
       applyBounds(to);
+      clipIsland(nextMode);
     }
   }, 16);
+}
+
+function clipIsland(nextMode) {
+  if (!win || win.isDestroyed() || typeof win.setShape !== "function") {
+    return;
+  }
+  const bounds = win.getBounds();
+  const size = SIZES[nextMode] || SIZES.asleep;
+  if (nextMode === "asleep") {
+    win.setShape([{ x: 0, y: 0, width: bounds.width, height: size.height }]);
+    return;
+  }
+  win.setShape([]);
 }
 
 function createWindow() {
@@ -234,6 +269,7 @@ function createWindow() {
       return;
     }
     win.showInactive();
+    clipIsland("asleep");
   });
   win.webContents.on("did-finish-load", () => {
     broadcast();
@@ -398,6 +434,8 @@ function writeJson(file, data) {
     if (!fs.existsSync(backup)) {
       fs.copyFileSync(file, backup);
     }
+    const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+    fs.copyFileSync(file, `${file}.bak-nook-${stamp}`);
   }
   fs.writeFileSync(file, `${JSON.stringify(data, null, 2)}\n`, "utf8");
 }
@@ -490,17 +528,36 @@ function hookTargets() {
   ];
 }
 
+let previewBodies = null;
+
+function fileText(file) {
+  try {
+    return fs.readFileSync(file, "utf8");
+  } catch (_error) {
+    return "";
+  }
+}
+
+function jsonReadable(text) {
+  if (!String(text || "").trim()) {
+    return true;
+  }
+  try {
+    JSON.parse(text);
+    return true;
+  } catch (_error) {
+    return false;
+  }
+}
+
 function hookPlan() {
-  return hookTargets().map((target) => {
-    let before = "";
-    try {
-      before = fs.readFileSync(target.file, "utf8");
-    } catch (_error) {
-      before = "";
-    }
+  const files = hookTargets().map((target) => {
+    let before = fileText(target.file);
     if (before && !before.endsWith("\n")) {
       before = `${before}\n`;
     }
+    const jsonTarget = typeof target.text !== "string";
+    const readable = !jsonTarget || jsonReadable(before);
     const after =
       typeof target.text === "string"
         ? target.text.endsWith("\n")
@@ -510,10 +567,14 @@ function hookPlan() {
     return {
       label: target.label,
       file: target.file,
-      changed: before !== after,
-      diff: textDiff(before, after),
+      changed: readable && before !== after,
+      blocked: !readable,
+      diff: readable ? textDiff(before, after) : "This file could not be read, so Nook left it alone.",
+      before,
     };
   });
+  previewBodies = Object.fromEntries(files.map((file) => [file.file, file.before]));
+  return files.map(({ before: _before, ...file }) => file);
 }
 
 function hookStatus() {
@@ -532,9 +593,36 @@ function connectedFlagPath() {
 }
 
 function installHooks() {
-  for (const target of hookTargets()) {
+  if (!previewBodies) {
+    hookMessage = "Review the hook diff before installing.";
+    broadcast();
+    return hookStatus();
+  }
+  const targets = hookTargets();
+  for (const target of targets) {
+    let current = fileText(target.file);
+    if (current && !current.endsWith("\n")) {
+      current = `${current}\n`;
+    }
+    if (previewBodies[target.file] !== current) {
+      hookMessage = `${target.label} changed after the review. Review it again before installing.`;
+      previewBodies = null;
+      broadcast();
+      return hookStatus();
+    }
+    if (typeof target.text !== "string" && !jsonReadable(current)) {
+      hookMessage = `${target.label} could not be read, so nothing was written.`;
+      broadcast();
+      return hookStatus();
+    }
+  }
+  for (const target of targets) {
     if (typeof target.text === "string") {
       fs.mkdirSync(path.dirname(target.file), { recursive: true });
+      if (fs.existsSync(target.file)) {
+        const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+        fs.copyFileSync(target.file, `${target.file}.bak-nook-${stamp}`);
+      }
       fs.writeFileSync(target.file, target.text, "utf8");
     } else {
       writeJson(target.file, target.next);
@@ -544,10 +632,38 @@ function installHooks() {
       fs.writeFileSync(statuslinePreviousPath(), `${target.previousStatus}\n`, "utf8");
     }
   }
+  previewBodies = null;
   fs.mkdirSync(path.dirname(connectedFlagPath()), { recursive: true });
   fs.writeFileSync(connectedFlagPath(), "{\"connected\":true}\n", "utf8");
   hookMessage =
     "Hooks installed. New sessions of Claude, Cursor, Codex, Copilot, and Muse will use them. Codex still asks you to trust hooks with /hooks. OpenCode, Amp, and Hermes files were written too. The Hermes file is a best-effort plugin because its published schema is incomplete.";
+  broadcast();
+  return hookStatus();
+}
+
+function uninstallHooks() {
+  for (const target of hookTargets()) {
+    if (!fs.existsSync(target.file)) {
+      continue;
+    }
+    const current = fileText(target.file);
+    if (typeof target.text === "string") {
+      if (current.includes("nook-hook.cmd")) {
+        const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+        fs.copyFileSync(target.file, `${target.file}.bak-nook-${stamp}`);
+        fs.rmSync(target.file);
+      }
+      continue;
+    }
+    if (!jsonReadable(current)) {
+      hookMessage = `${target.label} could not be read, so it was left alone.`;
+      broadcast();
+      return hookStatus();
+    }
+    const next = stripNook(JSON.parse(current || "{}"));
+    writeJson(target.file, next);
+  }
+  hookMessage = "Nook's hooks were removed. Other hooks were left in place.";
   broadcast();
   return hookStatus();
 }
@@ -740,6 +856,8 @@ function readPrefs() {
     petX: Number.isFinite(Number(saved.petX)) ? Number(saved.petX) : null,
     petY: Number.isFinite(Number(saved.petY)) ? Number(saved.petY) : null,
     recapWeek: typeof saved.recapWeek === "string" ? saved.recapWeek : "",
+    displayMode: saved.displayMode === "main" || saved.displayMode === "screen" ? saved.displayMode : "follow",
+    displayId: typeof saved.displayId === "string" || typeof saved.displayId === "number" ? String(saved.displayId) : "",
   };
 }
 
@@ -805,6 +923,13 @@ function writePrefs(patch) {
   }
   if (typeof source.recapWeek === "string" && source.recapWeek.length < 16) {
     next.recapWeek = source.recapWeek;
+  }
+  if (source.displayMode === "follow" || source.displayMode === "main" || source.displayMode === "screen") {
+    next.displayMode = source.displayMode;
+    if (source.displayMode === "screen") {
+      const current = displayUnderCursor();
+      next.displayId = String(current.id);
+    }
   }
   fs.mkdirSync(path.dirname(prefsPath()), { recursive: true });
   fs.writeFileSync(prefsPath(), `${JSON.stringify(next, null, 2)}\n`, "utf8");
@@ -1290,7 +1415,7 @@ function currentState() {
   const latest = activity[0] || null;
   const strings = translate(readPrefs().language);
   let status = strings.quiet;
-  let hint = "Hover the top edge. Review hooks, or ask a model.";
+  let hint = "Hover the top edge, or ask a model.";
   if (first) {
     status = strings.needs;
     hint = first.detail;
@@ -1316,7 +1441,12 @@ function currentState() {
           always: Boolean(first.always),
         }
       : null,
-    activity: activity.slice(0, 4),
+    activity: activity.slice(0, 8),
+    displays: screen.getAllDisplays().map((item) => ({
+      id: String(item.id),
+      primary: item.id === screen.getPrimaryDisplay().id,
+      label: `${item.bounds.width}×${item.bounds.height}`,
+    })),
     sessions: [...sessions.values()].slice(-4).reverse(),
     celebrate,
     attachment,
@@ -1356,6 +1486,33 @@ function attention() {
   win.showInactive();
 }
 
+function finalLine(payload) {
+  const source = payload && typeof payload === "object" ? payload : {};
+  const direct = source.last_assistant_message || source.final_message;
+  if (typeof direct === "string" && direct.trim()) {
+    return finalFromTranscript(JSON.stringify({ message: { content: direct } }));
+  }
+  const file = typeof source.transcript_path === "string" ? source.transcript_path : "";
+  const home = os.homedir();
+  if (!file || !path.isAbsolute(file) || !file.startsWith(home)) {
+    return "";
+  }
+  try {
+    const stat = fs.statSync(file);
+    if (!stat.isFile() || stat.size > 5000000) {
+      return "";
+    }
+    const length = Math.min(stat.size, 120000);
+    const buf = Buffer.alloc(length);
+    const fd = fs.openSync(file, "r");
+    fs.readSync(fd, buf, 0, length, Math.max(0, stat.size - length));
+    fs.closeSync(fd);
+    return finalFromTranscript(buf.toString("utf8"));
+  } catch (_error) {
+    return "";
+  }
+}
+
 function rememberSession(agent, payload, pid) {
   const turn = describeTurn(agent, payload);
   const key = `${agent}:${turn.sessionId}`;
@@ -1363,7 +1520,14 @@ function rememberSession(agent, payload, pid) {
   if (sessions.has(key)) {
     sessions.delete(key);
   }
-  sessions.set(key, { id: key, agent, pid: Number(pid) || (previous && previous.pid) || 0, ...turn });
+  const final = turn.finished ? finalLine(payload) : (previous && previous.final) || "";
+  sessions.set(key, {
+    id: key,
+    agent,
+    pid: Number(pid) || (previous && previous.pid) || 0,
+    ...turn,
+    final,
+  });
   while (sessions.size > 6) {
     const oldest = sessions.keys().next().value;
     sessions.delete(oldest);
@@ -1396,6 +1560,10 @@ function rememberActivity(msg) {
     agent: msg.agent,
     title: summary.title,
     detail: summary.detail,
+    file: turn.file,
+    added: turn.added,
+    removed: turn.removed,
+    final: turn.finished ? finalLine(msg.payload || {}) : "",
   });
   if (activity.length > 8) {
     activity.pop();
@@ -1420,6 +1588,9 @@ function rememberApproval(msg) {
   sendPetHome();
   broadcast();
   attention();
+  if (mode === "open") {
+    animateTo("open");
+  }
 }
 
 async function completeChat(provider, key, history, options, onDelta) {
@@ -1550,6 +1721,16 @@ if (gotLock) {
       if (!win || win.isDestroyed() || (mode !== "asleep" && mode !== "peek") || anim) {
         return;
       }
+      const prefs = readPrefs();
+      if (prefs.displayMode !== "follow") {
+        return;
+      }
+      const cursor = screen.getCursorScreenPoint();
+      const display = displayUnderCursor();
+      const near = cursor.y - display.bounds.y < 80;
+      if (!near && Date.now() % 500 > 125) {
+        return;
+      }
       const next = targetBounds(mode);
       const same =
         boundsNow &&
@@ -1557,17 +1738,32 @@ if (gotLock) {
         Math.abs(boundsNow.y - next.y) < 2;
       if (!same) {
         applyBounds(next);
+        if (mode === "asleep") {
+          clipIsland("asleep");
+        }
       }
-    }, 500);
+    }, 125);
   });
 }
 
-ipcMain.on("nook:set-open", (_event, open) => {
+ipcMain.on("nook:set-open", (_event, open, height) => {
   const next = open === "peek" || open === "open" || open === "asleep" ? open : open ? "open" : "asleep";
+  const requested = Number(height);
+  let resized = false;
+  if (next === "open" && Number.isFinite(requested) && requested > 0) {
+    const clamped = Math.max(180, Math.min(560, Math.round(requested)));
+    if (Math.abs(clamped - cardHeight) > 12) {
+      cardHeight = clamped;
+      resized = true;
+    }
+  }
   if (win && !win.isDestroyed()) {
     win.setFocusable(next === "open");
   }
   if (next === mode) {
+    if (resized) {
+      animateTo("open");
+    }
     return;
   }
   animateTo(next);
@@ -1634,6 +1830,9 @@ ipcMain.on("nook:decide", (_event, choice) => {
   const verb =
     action === "always" ? "Always allowed" : action === "terminal" ? "Sent back" : action === "allow" ? "Allowed" : "Denied";
   sendPetBack();
+  if (mode === "open") {
+    animateTo("open");
+  }
   activity.unshift({
     id: item.id,
     agent: item.agent,
@@ -1661,10 +1860,43 @@ ipcMain.handle("nook:install-hooks", () => {
   }
 });
 
+ipcMain.handle("nook:uninstall-hooks", () => {
+  try {
+    return uninstallHooks();
+  } catch (error) {
+    hookMessage = error.message;
+    broadcast();
+    return hookStatus();
+  }
+});
+
 ipcMain.handle("nook:save-model", (_event, patch) => {
   const next = writeModels(patch);
   broadcast();
   return next;
+});
+
+ipcMain.handle("nook:attach-path", (_event, filePath) => {
+  const file = typeof filePath === "string" ? filePath : "";
+  if (!file || !path.isAbsolute(file) || !fs.existsSync(file)) {
+    return { ok: false, error: "Drop a file from Explorer." };
+  }
+  let stat;
+  try {
+    stat = fs.statSync(file);
+  } catch (_error) {
+    return { ok: false, error: "That file could not be read." };
+  }
+  if (!stat.isFile()) {
+    return { ok: false, error: "Drop a file, not a folder." };
+  }
+  const text = fs.readFileSync(file, "utf8").slice(0, 60000);
+  if (!text.trim()) {
+    return { ok: false, error: "That file is empty." };
+  }
+  attachment = { name: path.basename(file).slice(0, 120), text };
+  broadcast();
+  return { ok: true, name: attachment.name };
 });
 
 ipcMain.handle("nook:attach-file", (_event, file) => {
@@ -1757,6 +1989,10 @@ ipcMain.handle("nook:save-prefs", (_event, patch) => {
   registerShortcuts();
   applyColors(win);
   applyColors(appWin);
+  if (win && !win.isDestroyed() && !anim) {
+    applyBounds(targetBounds(mode));
+    clipIsland(mode);
+  }
   broadcast();
   return next;
 });

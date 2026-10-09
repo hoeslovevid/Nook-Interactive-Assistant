@@ -11,7 +11,8 @@ const { parseGithub, ciBadge } = require("../lib/github");
 const { markdownBlocks, stripReasoning } = require("../lib/markdown");
 const { fromCodexAccount } = require("../lib/usage");
 const { mondayDue, weekKey } = require("../lib/history");
-const { mergeStatusLine, mergeGeminiSettings } = require("../lib/install-hooks");
+const { mergeStatusLine, mergeGeminiSettings, stripNook } = require("../lib/install-hooks");
+const { finalFromTranscript } = require("../lib/transcript");
 
 test("github and stripe summaries stay short", () => {
   const github = githubSummary(
@@ -99,4 +100,27 @@ test("stream deltas and plugin files stay local", () => {
   assert.match(source, /permission\.ask/);
   const manifest = hermesManifest("C:\\nook\\hooks\\nook-hook.cmd");
   assert.match(manifest, /PermissionRequest/);
+});
+
+test("uninstall keeps foreign hooks and the last assistant line", () => {
+  const cleaned = stripNook({
+    theme: "dark",
+    statusLine: "nook-hook.cmd --statusline",
+    nook: { enabled: true },
+    hooks: {
+      Stop: [
+        { hooks: [{ type: "command", command: "echo keep" }] },
+        { hooks: [{ type: "command", command: "nook-hook.cmd --agent claude" }] },
+      ],
+    },
+  });
+  assert.equal(cleaned.nook, undefined);
+  assert.equal(cleaned.statusLine, undefined);
+  assert.equal(cleaned.hooks.Stop.length, 1);
+  assert.match(cleaned.hooks.Stop[0].hooks[0].command, /echo keep/);
+  const transcript = [
+    JSON.stringify({ message: { content: [{ type: "text", text: "First note." }] } }),
+    JSON.stringify({ message: { content: "Finished the edit. Extra detail stays out." } }),
+  ].join("\n");
+  assert.equal(finalFromTranscript(transcript), "Finished the edit.");
 });

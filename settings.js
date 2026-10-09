@@ -2,6 +2,7 @@ const pages = {
   look: document.querySelector("#page-look"),
   keys: document.querySelector("#page-keys"),
   agents: document.querySelector("#page-agents"),
+  shortcuts: document.querySelector("#page-shortcuts"),
   week: document.querySelector("#page-week"),
 };
 const navButtons = document.querySelectorAll(".nav");
@@ -58,7 +59,12 @@ function paintPreview(next) {
   previewSeed.setAttribute("fill", next.seed || "#f4f0e6");
   document.querySelector("#preview-pupil").setAttribute("fill", next.accent || "#dff25a");
   previewName.setAttribute("fill", next.paper || "#f4f0e6");
-  brandSeed.setAttribute("fill", next.accent || "#dff25a");
+  if (brandSeed && brandSeed.tagName === "CANVAS") {
+    brandSeed.dataset.body = next.seed || "#f4f0e6";
+    brandSeed.dataset.pupil = next.accent || "#dff25a";
+  } else if (brandSeed) {
+    brandSeed.setAttribute("fill", next.accent || "#dff25a");
+  }
   radiusValue.textContent = String(radius);
 }
 
@@ -220,6 +226,11 @@ document.querySelector("#install-hooks").addEventListener("click", async () => {
   document.querySelector("#agents-note").textContent = result.message || "Hooks installed.";
 });
 
+document.querySelector("#uninstall-hooks").addEventListener("click", async () => {
+  const result = await window.nook.uninstallHooks();
+  document.querySelector("#agents-note").textContent = result.message || "Nook hooks removed.";
+});
+
 document.querySelectorAll(".key-card:not(.local-card)").forEach((form) => {
   const provider = form.dataset.provider;
   const note = document.querySelector(`#${provider}-note`);
@@ -264,6 +275,10 @@ function fillPrefs(prefs) {
   }
   document.querySelector("#toggle-mute").textContent = prefs.muted ? "Unmute sounds" : "Mute sounds";
   document.querySelector("#open-hover").checked = Boolean(prefs.openOnHover);
+  const displayMode = document.querySelector("#display-mode");
+  if (document.activeElement !== displayMode) {
+    displayMode.value = prefs.displayMode || "follow";
+  }
   document.querySelector("#claude-usage").checked = Boolean(prefs.showClaudeUsage);
   document.querySelector("#codex-usage").checked = Boolean(prefs.showCodexUsage);
   document.querySelector("#hide-project").checked = Boolean(prefs.hideProject);
@@ -307,6 +322,7 @@ function collectPrefs() {
     n8nUrl: document.querySelector("#n8n-url").value,
     calUrl: document.querySelector("#cal-url").value,
     openOnHover: document.querySelector("#open-hover").checked,
+    displayMode: document.querySelector("#display-mode").value,
     showClaudeUsage: document.querySelector("#claude-usage").checked,
     showCodexUsage: document.querySelector("#codex-usage").checked,
     hideProject: document.querySelector("#hide-project").checked,
@@ -316,6 +332,14 @@ function collectPrefs() {
 }
 
 document.querySelector("#prefs-form").addEventListener("change", () => {
+  window.nook.savePrefs(collectPrefs());
+});
+
+document.querySelector("#shortcuts-form").addEventListener("change", () => {
+  window.nook.savePrefs(collectPrefs());
+});
+
+document.querySelector("#hide-project").addEventListener("change", () => {
   window.nook.savePrefs(collectPrefs());
 });
 

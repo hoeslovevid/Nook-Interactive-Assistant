@@ -1,22 +1,20 @@
 const island = document.querySelector(".island");
 const seed = document.querySelector(".seed");
-const pupil = document.querySelector(".pupil");
 const word = document.querySelector("#word");
-const pinLabel = document.querySelector(".pin");
 const pinButton = document.querySelector("#pin");
-const quitButton = document.querySelector("#quit");
+const peekLine = document.querySelector("#peek-line");
 const status = document.querySelector("#status");
 const hint = document.querySelector("#hint");
-const approval = document.querySelector("#approval");
 const approvalTitle = document.querySelector("#approval-title");
 const approvalDetail = document.querySelector("#approval-detail");
-const activityList = document.querySelector("#activity");
-const connectButton = document.querySelector("#connect");
-const connectStatus = document.querySelector("#connect-status");
-const agentsPanel = document.querySelector("#panel-agents");
-const chatPanel = document.querySelector("#panel-chat");
-const agentsTab = document.querySelector("#tab-agents");
-const chatTab = document.querySelector("#tab-chat");
+const ticker = document.querySelector("#ticker");
+const meters = document.querySelector("#meters");
+const weekGrid = document.querySelector("#week-grid");
+const cardApproval = document.querySelector("#card-approval");
+const cardDiff = document.querySelector("#card-diff");
+const cardChat = document.querySelector("#card-chat");
+const cardSession = document.querySelector("#card-session");
+const chatPill = document.querySelector("#chat-pill");
 const transcript = document.querySelector("#transcript");
 const chatForm = document.querySelector("#chat-form");
 const chatInput = document.querySelector("#chat-input");
@@ -26,10 +24,7 @@ const questionsBox = document.querySelector("#questions");
 const sessionsBox = document.querySelector("#sessions");
 const extrasBox = document.querySelector("#extras");
 const diffBox = document.querySelector("#diff");
-const hookDiff = document.querySelector("#hook-diff");
-const installButton = document.querySelector("#install-hooks");
 const fileChip = document.querySelector("#file-chip");
-const eye = document.querySelector(".eye");
 
 const PROVIDER_NAMES = ["chatgpt", "gemini", "claude", "openrouter", "ollama", "lmstudio", "custom"];
 
@@ -39,7 +34,9 @@ let expanded = false;
 let welcome = true;
 let chatting = false;
 let attention = false;
-let tab = "agents";
+let card = "session";
+let settleTimer = 0;
+let leanTimer = 0;
 let provider = "chatgpt";
 let state = null;
 let chatError = "";
@@ -55,6 +52,7 @@ let held = false;
 let tucked = false;
 let pillIndex = 0;
 let leaveTimer = 0;
+let holdUntil = 0;
 
 function waiting() {
   return Boolean(state && state.pending && !tucked);
@@ -78,10 +76,28 @@ function renderShell() {
   document.body.classList.toggle("is-open", next === "open");
   document.body.classList.toggle("is-peek", next === "peek");
   document.body.classList.toggle("is-asleep", next === "asleep");
-  pinLabel.hidden = !pinned;
+  pinButton.classList.toggle("is-on", pinned);
   const strings = (state && state.strings) || {};
-  pinButton.textContent = pinned ? strings.unpin || "Unpin" : strings.pin || "Pin open";
-  window.nook.setOpen(next);
+  pinButton.setAttribute("aria-label", pinned ? strings.unpin || "Unpin" : strings.pin || "Pin open");
+  if (next === "open") {
+    window.clearTimeout(settleTimer);
+    settleTimer = window.setTimeout(() => {
+      document.body.classList.add("is-settled");
+    }, 240);
+  } else {
+    window.clearTimeout(settleTimer);
+    document.body.classList.remove("is-settled");
+  }
+  seed.classList.toggle("is-hover", hovering);
+  const height = next === "open" ? measureOpen() : 0;
+  window.nook.setOpen(next, height);
+}
+
+function measureOpen() {
+  const top = document.querySelector(".top");
+  const details = document.querySelector(".details");
+  const height = Math.ceil((top ? top.offsetHeight : 40) + (details ? details.scrollHeight : 120) + 12);
+  return Math.max(180, Math.min(560, height));
 }
 
 async function playSound(kind) {
@@ -118,13 +134,18 @@ async function playSound(kind) {
   });
 }
 
-function setTab(next) {
-  tab = next;
-  const agents = next === "agents";
-  agentsPanel.hidden = !agents;
-  chatPanel.hidden = agents;
-  agentsTab.classList.toggle("is-selected", agents);
-  chatTab.classList.toggle("is-selected", !agents);
+function showCard(next) {
+  card = next === "chat" || next === "diff" ? next : "session";
+  chatting = card === "chat";
+  layoutCards();
+}
+
+function layoutCards() {
+  const showingApproval = Boolean(state && state.pending && !tucked);
+  cardApproval.hidden = !showingApproval;
+  cardDiff.hidden = showingApproval || card !== "diff";
+  cardChat.hidden = showingApproval || card !== "chat";
+  cardSession.hidden = showingApproval || card === "diff" || card === "chat";
 }
 
 function pulse(element, className) {
@@ -134,6 +155,49 @@ function pulse(element, className) {
 }
 
 let questionKey = "";
+let weeksOpen = false;
+
+function usageTone(detail) {
+  const match = String(detail || "").match(/(\d+)%/);
+  const value = match ? Number(match[1]) : 0;
+  if (value > 80) {
+    return "is-hot";
+  }
+  if (value > 50) {
+    return "is-warn";
+  }
+  return "is-ok";
+}
+
+function paintHeader() {
+  meters.replaceChildren();
+  for (const item of (state && state.usage) || []) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = `meter ${usageTone(item.detail)}`;
+    const match = String(item.detail || "").match(/(\d+)%/);
+    button.textContent = match ? `${item.title} ${match[1]}%` : item.title;
+    button.title = item.detail || item.title;
+    button.addEventListener("click", () => {
+      status.textContent = `${item.title}: ${item.detail}`;
+    });
+    meters.appendChild(button);
+  }
+  const weeks = (state && state.github && state.github.weeks) || [];
+  weekGrid.replaceChildren();
+  const shown = weeksOpen ? weeks : weeks.slice(-1);
+  for (const week of shown) {
+    const column = document.createElement("span");
+    column.className = "week-col";
+    for (const count of week) {
+      const day = document.createElement("i");
+      const level = count > 8 ? 3 : count > 3 ? 2 : count > 0 ? 1 : 0;
+      day.className = `day is-${level}`;
+      column.appendChild(day);
+    }
+    weekGrid.appendChild(column);
+  }
+}
 
 function paintQuestions(pendingItem) {
   const key = pendingItem ? pendingItem.id : "";
@@ -158,8 +222,20 @@ function paintQuestions(pendingItem) {
       input.value = option.label;
       label.appendChild(input);
       label.appendChild(document.createTextNode(` ${option.label}`));
+      if (option.description) {
+        const note = document.createElement("span");
+        note.className = "option-note";
+        note.textContent = option.description;
+        label.appendChild(note);
+      }
       group.appendChild(label);
     }
+    const typed = document.createElement("input");
+    typed.type = "text";
+    typed.className = "typed-answer";
+    typed.placeholder = "or type an answer";
+    typed.maxLength = 240;
+    group.appendChild(typed);
     questionsBox.appendChild(group);
   }
 }
@@ -171,8 +247,9 @@ function collectAnswers() {
     if (!input) {
       continue;
     }
+    const typed = group.querySelector(".typed-answer");
     const picked = [...group.querySelectorAll("input:checked")].map((box) => box.value);
-    answers[input.name] = picked.join(", ");
+    answers[input.name] = typed && typed.value.trim() ? typed.value.trim() : picked.join(", ");
   }
   return answers;
 }
@@ -290,18 +367,69 @@ function openGithubRow() {
   }
 }
 
+function paintTicker() {
+  ticker.replaceChildren();
+  const sessions = (state && state.sessions) || [];
+  const latest = sessions.find((item) => item.finished && item.final) || null;
+  if (latest) {
+    const row = document.createElement("li");
+    row.className = "ticker-final";
+    row.textContent = latest.final;
+    ticker.appendChild(row);
+  }
+  for (const item of ((state && state.activity) || []).slice(0, 6)) {
+    if (latest && item.final) {
+      continue;
+    }
+    const row = document.createElement("li");
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "ticker-step";
+    const name = document.createElement("span");
+    name.textContent = item.file || item.title;
+    button.appendChild(name);
+    if (item.added) {
+      const added = document.createElement("span");
+      added.className = "plus";
+      added.textContent = `+${item.added}`;
+      button.appendChild(added);
+    }
+    if (item.removed) {
+      const removed = document.createElement("span");
+      removed.className = "minus";
+      removed.textContent = `−${item.removed}`;
+      button.appendChild(removed);
+    }
+    button.addEventListener("click", () => {
+      const session = sessions.find((entry) => entry.file && entry.file === item.file) || sessions[0];
+      if (session) {
+        showDiff(session);
+      }
+    });
+    if (ticker.childElementCount === (latest ? 1 : 0)) {
+      button.classList.add("is-current");
+    }
+    row.appendChild(button);
+    ticker.appendChild(row);
+  }
+}
+
+function showDiff(session) {
+  selectedSession = session.id;
+  diffBox.textContent = session.diff || session.detail || "No diff yet.";
+  document.querySelector("#open-diff").hidden = !session.file;
+  showCard("diff");
+  expanded = true;
+  held = true;
+  renderShell();
+}
+
 function openLatestDiff() {
   const session = ((state && state.sessions) || []).find((item) => item.diff || item.file);
   if (!session) {
     return;
   }
-  selectedSession = session.id;
-  diffBox.hidden = false;
-  diffBox.textContent = session.diff || session.detail || "No diff yet.";
-  document.querySelector("#open-diff").hidden = !session.file;
-  expanded = true;
-  held = true;
-  renderShell();
+  showDiff(session);
 }
 
 function applyChrome() {
@@ -309,26 +437,11 @@ function applyChrome() {
   const language = state && state.prefs ? state.prefs.language : "en";
   document.documentElement.lang = language || "en";
   document.documentElement.dir = language === "ar" ? "rtl" : "ltr";
-  if (strings.agents) {
-    agentsTab.textContent = strings.agents;
-  }
   if (strings.chat) {
-    chatTab.textContent = strings.chat;
-  }
-  if (strings.review) {
-    connectButton.textContent = strings.review;
-  }
-  if (strings.install) {
-    installButton.textContent = strings.install;
-  }
-  if (strings.customize) {
-    document.querySelector("#customize").textContent = strings.customize;
-  }
-  if (strings.quit) {
-    quitButton.textContent = strings.quit;
+    chatPill.textContent = strings.chat;
   }
   if (strings.pin && strings.unpin) {
-    pinButton.textContent = pinned ? strings.unpin : strings.pin;
+    pinButton.setAttribute("aria-label", pinned ? strings.unpin : strings.pin);
   }
   if (strings.terminal) {
     document.querySelector("#terminal").textContent = strings.terminal;
@@ -379,7 +492,19 @@ function paint() {
   hint.textContent =
     (state && state.hint) || "Connect Claude and Cursor, or ask ChatGPT and Gemini.";
 
-  approval.hidden = !pending;
+  layoutCards();
+  const quiet = !attention && !hovering && !((state && state.activity) || []).length && !(state && state.attachment);
+  seed.classList.toggle("is-doze", quiet && !welcome);
+  seed.classList.toggle("is-hold", Boolean(state && state.attachment) || island.classList.contains("is-drop"));
+  if (pending) {
+    peekLine.textContent = "Allow?";
+  } else if (state && state.attachment) {
+    peekLine.textContent = state.attachment.name;
+  } else {
+    const step = ((state && state.activity) || [])[0];
+    const session = ((state && state.sessions) || [])[0];
+    peekLine.textContent = (step && (step.file || step.title)) || (session && session.final) || "";
+  }
   approvalTitle.textContent = pending ? pending.title : "";
   approvalDetail.textContent = pending ? pending.detail : "";
   const questioning = Boolean(pending && pending.kind === "question");
@@ -390,22 +515,8 @@ function paint() {
   document.querySelector("#deny").hidden = questioning;
   paintQuestions(pending);
   paintSessions();
-
-  activityList.replaceChildren();
-  for (const item of (state && state.activity) || []) {
-    const row = document.createElement("li");
-    row.textContent = `${item.title}: ${item.detail}`;
-    activityList.appendChild(row);
-  }
-
-  const hooks = (state && state.hooks) || {};
-  if (hooks.claude && hooks.cursor) {
-    connectStatus.textContent = hooks.message || "Claude and Cursor are connected.";
-  } else if (hooks.message) {
-    connectStatus.textContent = hooks.message;
-  } else {
-    connectStatus.textContent = "Hooks are not installed yet.";
-  }
+  paintHeader();
+  paintTicker();
 
   const keys = (state && state.keys) || {};
   const models = (state && state.models) || {};
@@ -489,27 +600,43 @@ seed.addEventListener("pointerup", (event) => {
 });
 
 island.addEventListener("mouseenter", wake);
-window.addEventListener("mousemove", wake);
+window.addEventListener("mousemove", (event) => {
+  const onIsland = event.target instanceof Element && event.target.closest(".island");
+  if (onIsland) {
+    wake();
+  }
+});
 
 island.addEventListener("mouseleave", () => {
   window.clearTimeout(leaveTimer);
+  const hoverDelay = state && state.prefs && state.prefs.openOnHover ? 700 : 0;
+  const wait = Math.max(hoverDelay, holdUntil - Date.now());
   leaveTimer = window.setTimeout(() => {
     hovering = false;
-    if (!pinned && !held && !waiting()) {
+    if (!pinned && !waiting()) {
       expanded = false;
+      held = false;
     }
     aimX = 0;
     aimY = 0;
     renderShell();
-  }, state && state.prefs && state.prefs.openOnHover ? 700 : 0);
+  }, Math.max(0, wait));
 });
 
 island.addEventListener("click", (event) => {
   if (event.target.closest("button, input, select, textarea, a")) {
     return;
   }
+  if (held && !pinned && !waiting() && Date.now() >= holdUntil) {
+    held = false;
+    expanded = false;
+    welcome = false;
+    renderShell();
+    return;
+  }
   expanded = true;
   held = true;
+  holdUntil = Date.now() + 400;
   tucked = false;
   welcome = false;
   renderShell();
@@ -530,14 +657,24 @@ island.addEventListener("drop", async (event) => {
   event.preventDefault();
   island.classList.remove("is-drop");
   const file = event.dataTransfer.files && event.dataTransfer.files[0];
-  if (!file) {
+  const filePath = file && file.path;
+  if (!filePath) {
+    keyStatus.textContent = "Drop a file from Explorer.";
     return;
   }
-  const text = await file.text();
-  await window.nook.attachFile({ name: file.name, text });
-  setTab("chat");
+  const attached = await window.nook.attachPath(filePath);
+  if (!attached || !attached.ok) {
+    keyStatus.textContent = (attached && attached.error) || "Drop a file from Explorer.";
+    return;
+  }
+  seed.classList.add("is-hold");
+  peekLine.textContent = attached.name;
   expanded = true;
   renderShell();
+  window.setTimeout(() => {
+    showCard("chat");
+    renderShell();
+  }, 700);
 });
 
 island.addEventListener("mousemove", (event) => {
@@ -552,13 +689,23 @@ seed.addEventListener("click", (event) => {
   pulse(seed, "is-squish");
 });
 
+seed.addEventListener("mouseenter", () => {
+  window.clearTimeout(leanTimer);
+  leanTimer = window.setTimeout(() => seed.classList.add("is-lean"), 400);
+});
+
+seed.addEventListener("mouseleave", () => {
+  window.clearTimeout(leanTimer);
+  seed.classList.remove("is-lean");
+});
+
 function followEye() {
   eyeX += (aimX - eyeX) * 0.18;
   eyeY += (aimY - eyeY) * 0.18;
-  pupil.setAttribute("cx", (24 + eyeX).toFixed(2));
-  pupil.setAttribute("cy", (27 + eyeY).toFixed(2));
-  eye.setAttribute("rx", hovering ? "8.2" : "6.5");
-  eye.setAttribute("ry", hovering ? "9.2" : "7.5");
+  if (seed) {
+    seed._nookAim = { x: eyeX, y: eyeY };
+    seed.classList.toggle("is-wide", document.body.classList.contains("is-alert"));
+  }
   requestAnimationFrame(followEye);
 }
 
@@ -570,13 +717,18 @@ pinButton.addEventListener("click", (event) => {
   renderShell();
 });
 
-quitButton.addEventListener("click", (event) => {
+chatPill.addEventListener("click", (event) => {
   event.stopPropagation();
-  window.nook.quit();
+  showCard("chat");
+  expanded = true;
+  renderShell();
+  chatInput.focus();
 });
 
-agentsTab.addEventListener("click", () => setTab("agents"));
-chatTab.addEventListener("click", () => setTab("chat"));
+document.querySelector("#diff-back").addEventListener("click", (event) => {
+  event.stopPropagation();
+  showCard("session");
+});
 
 providerSelect.addEventListener("change", () => {
   provider = providerSelect.value;
@@ -640,7 +792,7 @@ window.addEventListener("keydown", (event) => {
   }
   if (event.ctrlKey && event.key === "k") {
     chatInput.value = "";
-    setTab("chat");
+    showCard("chat");
   }
 });
 
@@ -648,24 +800,9 @@ document.querySelector("#deny").addEventListener("click", () => {
   decidePending("deny");
 });
 
-connectButton.addEventListener("click", async () => {
-  connectButton.disabled = true;
-  const preview = await window.nook.previewHooks();
-  const files = (preview && preview.files) || [];
-  hookDiff.hidden = false;
-  hookDiff.textContent = files.map((file) => `${file.label}\n${file.diff}`).join("\n\n");
-  installButton.hidden = files.every((file) => !file.changed);
-  connectButton.disabled = false;
-  expanded = true;
-  renderShell();
-});
-
-installButton.addEventListener("click", async () => {
-  installButton.disabled = true;
-  await window.nook.installHooks();
-  installButton.hidden = true;
-  hookDiff.hidden = true;
-  installButton.disabled = false;
+weekGrid.addEventListener("click", () => {
+  weeksOpen = !weeksOpen;
+  paintHeader();
 });
 
 fileChip.addEventListener("click", () => {
@@ -736,22 +873,12 @@ window.nook.onCommand((action) => {
   }
 });
 
-document.querySelector("#send-out").addEventListener("click", (event) => {
-  event.stopPropagation();
-  window.nook.togglePet();
-});
-
 window.nook.onOpenChat(() => {
-  setTab("chat");
+  showCard("chat");
   expanded = true;
   welcome = false;
   renderShell();
   chatInput.focus();
-});
-
-document.querySelector("#customize").addEventListener("click", (event) => {
-  event.stopPropagation();
-  window.nook.openApp();
 });
 
 let welcomeTimer = 0;
@@ -774,7 +901,7 @@ window.nook.onState((next) => {
 window.nook.onAttention(() => {
   attention = true;
   welcome = false;
-  setTab("agents");
+  showCard("session");
   renderShell();
 });
 showWelcome();

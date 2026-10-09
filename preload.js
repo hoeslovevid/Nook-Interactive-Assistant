@@ -1,8 +1,8 @@
 const { contextBridge, ipcRenderer } = require("electron");
 
 contextBridge.exposeInMainWorld("nook", {
-  setOpen(open) {
-    ipcRenderer.send("nook:set-open", open);
+  setOpen(open, height) {
+    ipcRenderer.send("nook:set-open", open, height);
   },
   quit() {
     ipcRenderer.send("nook:quit");
@@ -31,6 +31,9 @@ contextBridge.exposeInMainWorld("nook", {
   installHooks() {
     return ipcRenderer.invoke("nook:install-hooks");
   },
+  uninstallHooks() {
+    return ipcRenderer.invoke("nook:uninstall-hooks");
+  },
   sendChat(provider, text) {
     return ipcRenderer.invoke("nook:chat", { provider, text });
   },
@@ -39,6 +42,9 @@ contextBridge.exposeInMainWorld("nook", {
   },
   attachFile(file) {
     return ipcRenderer.invoke("nook:attach-file", file);
+  },
+  attachPath(filePath) {
+    return ipcRenderer.invoke("nook:attach-path", filePath);
   },
   clearFile() {
     return ipcRenderer.invoke("nook:clear-file");

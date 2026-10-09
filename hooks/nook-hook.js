@@ -7,7 +7,7 @@ const { pickTerminal } = require("../lib/terminal");
 
 const PIPE = process.env.NOOK_PIPE || "\\\\.\\pipe\\nook-companion";
 const WAIT_MS = 110000;
-const WATCH_MS = 1500;
+const WATCH_MS = 300;
 
 function readArg(name) {
   const index = process.argv.indexOf(name);

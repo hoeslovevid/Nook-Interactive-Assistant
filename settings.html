@@ -12,14 +12,7 @@
   <body>
     <aside>
       <div class="brand">
-        <svg viewBox="0 0 48 48" aria-hidden="true">
-          <path
-            id="brand-seed"
-            d="M24 3c8 6 16 14 16 25a16 16 0 1 1-32 0C8 17 16 9 24 3z"
-          />
-          <ellipse class="brand-eye" cx="24" cy="27" rx="5" ry="6" fill="#14161a" />
-          <circle cx="25" cy="27" r="1.8" fill="#f4f0e6" />
-        </svg>
+        <canvas class="brand-seed" id="brand-seed" width="64" height="64" aria-hidden="true"></canvas>
         <div>
           <strong>Nook</strong>
           <span>Companion</span>
@@ -34,6 +27,9 @@
         </button>
         <button type="button" class="nav" id="nav-agents" data-page="agents">
           Agents
+        </button>
+        <button type="button" class="nav" id="nav-shortcuts" data-page="shortcuts">
+          Shortcuts
         </button>
         <button type="button" class="nav" id="nav-week" data-page="week">
           Week
@@ -103,6 +99,7 @@
           </label>
         </form>
         <button type="button" class="ghost" id="reset-look">Reset look</button>
+        <div id="agent-colors"></div>
       </section>
       <section id="page-keys" hidden>
         <header>
@@ -206,20 +203,63 @@
         <pre id="settings-diff" class="diff"></pre>
         <button type="button" class="ghost" id="review-hooks">Review changes</button>
         <button type="button" class="solid" id="install-hooks">Install these hooks</button>
+        <button type="button" class="ghost" id="uninstall-hooks">Remove Nook hooks</button>
         <p class="note" id="agents-note"></p>
       </section>
-      <section id="page-week" hidden>
+      <section id="page-shortcuts" hidden>
         <header>
-          <h1>This week</h1>
-          <p>A local recap of sessions, files, and permissions. Demo mode does not write history.</p>
+          <h1>Shortcuts</h1>
+          <p>Click a field and press the keys. The notch keeps the ones already in use.</p>
         </header>
-        <pre id="recap" class="diff"></pre>
-        <button type="button" class="ghost" id="copy-recap">Copy share image</button>
-        <button type="button" class="ghost" id="save-recap">Save image</button>
+        <form id="shortcuts-form">
+          <label>
+            Open chat
+            <input id="shortcut-chat" data-shortcut="chat" value="CommandOrControl+Shift+Alt+N" maxlength="48" />
+          </label>
+          <label>
+            Jump to alert
+            <input id="shortcut-alert" data-shortcut="alert" value="CommandOrControl+Shift+Alt+J" maxlength="48" />
+          </label>
+          <label>
+            Mute
+            <input id="shortcut-mute" data-shortcut="mute" value="CommandOrControl+Shift+Alt+M" maxlength="48" />
+          </label>
+          <label>
+            Send the character out
+            <input id="shortcut-pet" data-shortcut="pet" value="CommandOrControl+Shift+Alt+D" maxlength="48" />
+          </label>
+          <label>
+            Next pill
+            <input id="shortcut-next" data-shortcut="next" value="CommandOrControl+Shift+Alt+Right" maxlength="48" />
+          </label>
+          <label>
+            Previous pill
+            <input id="shortcut-prev" data-shortcut="prev" value="CommandOrControl+Shift+Alt+Left" maxlength="48" />
+          </label>
+          <label>
+            Toggle the island
+            <input id="shortcut-toggle" data-shortcut="toggle" value="CommandOrControl+Shift+Alt+O" maxlength="48" />
+          </label>
+          <label>
+            Latest diff
+            <input id="shortcut-diff" data-shortcut="diff" value="CommandOrControl+Shift+Alt+E" maxlength="48" />
+          </label>
+        </form>
+        <button type="button" class="ghost" id="toggle-mute">Mute sounds</button>
+        <button type="button" class="ghost" id="open-sounds">Open sounds folder</button>
+        <p class="note" id="week-note">Drop approval.wav, finish.wav, or hi.wav into the sounds folder. Nook plays those instead of its tones.</p>
         <form id="prefs-form">
           <label>
             <input id="open-hover" type="checkbox" />
             Open on hover
+          </label>
+          <label>
+            Notch screen
+            <select id="display-mode">
+              <option value="follow">Follow the pointer</option>
+              <option value="main">Main screen</option>
+              <option value="screen">This screen</option>
+            </select>
           </label>
           <label>
             <input id="claude-usage" type="checkbox" />
@@ -228,10 +268,6 @@
           <label>
             <input id="codex-usage" type="checkbox" />
             Codex plan usage
-          </label>
-          <label>
-            <input id="hide-project" type="checkbox" />
-            Hide project names on the share image
           </label>
           <label>
             Main tool
@@ -260,22 +296,6 @@
             </select>
           </label>
           <label>
-            Open chat
-            <input id="shortcut-chat" data-shortcut="chat" value="CommandOrControl+Shift+Alt+N" maxlength="48" />
-          </label>
-          <label>
-            Jump to alert
-            <input id="shortcut-alert" data-shortcut="alert" value="CommandOrControl+Shift+Alt+J" maxlength="48" />
-          </label>
-          <label>
-            Mute
-            <input id="shortcut-mute" data-shortcut="mute" value="CommandOrControl+Shift+Alt+M" maxlength="48" />
-          </label>
-          <label>
-            Send the character out
-            <input id="shortcut-pet" data-shortcut="pet" value="CommandOrControl+Shift+Alt+D" maxlength="48" />
-          </label>
-          <label>
             n8n server
             <input id="n8n-url" data-service-url="n8nUrl" value="http://127.0.0.1:5678" maxlength="200" />
           </label>
@@ -284,14 +304,24 @@
             <input id="cal-url" data-service-url="calUrl" value="https://api.cal.com" maxlength="200" />
           </label>
         </form>
-        <div id="agent-colors"></div>
-        <button type="button" class="ghost" id="toggle-mute">Mute sounds</button>
-        <button type="button" class="ghost" id="open-sounds">Open sounds folder</button>
         <button type="button" class="solid" id="toggle-demo">Play demo</button>
         <button type="button" class="ghost" id="send-out">Send the character out</button>
-        <p class="note" id="week-note">Drop approval.wav, finish.wav, or hi.wav into the sounds folder. Nook plays those instead of its tones.</p>
+      </section>
+      <section id="page-week" hidden>
+        <header>
+          <h1>This week</h1>
+          <p>A local recap of sessions, files, and permissions. Demo mode does not write history.</p>
+        </header>
+        <pre id="recap" class="diff"></pre>
+        <button type="button" class="ghost" id="copy-recap">Copy share image</button>
+        <button type="button" class="ghost" id="save-recap">Save image</button>
+        <label class="week-option">
+          <input id="hide-project" type="checkbox" />
+          Hide project names on the share image
+        </label>
       </section>
     </main>
+    <script src="lib/seed.js"></script>
     <script src="settings.js"></script>
   </body>
 </html>
