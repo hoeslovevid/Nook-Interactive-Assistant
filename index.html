@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; style-src 'self'; script-src 'self'; img-src 'self'; media-src data:"
+    />
+    <title>Nook</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="island" role="region" aria-label="Nook">
+      <header class="top">
+        <svg class="seed" viewBox="0 0 48 48" aria-hidden="true">
+          <path
+            class="seed-body"
+            d="M24 3c8 6 16 14 16 25a16 16 0 1 1-32 0C8 17 16 9 24 3z"
+          />
+          <ellipse class="eye" cx="24" cy="27" rx="6.5" ry="7.5" />
+          <circle class="pupil" cx="24" cy="27" r="2.6" />
+        </svg>
+        <div class="titles">
+          <strong id="word">Nook</strong>
+          <span class="live-dot" aria-hidden="true"></span>
+          <span class="pin" hidden>Pinned</span>
+        </div>
+      </header>
+      <section class="details">
+        <div class="tabs" role="tablist">
+          <button type="button" class="tab is-selected" id="tab-agents">Agents</button>
+          <button type="button" class="tab" id="tab-chat">Chat</button>
+        </div>
+
+        <div id="panel-agents">
+          <p class="status" id="status">Quiet</p>
+          <p class="hint" id="hint">
+            Connect Claude and Cursor, or ask ChatGPT and Gemini.
+          </p>
+          <div id="approval" class="approval" hidden>
+            <p class="approval-title" id="approval-title"></p>
+            <p class="approval-detail" id="approval-detail"></p>
+            <div id="questions" class="questions"></div>
+            <div class="choices">
+              <button type="button" class="choice" id="tuck">Later</button>
+              <button type="button" class="choice allow" id="allow">Allow</button>
+              <button type="button" class="choice always" id="always" hidden>Always</button>
+              <button type="button" class="choice deny" id="deny">Deny</button>
+              <button type="button" class="choice" id="terminal">Reply in terminal</button>
+            </div>
+          </div>
+          <div id="sessions" class="pills"></div>
+          <div id="extras" class="pills"></div>
+          <div id="github-list" class="github-list" hidden></div>
+          <pre id="diff" class="diff" hidden></pre>
+          <button type="button" class="text-button" id="open-diff" hidden>Open in VS Code</button>
+          <button type="button" class="text-button" id="open-terminal">Open terminal</button>
+          <ul id="activity" class="activity"></ul>
+          <button type="button" class="text-button" id="connect">Review hook changes</button>
+          <pre id="hook-diff" class="diff" hidden></pre>
+          <button type="button" class="choice allow" id="install-hooks" hidden>Install these hooks</button>
+          <p class="hint" id="connect-status"></p>
+        </div>
+
+        <div id="panel-chat" hidden>
+          <label class="model-row">
+            Model
+            <select id="provider"></select>
+          </label>
+          <div id="transcript" class="transcript"></div>
+          <p class="file-chip" id="file-chip" hidden></p>
+          <form id="chat-form" class="row">
+            <input
+              id="chat-input"
+              type="text"
+              maxlength="2000"
+              placeholder="Ask, or drop a file"
+              autocomplete="off"
+            />
+            <button type="submit" class="choice allow">Send</button>
+          </form>
+          <p class="hint" id="key-status"></p>
+        </div>
+
+        <div class="actions">
+          <button type="button" class="text-button" id="send-out">Send out</button>
+          <button type="button" class="text-button" id="customize">Customize</button>
+          <button type="button" class="text-button" id="pin">Pin open</button>
+          <button type="button" class="text-button" id="quit">Quit</button>
+        </div>
+      </section>
+    </div>
+    <script src="lib/markdown.js"></script>
+    <script src="renderer.js"></script>
+  </body>
+</html>

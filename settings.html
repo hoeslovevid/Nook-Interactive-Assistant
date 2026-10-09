@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; style-src 'self'; script-src 'self'; img-src 'self'"
+    />
+    <title>Nook</title>
+    <link rel="stylesheet" href="settings.css" />
+  </head>
+  <body>
+    <aside>
+      <div class="brand">
+        <svg viewBox="0 0 48 48" aria-hidden="true">
+          <path
+            id="brand-seed"
+            d="M24 3c8 6 16 14 16 25a16 16 0 1 1-32 0C8 17 16 9 24 3z"
+          />
+          <ellipse class="brand-eye" cx="24" cy="27" rx="5" ry="6" fill="#14161a" />
+          <circle cx="25" cy="27" r="1.8" fill="#f4f0e6" />
+        </svg>
+        <div>
+          <strong>Nook</strong>
+          <span>Companion</span>
+        </div>
+      </div>
+      <nav>
+        <button type="button" class="nav is-selected" id="nav-look" data-page="look">
+          Look
+        </button>
+        <button type="button" class="nav" id="nav-keys" data-page="keys">
+          API keys
+        </button>
+        <button type="button" class="nav" id="nav-agents" data-page="agents">
+          Agents
+        </button>
+        <button type="button" class="nav" id="nav-week" data-page="week">
+          Week
+        </button>
+      </nav>
+    </aside>
+    <main>
+      <section id="page-look">
+        <header>
+          <h1>Look</h1>
+          <p>Changes show on the notch as you make them.</p>
+        </header>
+        <div class="stage" aria-hidden="true">
+          <svg class="preview" viewBox="0 0 280 120">
+            <defs>
+              <linearGradient id="island-fill" x1="0" y1="0" x2="0" y2="1">
+                <stop id="fill-top" offset="0%" stop-color="#22252c" />
+                <stop id="fill-bottom" offset="70%" stop-color="#14161a" />
+              </linearGradient>
+            </defs>
+            <rect width="280" height="120" fill="#0b0c0e" />
+            <path id="preview-body" fill="url(#island-fill)" d="M70 0 H210 V78 Q210 96 192 96 H88 Q70 96 70 78 Z" />
+            <rect id="preview-bar" x="70" y="0" width="140" height="3" />
+            <rect x="70" y="0" width="140" height="16" fill="rgba(255,255,255,0.06)" />
+            <path
+              id="preview-seed"
+              d="M118 22c6 4 12 10 12 18a12 12 0 1 1-24 0c0-8 6-14 12-18z"
+            />
+            <ellipse class="preview-eye" cx="118" cy="40" rx="4" ry="4.6" fill="#14161a" />
+            <circle id="preview-pupil" cx="119" cy="40" r="1.5" fill="#dff25a" />
+            <text id="preview-name" x="142" y="46" font-size="14" font-family="Segoe UI, sans-serif">Nook</text>
+          </svg>
+        </div>
+        <form id="look-form">
+          <label>
+            ChatGPT model
+            <input id="model-chatgpt" data-model="chatgpt" value="gpt-4.1-mini" maxlength="80" />
+          </label>
+          <label>
+            Gemini model
+            <input id="model-gemini" data-model="gemini" value="gemini-3.8-flash" maxlength="80" />
+          </label>
+          <label>
+            Accent
+            <input id="accent" name="accent" type="color" value="#dff25a" />
+          </label>
+          <label>
+            Island top
+            <input id="islandTop" name="islandTop" type="color" value="#22252c" />
+          </label>
+          <label>
+            Island bottom
+            <input id="islandBottom" name="islandBottom" type="color" value="#14161a" />
+          </label>
+          <label>
+            Text
+            <input id="paper" name="paper" type="color" value="#f4f0e6" />
+          </label>
+          <label>
+            Character
+            <input id="seed" name="seed" type="color" value="#f4f0e6" />
+          </label>
+          <label class="radius">
+            Corner roundness
+            <input id="radius" name="radius" type="range" min="10" max="32" value="22" />
+            <span id="radius-value">22</span>
+          </label>
+        </form>
+        <button type="button" class="ghost" id="reset-look">Reset look</button>
+      </section>
+      <section id="page-keys" hidden>
+        <header>
+          <h1>API keys</h1>
+          <p>Keys stay on this PC, encrypted by Windows. Nook never shows them again after you save.</p>
+        </header>
+        <form class="key-card" data-provider="chatgpt">
+          <div class="key-heading">
+            <h2>ChatGPT</h2>
+            <span class="badge" id="chatgpt-badge">Not saved</span>
+          </div>
+          <p>Uses gpt-4.1-mini with your OpenAI key.</p>
+          <div class="key-row">
+            <input type="password" autocomplete="off" placeholder="sk-..." maxlength="300" />
+            <button type="submit" class="solid">Save</button>
+            <button type="button" class="ghost remove">Remove</button>
+          </div>
+          <p class="note" id="chatgpt-note"></p>
+        </form>
+        <form class="key-card" data-provider="gemini">
+          <div class="key-heading">
+            <h2>Gemini</h2>
+            <span class="badge" id="gemini-badge">Not saved</span>
+          </div>
+          <p>Uses gemini-3.8-flash with your Google AI key.</p>
+          <div class="key-row">
+            <input type="password" autocomplete="off" placeholder="AIza..." maxlength="300" />
+            <button type="submit" class="solid">Save</button>
+            <button type="button" class="ghost remove">Remove</button>
+          </div>
+          <p class="note" id="gemini-note"></p>
+        </form>
+        <form class="key-card" data-provider="claude">
+          <div class="key-heading">
+            <h2>Claude</h2>
+            <span class="badge" id="claude-badge">Not saved</span>
+          </div>
+          <p>Uses the Anthropic API. Pick the model below.</p>
+          <label class="model-field">
+            Model
+            <input id="model-claude" data-model="claude" value="claude-sonnet-4-5" maxlength="80" />
+          </label>
+          <div class="key-row">
+            <input type="password" autocomplete="off" placeholder="sk-ant-..." maxlength="300" />
+            <button type="submit" class="solid">Save</button>
+            <button type="button" class="ghost remove">Remove</button>
+          </div>
+          <p class="note" id="claude-note"></p>
+        </form>
+        <form class="key-card local-card" data-provider="ollama">
+          <div class="key-heading">
+            <h2>Ollama</h2>
+            <span class="badge is-saved" id="ollama-badge">Local</span>
+          </div>
+          <p>Talks to a server on this PC. No API key.</p>
+          <label class="model-field">
+            Model
+            <input id="model-ollama" data-model="ollama" value="llama3.2" maxlength="80" />
+          </label>
+          <label class="model-field">
+            Server
+            <input id="url-ollama" data-url="ollamaUrl" value="http://127.0.0.1:11434/v1/chat/completions" maxlength="200" />
+          </label>
+        </form>
+        <form class="key-card local-card" data-provider="custom">
+          <div class="key-heading">
+            <h2>Other local server</h2>
+            <span class="badge is-saved">Optional key</span>
+          </div>
+          <p>Any OpenAI-compatible server. HTTPS anywhere, or HTTP on this PC.</p>
+          <label class="model-field">
+            Model
+            <input id="model-custom" data-model="custom" value="local-model" maxlength="80" />
+          </label>
+          <label class="model-field">
+            Server
+            <input id="url-custom" data-url="customUrl" value="http://127.0.0.1:8080/v1/chat/completions" maxlength="200" />
+          </label>
+        </form>
+        <form class="key-card local-card" data-provider="lmstudio">
+          <div class="key-heading">
+            <h2>LM Studio</h2>
+            <span class="badge is-saved" id="lmstudio-badge">Local</span>
+          </div>
+          <p>Talks to LM Studio's local server.</p>
+          <label class="model-field">
+            Model
+            <input id="model-lmstudio" data-model="lmstudio" value="local-model" maxlength="80" />
+          </label>
+          <label class="model-field">
+            Server
+            <input id="url-lmstudio" data-url="lmstudioUrl" value="http://127.0.0.1:1234/v1/chat/completions" maxlength="200" />
+          </label>
+        </form>
+      </section>
+      <section id="page-agents" hidden>
+        <header>
+          <h1>Agents</h1>
+          <p>Review the hook diff, then install it. Your other hooks stay in place. Codex asks you to trust new hooks with /hooks.</p>
+        </header>
+        <pre id="settings-diff" class="diff"></pre>
+        <button type="button" class="ghost" id="review-hooks">Review changes</button>
+        <button type="button" class="solid" id="install-hooks">Install these hooks</button>
+        <p class="note" id="agents-note"></p>
+      </section>
+      <section id="page-week" hidden>
+        <header>
+          <h1>This week</h1>
+          <p>A local recap of sessions, files, and permissions. Demo mode does not write history.</p>
+        </header>
+        <pre id="recap" class="diff"></pre>
+        <button type="button" class="ghost" id="copy-recap">Copy share image</button>
+        <button type="button" class="ghost" id="save-recap">Save image</button>
+        <form id="prefs-form">
+          <label>
+            <input id="open-hover" type="checkbox" />
+            Open on hover
+          </label>
+          <label>
+            <input id="claude-usage" type="checkbox" />
+            Claude plan usage
+          </label>
+          <label>
+            <input id="codex-usage" type="checkbox" />
+            Codex plan usage
+          </label>
+          <label>
+            <input id="hide-project" type="checkbox" />
+            Hide project names on the share image
+          </label>
+          <label>
+            Main tool
+            <select id="main-tool">
+              <option value="">Any</option>
+              <option value="vscode">VS Code</option>
+              <option value="cursor">Cursor</option>
+              <option value="codex">Codex</option>
+              <option value="antigravity">Antigravity</option>
+            </select>
+          </label>
+          <div id="pill-picks"></div>
+          <label>
+            Language
+            <select id="language" name="language">
+              <option value="en">English</option>
+              <option value="zh">中文</option>
+              <option value="hi">हिन्दी</option>
+              <option value="es">Español</option>
+              <option value="ar">العربية</option>
+              <option value="fr">Français</option>
+              <option value="bn">বাংলা</option>
+              <option value="pt">Português</option>
+              <option value="ru">Русский</option>
+              <option value="id">Bahasa Indonesia</option>
+            </select>
+          </label>
+          <label>
+            Open chat
+            <input id="shortcut-chat" data-shortcut="chat" value="CommandOrControl+Shift+Alt+N" maxlength="48" />
+          </label>
+          <label>
+            Jump to alert
+            <input id="shortcut-alert" data-shortcut="alert" value="CommandOrControl+Shift+Alt+J" maxlength="48" />
+          </label>
+          <label>
+            Mute
+            <input id="shortcut-mute" data-shortcut="mute" value="CommandOrControl+Shift+Alt+M" maxlength="48" />
+          </label>
+          <label>
+            Send the character out
+            <input id="shortcut-pet" data-shortcut="pet" value="CommandOrControl+Shift+Alt+D" maxlength="48" />
+          </label>
+          <label>
+            n8n server
+            <input id="n8n-url" data-service-url="n8nUrl" value="http://127.0.0.1:5678" maxlength="200" />
+          </label>
+          <label>
+            Cal.com server
+            <input id="cal-url" data-service-url="calUrl" value="https://api.cal.com" maxlength="200" />
+          </label>
+        </form>
+        <div id="agent-colors"></div>
+        <button type="button" class="ghost" id="toggle-mute">Mute sounds</button>
+        <button type="button" class="ghost" id="open-sounds">Open sounds folder</button>
+        <button type="button" class="solid" id="toggle-demo">Play demo</button>
+        <button type="button" class="ghost" id="send-out">Send the character out</button>
+        <p class="note" id="week-note">Drop approval.wav, finish.wav, or hi.wav into the sounds folder. Nook plays those instead of its tones.</p>
+      </section>
+    </main>
+    <script src="settings.js"></script>
+  </body>
+</html>

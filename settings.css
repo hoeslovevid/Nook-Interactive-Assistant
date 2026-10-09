@@ -1,0 +1,408 @@
+:root {
+  --lime: #dff25a;
+  --paper: #f4f0e6;
+  --ink: #14161a;
+  --muted: #a39e94;
+  --line: rgba(255, 255, 255, 0.1);
+  --app: #101114;
+  --panel: #181b20;
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: var(--app);
+  color: var(--paper);
+  font-family: "Segoe UI Variable Text", "Segoe UI", sans-serif;
+}
+
+body {
+  display: flex;
+  min-height: 100%;
+  background:
+    radial-gradient(900px 420px at 80% -10%, rgba(223, 242, 90, 0.08), transparent 55%),
+    var(--app);
+}
+
+aside {
+  width: 220px;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  padding: 28px 18px;
+  background: #0c0d10;
+  border-right: 1px solid var(--line);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.brand svg {
+  width: 36px;
+  height: 36px;
+  overflow: visible;
+  animation: floaty 3.6s ease-in-out infinite;
+}
+
+.brand path {
+  fill: var(--lime);
+}
+
+.brand strong,
+.brand span {
+  display: block;
+}
+
+.brand span,
+.note,
+header p,
+.key-card p {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+nav {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.nav,
+.ghost,
+.solid {
+  font: inherit;
+  cursor: pointer;
+}
+
+.nav {
+  border: 0;
+  border-radius: 8px;
+  padding: 10px 12px;
+  background: transparent;
+  color: var(--paper);
+  text-align: left;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.nav.is-selected,
+.nav:hover {
+  background: #22262c;
+}
+
+main {
+  flex: 1;
+  min-width: 0;
+  overflow: auto;
+  padding: 36px 40px 48px;
+}
+
+header h1,
+.key-card h2 {
+  margin: 0;
+  font-weight: 620;
+  letter-spacing: -0.03em;
+}
+
+header h1 {
+  font-size: 32px;
+}
+
+header p {
+  margin: 8px 0 0;
+}
+
+.stage {
+  margin: 28px 0 8px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  overflow: hidden;
+  background: #0b0c0e;
+}
+
+.preview {
+  display: block;
+  width: min(420px, 100%);
+  height: auto;
+}
+
+#look-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 240px));
+  gap: 14px 24px;
+  margin-top: 22px;
+}
+
+#prefs-form,
+#agent-colors {
+  display: grid;
+  gap: 12px;
+  margin-top: 18px;
+  max-width: 560px;
+}
+
+#prefs-form input,
+#prefs-form select {
+  flex: 1;
+  min-width: 220px;
+}
+
+label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+input[type="color"] {
+  width: 64px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.radius {
+  grid-column: 1 / -1;
+}
+
+input[type="range"] {
+  width: 180px;
+  accent-color: var(--lime);
+}
+
+#radius-value {
+  width: 2ch;
+  color: var(--paper);
+}
+
+.ghost,
+.solid {
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-size: 13px;
+}
+
+.ghost {
+  margin-top: 22px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--paper);
+}
+
+.solid {
+  border: 0;
+  background: var(--lime);
+  color: var(--ink);
+  font-weight: 650;
+}
+
+.ghost:hover,
+.nav:focus-visible,
+.ghost:focus-visible,
+.solid:focus-visible {
+  outline: 1px solid var(--lime);
+}
+
+.key-card {
+  max-width: 640px;
+  margin-top: 22px;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--panel);
+}
+
+.key-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.badge {
+  border-radius: 999px;
+  padding: 4px 8px;
+  background: #2a2e35;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.badge.is-saved {
+  background: color-mix(in srgb, var(--lime) 22%, #2a2e35);
+  color: var(--lime);
+}
+
+.key-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.key-row input {
+  min-width: 0;
+  flex: 1;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px 10px;
+  background: #101114;
+  color: var(--paper);
+  font: inherit;
+}
+
+.key-row .ghost {
+  margin-top: 0;
+}
+
+.note {
+  min-height: 1.2em;
+  margin: 8px 0 0;
+}
+
+.model-field {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.model-field input,
+.diff {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #101114;
+  color: var(--paper);
+  font: inherit;
+}
+
+.model-field input {
+  padding: 8px 10px;
+}
+
+.diff {
+  max-height: 280px;
+  overflow: auto;
+  margin-top: 18px;
+  padding: 12px;
+  white-space: pre-wrap;
+  font-family: Consolas, monospace;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+#install-hooks,
+#review-hooks {
+  margin-top: 12px;
+  margin-right: 8px;
+}
+
+#brand-seed,
+#preview-seed {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: breathe 3.2s ease-in-out infinite;
+}
+
+.brand-eye,
+.preview-eye {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: blink 5.4s infinite;
+}
+
+.is-entering {
+  animation: rise 0.42s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.nav:hover {
+  transform: translateX(2px);
+}
+
+.nav.is-selected:hover {
+  transform: none;
+}
+
+.key-card,
+.stage,
+.ghost,
+.solid {
+  transition: transform 0.22s ease, border-color 0.22s ease, background 0.22s ease;
+}
+
+.key-card:hover,
+.stage:hover {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--lime) 28%, transparent);
+}
+
+.solid:hover,
+.ghost:hover {
+  transform: translateY(-1px);
+}
+
+@keyframes breathe {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.06, 0.96);
+  }
+}
+
+@keyframes blink {
+  0%,
+  42%,
+  50%,
+  100% {
+    transform: scaleY(1);
+  }
+  46% {
+    transform: scaleY(0.08);
+  }
+}
+
+@keyframes floaty {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-2px);
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
