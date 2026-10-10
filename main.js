@@ -20,7 +20,7 @@ const fs = require("fs");
 const os = require("os");
 const path = require("path");
 const { present, decisionOutput, describeTurn, validAnswers } = require("./lib/decisions");
-const { buildModelsRequest, PROVIDERS, cleanModel, cleanLocalUrl, cleanRemoteUrl } = require("./lib/chat");
+const { PROVIDERS, cleanModel, cleanLocalUrl, cleanRemoteUrl } = require("./lib/chat");
 const { textDiff } = require("./lib/diff");
 const {
   mergeClaudeSettings,
@@ -35,6 +35,9 @@ const {
   hooksInstalled,
 } = require("./lib/install-hooks");
 const { createRelay } = require("./lib/relay");
+const { createModelDiscovery } = require('./lib/model-discovery');
+const modelDiscovery = createModelDiscovery();
+const providerGuides = require('./lib/provider-guides');
 const { normalizeLook, lookToCss } = require("./lib/appearance");
 const {
   SERVICES,
@@ -48,6 +51,8 @@ const {
   calSummary,
 } = require("./lib/services");
 const { usageFromText, fromCodexAccount } = require("./lib/usage");
+const { createHistoryTail } = require('./lib/history-tail');
+const historyTail = createHistoryTail();
 const { summarizeHistory, recapSvg, weekKey, mondayDue } = require("./lib/history");
 const { QUERY, parseGithub, ciBadge, stateMap } = require("./lib/github");
 const { pickTerminal } = require("./lib/terminal");
@@ -55,6 +60,7 @@ const { pickTerminal } = require("./lib/terminal");
 const { finalFromTranscript } = require("./lib/transcript");
 const { LANGUAGES, translate } = require("./lib/i18n");
 const { pluginSource, ampSource, hermesManifest } = require("./lib/plugins");
+const { recentMessages } = require('./lib/chat-memory');
 const { completeChat } = require("./lib/chat-transport");
 
 const { installFeatures } = require("./lib/features");
@@ -93,6 +99,7 @@ const pending = [];
 const messages = [];
 const chatBusyProviders = new Set();
 const lookCssKeys = new Map();
+const lookRequests = new Map();
 let hookMessage = "";
 let celebrate = 0;
 let attachment = null;
@@ -152,6 +159,7 @@ function windowSize(nextMode) {
   const content = { ...(SIZES[nextMode] || SIZES.asleep) };
   if (nextMode === "open") {
     content.height = cardHeight;
+    content.width = readLook().notchWidth;
   }
   return {
     width: content.width + content.gutterX * 2,
@@ -711,17 +719,23 @@ async function applyLook(target) {
   if (!target || target.isDestroyed()) {
     return;
   }
-  const previous = lookCssKeys.get(target.id);
-  if (previous) {
-    await target.webContents.removeInsertedCSS(previous).catch(() => {});
-  }
+  const request = (lookRequests.get(target.id) || 0) + 1;
+  lookRequests.set(target.id, request);
   const key = await target.webContents.insertCSS(lookToCss(readLook()));
+  if (target.isDestroyed()) return;
+  if (lookRequests.get(target.id) !== request) {
+    await target.webContents.removeInsertedCSS(key).catch(() => {});
+    return;
+  }
+  const previous = lookCssKeys.get(target.id);
   lookCssKeys.set(target.id, key);
+  if (previous) await target.webContents.removeInsertedCSS(previous).catch(() => {});
 }
 
 function applyLookEverywhere() {
   applyLook(win);
   applyLook(appWin);
+  applyLook(pet);
   applyColors(win);
   applyColors(appWin);
 }
@@ -828,17 +842,15 @@ function writeModels(patch) {
   return next;
 }
 
-function keyStatus() {
-  const keys = readKeys();
+function keyStatus(keys = readKeys()) {
   const status = {};
   for (const [name, spec] of Object.entries(PROVIDERS)) {
-    status[name] = spec.local || spec.auth === "optional" || spec.auth === "none" ? true : Boolean(keys[name]);
+    status[name] = spec.local || spec.auth === "none" ? true : Boolean(keys[name]);
   }
   return status;
 }
 
-function serviceKeyStatus() {
-  const keys = readKeys();
+function serviceKeyStatus(keys = readKeys()) {
   const status = {};
   for (const name of [...SERVICES, "custom"]) {
     status[name] = Boolean(keys[name]);
@@ -986,12 +998,7 @@ function appendHistory(entry) {
 }
 
 function readHistoryTail() {
-  try {
-    const lines = fs.readFileSync(historyPath(), "utf8").split("\n");
-    return lines.slice(-2000).join("\n");
-  } catch (_error) {
-    return "";
-  }
+  return historyTail.read(historyPath());
 }
 
 function newestSnapshot(root) {
@@ -1374,7 +1381,8 @@ function stopDemo() {
 function currentState() {
   const first = pending[0] || null;
   const latest = activity[0] || null;
-  const strings = translate(readPrefs().language);
+  const prefs = readPrefs(), keys = readKeys();
+  const strings = translate(prefs.language);
   let status = strings.quiet;
   let hint = "Hover the top edge, or ask a model.";
   if (first) {
@@ -1414,17 +1422,17 @@ function currentState() {
     celebrate,
     attachment,
     hooks,
-    keys: keyStatus(),
-    serviceKeys: serviceKeyStatus(),
+    keys: keyStatus(keys),
+    serviceKeys: serviceKeyStatus(keys),
     services: servicePills,
     usage: usagePills,
     github,
     githubBadge,
     paused,
     greeting: displayName,
-    recap: summarizeHistory(readHistoryTail(), Date.now()),
-    strings: translate(readPrefs().language),
-    prefs: readPrefs(),
+    recap: historyTail.recap(historyPath(), summarizeHistory),
+    strings,
+    prefs,
     demo: demoOn,
     features: featureKit ? featureKit.snapshot() : {},
     updates: updateKit ? updateKit.snapshot() : null,
@@ -1432,7 +1440,7 @@ function currentState() {
     push: pushBridge ? pushBridge.snapshot() : null,
     models: readModels(),
     look: readLook(),
-    messages: messages.slice(-12),
+    messages: recentMessages(messages),
     chatBusy: chatBusyProviders.size > 0,
     chatBusyProviders: [...chatBusyProviders],
   };
@@ -1723,13 +1731,15 @@ ipcMain.on("nook:quit", () => {
   app.quit();
 });
 
-ipcMain.on("nook:open-app", () => {
-  openApp();
+ipcMain.on("nook:open-app", (_event, page) => {
+  if (["keys", "look"].includes(page)) navigateSettings(page);
+  else openApp();
 });
 
 ipcMain.handle("nook:save-look", (_event, look) => {
   const next = writeLook(look);
   applyLookEverywhere();
+  if (win && !win.isDestroyed()) animateTo(mode);
   broadcast();
   return next;
 });
@@ -1737,6 +1747,7 @@ ipcMain.handle("nook:save-look", (_event, look) => {
 ipcMain.handle("nook:clear-key", (_event, provider) => {
   try {
     clearKey(provider);
+    modelDiscovery.clear();
     broadcast();
     return { ok: true };
   } catch (error) {
@@ -1832,6 +1843,7 @@ ipcMain.handle("nook:uninstall-hooks", () => {
 
 ipcMain.handle("nook:save-model", (_event, patch) => {
   const next = writeModels(patch);
+  modelDiscovery.clear();
   broadcast();
   return next;
 });
@@ -1870,8 +1882,10 @@ ipcMain.handle("nook:save-key", (_event, input) => {
   if (!key) {
     return { ok: false, error: "Paste a key first." };
   }
+  if (key.length > 500 || /\s/.test(key)) return { ok: false, error: "Paste a single API key without spaces (up to 500 characters)." };
   try {
     saveKey(provider, key);
+    modelDiscovery.clear();
     broadcast();
     return { ok: true };
   } catch (error) {
@@ -1881,7 +1895,7 @@ ipcMain.handle("nook:save-key", (_event, input) => {
 
 ipcMain.handle("nook:chat", async (_event, input) => {
   const provider = input && input.provider;
-  const text = input && typeof input.text === "string" ? input.text.trim() : "";
+  const text = input && typeof input.text === "string" ? input.text.trim().slice(0, 2000) : "";
   if (!PROVIDERS[provider]) {
     return { ok: false, error: "Unknown chat provider." };
   }
@@ -1907,9 +1921,10 @@ ipcMain.handle("nook:chat", async (_event, input) => {
   const content = file ? `${text}\n\n[${file.name} attached]` : text;
   attachment = null;
   messages.push({ role: "user", provider, content });
-  broadcast();
   const replyMessage = { role: "assistant", provider, content: "" };
   messages.push(replyMessage);
+  messages.splice(0, messages.length, ...recentMessages(messages));
+  broadcast();
   let lastPaint = 0;
   try {
     const reply = await completeChat(
@@ -2102,27 +2117,13 @@ ipcMain.handle("nook:save-recap", () => {
 });
 
 ipcMain.handle("nook:models", async (_event, provider) => {
-  const spec = PROVIDERS[provider];
-  if (!spec) {
-    return [];
-  }
-  const models = readModels();
-  const base = provider === "ollama" ? models.ollamaUrl : provider === "lmstudio" ? models.lmstudioUrl : provider === "custom" ? models.customUrl : spec.url;
-  const { url, headers } = buildModelsRequest(provider, { url: base }, readKeys()[provider]);
-  try {
-    const response = await fetch(url, { headers, signal: AbortSignal.timeout(8000), redirect: 'error' });
-    if (!response.ok) {
-      return [];
-    }
-    const payload = await response.json();
-    const list = Array.isArray(payload.data) ? payload.data : Array.isArray(payload.models) ? payload.models : [];
-    return list
-      .map((item) => (item && (item.id || item.name)) || "")
-      .filter((name) => typeof name === "string" && name)
-      .slice(0, 500);
-  } catch (_error) {
-    return [];
-  }
+  return (await modelDiscovery.discover(provider, readModels(), readKeys()[provider])).models;
+});
+ipcMain.handle('nook:check-connection', (_event, provider, refresh) => modelDiscovery.discover(provider, readModels(), readKeys()[provider], Boolean(refresh)));
+ipcMain.handle('nook:provider-guide', async (_event, provider) => {
+  const url = providerGuides[provider]?.url;
+  if (!url) return { ok: false };
+  try { await shell.openExternal(url); return { ok: true }; } catch (_) { return { ok: false }; }
 });
 
 ipcMain.on("nook:pet-move", (_event, point) => {

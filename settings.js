@@ -43,6 +43,10 @@ function readLookForm() {
     islandBottom: String(data.get("islandBottom") || ""),
     seed: String(data.get("seed") || ""),
     radius: Number(data.get("radius")),
+    theme: String(data.get("theme") || "black"),
+    density: String(data.get("density") || "comfortable"),
+    motion: String(data.get("motion") || "full"),
+    notchWidth: Number(data.get("notchWidth") || 620),
   };
 }
 
@@ -56,8 +60,8 @@ function paintPreview(next) {
     "d",
     `M${left} 0 H${right} V${bottom} Q${right} ${bottom + curve} ${right - curve} ${bottom + curve} H${left + curve} Q${left} ${bottom + curve} ${left} ${bottom} Z`,
   );
-  document.querySelector("#fill-top").setAttribute("stop-color", next.islandTop || "#20242e");
-  document.querySelector("#fill-bottom").setAttribute("stop-color", next.islandBottom || "#13161c");
+  document.querySelector("#fill-top").setAttribute("stop-color", next.islandTop || "#0a0a0a");
+  document.querySelector("#fill-bottom").setAttribute("stop-color", next.islandBottom || "#000000");
   previewBar.setAttribute("fill", next.accent || "#b7c6ff");
   previewSeed.setAttribute("fill", next.seed || "#edf0f6");
   document.querySelector("#preview-pupil").setAttribute("fill", next.accent || "#b7c6ff");
@@ -65,13 +69,14 @@ function paintPreview(next) {
   const companion = document.querySelector(".preview-companion");
   companion.dataset.body = next.seed; companion.dataset.pupil = next.accent;
   radiusValue.textContent = String(radius);
+  document.querySelector("#notch-width-value").textContent = (next.notchWidth || 620) + " px";
 }
 
 function fillLookForm(next) {
   if (!next) {
     return;
   }
-  for (const key of ["accent", "paper", "islandTop", "islandBottom", "seed", "radius"]) {
+  for (const key of ["accent", "paper", "islandTop", "islandBottom", "seed", "radius", "theme", "density", "motion", "notchWidth"]) {
     const field = lookForm.elements.namedItem(key);
     if (field && document.activeElement !== field) {
       field.value = String(next[key]);
@@ -163,16 +168,18 @@ for (const form of document.querySelectorAll(".key-card")) {
     form.append(row, note); form.querySelector("h2").textContent = "Custom endpoint";
   }
   const field = form.querySelector("[data-model]"); if (!field) continue;
-  const button = document.createElement("button"); button.type = "button"; button.className = "discover ghost"; button.textContent = "Find available models";
+  const button = document.createElement("button"); button.type = "button"; button.className = "discover ghost"; button.textContent = "Check connection & load models";
   const feedback = document.createElement("p"); feedback.className = "note"; feedback.setAttribute("role", "status");
   const list = document.createElement("datalist"); list.id = "models-" + id; field.setAttribute("list", list.id);
   form.append(button, feedback, list);
   button.addEventListener("click", async () => {
     button.disabled = true; feedback.textContent = "Looking for models…";
     try {
-      const models = await window.nook.listModels(id);
+      const result = await window.nook.checkConnection(id, true);
+      const models = result.models;
       list.replaceChildren(...models.map(id => { const option = document.createElement("option"); option.value = id; return option; }));
-      feedback.textContent = models.length ? models.length + " models available. Choose in the Model field." : "No models found. Check your connection or enter a model ID manually.";
+      feedback.textContent = !result.ok ? result.error : models.length ? "Connected · " + models.length + " chat models. Search below to choose one." : "Connected, but no chat models were listed. Enter a model ID manually.";
+      feedback.dataset.status = result.ok ? 'connected' : 'error';
     } catch (_) { feedback.textContent = "Could not load models. Enter a model ID manually."; }
     finally { button.disabled = false; }
   });
@@ -221,6 +228,13 @@ navButtons.forEach((button) => {
   button.addEventListener("click", () => showPage(button.dataset.page));
 });
 
+let lookSaveTimer = 0;
+async function persistLook(next) {
+  clearTimeout(lookSaveTimer); lookSaveTimer = 0;
+  const note = document.querySelector('#appearance-status');
+  try { await window.nook.saveLook(next); note.textContent = ''; }
+  catch (_) { note.textContent = 'Could not save the appearance. Try again.'; }
+}
 lookForm.addEventListener("input", (event) => {
   if (event.target.dataset.model || event.target.dataset.url) {
     return;
@@ -228,18 +242,14 @@ lookForm.addEventListener("input", (event) => {
   const next = readLookForm();
   look = next;
   paintPreview(next);
-  window.nook.saveLook(next);
+  clearTimeout(lookSaveTimer);
+  lookSaveTimer = setTimeout(() => persistLook(next), 160);
 });
+lookForm.addEventListener('change', () => persistLook(readLookForm()));
 
 document.querySelector("#reset-look").addEventListener("click", () => {
-  window.nook.saveLook({
-    accent: "#b7c6ff",
-    paper: "#edf0f6",
-    islandTop: "#20242e",
-    islandBottom: "#13161c",
-    seed: "#edf0f6",
-    radius: 22,
-  });
+  clearTimeout(lookSaveTimer);
+  persistLook({});
 });
 
 document.querySelectorAll(".local-card").forEach((form) => {
@@ -247,15 +257,25 @@ document.querySelectorAll(".local-card").forEach((form) => {
 });
 
 document.querySelectorAll("[data-model], [data-url]").forEach((field) => {
-  field.addEventListener("change", () => {
+  field.addEventListener("change", async () => {
+    const value = field.value.trim();
+    const note = field.closest('.key-card')?.querySelector('.note');
+    if (field.dataset.model && !/^[A-Za-z0-9._:/-]{1,80}$/.test(value)) {
+      if (note) note.textContent = 'Enter a model ID of up to 80 characters, without spaces.';
+      return;
+    }
     const patch = {};
     if (field.dataset.model) {
-      patch[field.dataset.model] = field.value;
+      patch[field.dataset.model] = value;
     }
     if (field.dataset.url) {
-      patch[field.dataset.url] = field.value;
+      patch[field.dataset.url] = value;
     }
-    window.nook.saveModel(patch);
+    try {
+      const result = await window.nook.saveModel(patch);
+      const key = field.dataset.model || field.dataset.url;
+      if (note) note.textContent = result[key] === value ? 'Model settings saved.' : 'Use HTTPS for a cloud endpoint, or localhost for a local server. Previous address kept.';
+    } catch (_) { if (note) note.textContent = 'Could not save model settings. Try again.'; }
   });
 });
 
@@ -282,19 +302,21 @@ document.querySelectorAll(".key-card:not(.local-card)").forEach((form) => {
   const note = document.querySelector(`#${provider}-note`);
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
-    const input = form.querySelector('input[type="password"]');
+    const input = form.querySelector('[data-secret]');
     const submit = form.querySelector('button[type="submit"]');
     submit.disabled = true;
     try {
       const result = await window.nook.saveKey(provider, input.value);
-      if (result.ok) input.value = "";
-      note.textContent = result.ok ? "Key saved securely." : result.error || "Could not save the key.";
+      if (result.ok) { input.value = ""; input.type = "password"; form.querySelector(".secret-toggle").textContent = "Show"; form.querySelector(".secret-toggle").setAttribute("aria-pressed", "false"); }
+      note.textContent = result.ok ? "Key encrypted and saved on this PC." : result.error || "Could not save the key.";
+      if (result.ok) form.querySelector('.discover')?.click();
     } catch (_) { note.textContent = "Could not save. Please try again."; }
     finally { submit.disabled = false; }
   });
   form.querySelector(".remove").addEventListener("click", async () => {
     const result = await window.nook.clearKey(provider);
     note.textContent = result.ok ? "Removed." : result.error || "Could not remove the key.";
+    if (result.ok) { form.querySelector('datalist')?.replaceChildren(); const status = form.querySelector('.note[data-status]'); if (status) { status.textContent = ''; delete status.dataset.status; } }
   });
 });
 
@@ -446,8 +468,7 @@ document.querySelector("#copy-recap").addEventListener("click", async () => {
 });
 
 window.nook.onState((state) => {
-  look = state.look || look;
-  fillLookForm(state.look);
+  if (!lookSaveTimer) { look = state.look || look; fillLookForm(state.look); }
   paintKeys(state.keys, state.serviceKeys);
   fillModels(state.models);
   fillPrefs(state.prefs);

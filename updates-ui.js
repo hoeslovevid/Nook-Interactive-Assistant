@@ -11,7 +11,7 @@
     select("update-token-clear").disabled = busy || !state.accessSaved;
     select("update-token-state").textContent = state.accessSaved
       ? "Token saved securely on this PC."
-      : "No token saved. Repository access is required.";
+      : state.accessRequired ? "No token saved. Repository access is required." : "No token needed. Nook downloads from its public releases.";
     select("update-check").disabled = [
       "unsupported",
       "access-required",

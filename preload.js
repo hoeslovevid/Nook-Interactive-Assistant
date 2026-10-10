@@ -63,8 +63,8 @@ contextBridge.exposeInMainWorld("nook", {
   saveLook(look) {
     return ipcRenderer.invoke("nook:save-look", look);
   },
-  openApp() {
-    ipcRenderer.send("nook:open-app");
+  openApp(page) {
+    ipcRenderer.send("nook:open-app", page);
   },
   onOpenChat(callback) {
     ipcRenderer.on("nook:open-chat", () => {
@@ -133,6 +133,8 @@ contextBridge.exposeInMainWorld("nook", {
   serviceAction(id) { return ipcRenderer.invoke('nook:service-action', id); },
   openServiceUrl(url) { return ipcRenderer.invoke('nook:service-url', url); },
   saveRecapPng() { return ipcRenderer.invoke('nook:recap-png'); },
+  checkConnection(provider, refresh = false) { return ipcRenderer.invoke('nook:check-connection', provider, refresh); },
+  providerGuide(provider) { return ipcRenderer.invoke('nook:provider-guide', provider); },
   listModels(provider) {
     return ipcRenderer.invoke("nook:models", provider);
   },

@@ -106,13 +106,13 @@ function renderShell() {
   if (next !== lastShellMode) {
     window.clearTimeout(settleTimer);
     document.body.classList.remove("is-settled");
-    if (next === "open") settleTimer = window.setTimeout(() => document.body.classList.add("is-settled"), reducedMotion.matches ? 0 : 130);
+    if (next === "open") settleTimer = window.setTimeout(() => document.body.classList.add("is-settled"), (reducedMotion.matches || state?.look?.motion === "reduced") ? 0 : 130);
     lastShellMode = next;
   }
   updateCompanion();
   seed.classList.toggle("is-hover", hovering);
   const height = next === "open" ? measureOpen() : 0;
-  window.nook.setOpen(next, height, reducedMotion.matches);
+  window.nook.setOpen(next, height, (reducedMotion.matches || state?.look?.motion === "reduced"));
 }
 
 function measureOpen() {
@@ -317,11 +317,15 @@ function paintSessions() {
   if (selected && card === 'diff') paintDiff(selected);
 }
 
+let providerSignature = "";
 function paintProviders(models) {
   if (document.activeElement === providerSelect) {
     return;
   }
   const current = provider;
+  const signature = JSON.stringify(PROVIDER_NAMES.map(name => models[name]));
+  if (signature === providerSignature) { providerSelect.value = current; return; }
+  providerSignature = signature;
   providerSelect.replaceChildren();
   const labels = {
     chatgpt: "ChatGPT",
@@ -519,6 +523,7 @@ function applyChrome() {
   }
 }
 
+let transcriptSignature = "";
 function paint() {
   applyChrome();
   paintExtras();
@@ -598,21 +603,25 @@ function paint() {
   const label = providerSelect.options[providerSelect.selectedIndex]
     ? providerSelect.options[providerSelect.selectedIndex].textContent
     : "Chat";
-  const local = provider === "ollama" || provider === "lmstudio" || provider === 'custom';
+  const local = provider === "ollama" || provider === "lmstudio";
   chatInput.placeholder = `Ask ${label}`;
   const attached = state && state.attachment;
   fileChip.hidden = !attached;
   fileChip.textContent = attached ? attached.name + " ×" : "";
   keyStatus.textContent =
     chatError ||
-    (local ? `${label} uses the server on this PC.` : keys[provider] ? `${label} key saved` : `Add the ${label} key in the Nook app.`);
+    (local ? `${label} uses the server on this PC.` : provider === "custom" ? "Custom server · API key is optional; use Models to configure it." : keys[provider] ? `${label} key saved` : `Add the ${label} key in the Nook app.`);
   if (state?.demo) keyStatus.textContent = 'Sample chat · replies stay on this PC · no API charges';
   document.querySelector('#chat-error-panel').hidden = !chatError;
   document.querySelector('#chat-error-copy').textContent = chatError;
 
+  const chatMessages = (state?.messages || []).filter(message => message.provider === provider);
+  const nextTranscript = JSON.stringify([provider, label, sending, state?.chatBusyProviders?.includes(provider), chatMessages]);
+  if (nextTranscript !== transcriptSignature) {
+  transcriptSignature = nextTranscript;
   const stick = transcript.scrollHeight - transcript.scrollTop - transcript.clientHeight < 24;
   transcript.replaceChildren();
-  for (const message of (state && state.messages) || []) {
+  for (const message of chatMessages) {
     if (message.provider !== provider) {
       continue;
     }
@@ -659,6 +668,7 @@ function paint() {
   }
   if (stick) {
     transcript.scrollTop = transcript.scrollHeight;
+  }
   }
   renderShell();
 }
@@ -708,6 +718,7 @@ island.addEventListener("mouseleave", () => {
     }
     aimX = 0;
     aimY = 0;
+    wakeEye();
     renderShell();
   }, Math.max(0, wait));
 });
@@ -748,7 +759,7 @@ island.addEventListener("drop", async event => {
     if (!attached || !attached.ok) throw new Error((attached && attached.error) || "Could not attach this file.");
     fileChip.textContent = attached.name; fileChip.hidden = false; pulse(fileChip, "is-attached");
     chatError = ""; keyStatus.textContent = "Ready to ask about " + attached.name;
-    window.setTimeout(() => { receiving = false; celebrateCompanion(); renderShell(); chatInput.focus(); }, reducedMotion.matches ? 0 : 450);
+    window.setTimeout(() => { receiving = false; celebrateCompanion(); renderShell(); chatInput.focus(); }, (reducedMotion.matches || state?.look?.motion === "reduced") ? 0 : 450);
   } catch (error) { receiving = false; chatError = error.message; keyStatus.textContent = chatError; renderShell(); }
 });
 window.addEventListener("dragend", () => { dragDepth = 0; setDrop(false); });
@@ -776,17 +787,24 @@ seed.addEventListener("mouseleave", () => {
   seed.classList.remove("is-lean");
 });
 
+let eyeFrame = 0;
+function wakeEye() { if (!eyeFrame && !document.hidden) eyeFrame = requestAnimationFrame(followEye); }
 function followEye() {
-  eyeX += (aimX - eyeX) * 0.18;
-  eyeY += (aimY - eyeY) * 0.18;
+  eyeFrame = 0;
+  if (document.hidden) return;
+  const reduced = reducedMotion.matches || state?.look?.motion === 'reduced';
+  eyeX = reduced ? aimX : eyeX + (aimX - eyeX) * 0.18;
+  eyeY = reduced ? aimY : eyeY + (aimY - eyeY) * 0.18;
   if (seed) {
     seed._nookAim = { x: eyeX, y: eyeY };
     seed.classList.toggle("is-wide", document.body.classList.contains("is-alert"));
   }
-  requestAnimationFrame(followEye);
+  if (Math.abs(eyeX - aimX) + Math.abs(eyeY - aimY) > .01) wakeEye();
 }
-
-followEye();
+island.addEventListener('mousemove', wakeEye);
+island.addEventListener('mouseleave', wakeEye);
+document.addEventListener('visibilitychange', () => { if (document.hidden) { cancelAnimationFrame(eyeFrame); eyeFrame = 0; } else wakeEye(); });
+wakeEye();
 
 pinButton.addEventListener("click", (event) => {
   event.stopPropagation();
@@ -807,11 +825,47 @@ document.querySelector("#diff-back").addEventListener("click", (event) => {
   showCard("session");
 });
 
-document.querySelector("#chat-settings").addEventListener("click", () => window.nook.openApp());
+document.querySelector("#chat-settings").addEventListener("click", () => window.nook.openApp("keys"));
 document.querySelector("#chat-back").addEventListener("click", () => { showCard("session"); renderShell(); });
+const modelPanel = document.querySelector('#chat-model-picker');
+const modelOptions = document.querySelector('#chat-model-options');
+const modelSearch = document.querySelector('#chat-model-search');
+const modelFeedback = document.querySelector('#chat-model-status');
+let availableChatModels = [], modelLookup = 0;
+function closeModelPicker() { modelLookup++; modelPanel.hidden = true; renderShell(); }
+function paintChatModelOptions() {
+  modelOptions.replaceChildren();
+  const placeholder = document.createElement('option'); placeholder.value = ''; placeholder.textContent = 'Choose a model'; modelOptions.append(placeholder);
+  for (const id of availableChatModels.filter(id => id.toLowerCase().includes(modelSearch.value.trim().toLowerCase()))) {
+    const option = document.createElement('option'); option.value = id; option.textContent = id; modelOptions.append(option);
+  }
+  modelOptions.disabled = sending;
+}
+document.querySelector('#chat-choose-model').addEventListener('click', async () => {
+  if (!modelPanel.hidden) { closeModelPicker(); return; }
+  modelPanel.hidden = false; modelSearch.value = ''; availableChatModels = []; paintChatModelOptions();
+  modelFeedback.textContent = 'Loading models…'; renderShell();
+  const lookup = ++modelLookup, requestedProvider = provider;
+  try {
+    const result = await window.nook.checkConnection(requestedProvider);
+    if (lookup !== modelLookup || provider !== requestedProvider) return;
+    availableChatModels = result.models; paintChatModelOptions();
+    modelFeedback.textContent = !result.ok ? result.error : availableChatModels.length ? 'Choose a model to use for your next message.' : 'No chat models listed. Use Models to enter an ID manually.';
+  } catch (_) { if (lookup === modelLookup) modelFeedback.textContent = 'Could not load models. Try again.'; }
+  renderShell();
+});
+modelSearch.addEventListener('input', paintChatModelOptions);
+document.querySelector('#chat-model-close').addEventListener('click', closeModelPicker);
+modelOptions.addEventListener('change', async () => {
+  if (!modelOptions.value || sending) return;
+  const requestedProvider = provider, id = modelOptions.value; modelOptions.disabled = true;
+  try { await window.nook.saveModel({ [requestedProvider]: id }); closeModelPicker(); }
+  catch (_) { modelFeedback.textContent = 'Could not save this model. Try again.'; }
+  finally { modelOptions.disabled = sending; }
+});
 providerSelect.addEventListener("change", () => {
   provider = providerSelect.value;
-  chatError = "";
+  chatError = ""; closeModelPicker();
   paint();
 });
 

@@ -1,8 +1,15 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="164" height="314" viewBox="0 0 164 314">
-  <rect width="164" height="314" fill="#171b24"/>
+  <rect width="164" height="314" fill="#000000"/>
   <svg x="34" y="45" width="96" height="96" viewBox="0 0 256 256" fill="none">
-    <path d="M76 182V120a52 52 0 0 1 104 0v62" stroke="#b7c6ff" stroke-width="30" stroke-linecap="round"/>
-    <circle cx="128" cy="148" r="12" fill="#b7c6ff"/>
+  <defs><linearGradient id="pet" x1="12" y1="8" x2="36" y2="44" gradientUnits="userSpaceOnUse"><stop stop-color="#ffffff"/><stop offset=".32" stop-color="#edf0f6"/><stop offset="1" stop-color="#dde5f5"/></linearGradient></defs>
+  <g transform="translate(20 16) scale(4.5)">
+    <path d="M24 5 C29 12 40 16 40 29 C40 40 33 44 24 44 C15 44 8 40 8 29 C8 18 17 12 24 5Z" fill="url(#pet)"/>
+    <ellipse cx="24" cy="40" rx="9" ry="2" fill="#0f1423" opacity=".06"/>
+    <g fill="#13161c"><ellipse cx="18" cy="27" rx="3.3" ry="4.3"/><ellipse cx="30" cy="27" rx="3.3" ry="4.3"/></g>
+    <g fill="#b7c6ff"><circle cx="18" cy="27.5" r="1.6"/><circle cx="30" cy="27.5" r="1.6"/></g>
+    <g fill="#fff" opacity=".9"><circle cx="17.1" cy="25.4" r=".7"/><circle cx="29.1" cy="25.4" r=".7"/></g>
+    <path d="M21.5 33 Q24 35 26.5 33" stroke="#13161c" stroke-width="1.1" stroke-linecap="round"/>
+  </g>
   </svg>
   <g font-family="Segoe UI, sans-serif" text-anchor="middle">
     <text x="82" y="162" fill="#edf0f6" font-size="25" font-weight="600" letter-spacing="-.8">Nook</text>

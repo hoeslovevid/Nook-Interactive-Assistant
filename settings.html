@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="black">
   <head>
     <meta charset="UTF-8" />
     <meta
@@ -47,15 +47,15 @@
       <section id="page-look">
         <header>
           <div class="eyebrow">MAKE IT YOURS</div><h1>Appearance</h1>
-          <p>Changes show on the notch as you make them.</p>
+          <p>Shape your workspace. Preview changes as you go.</p>
         </header>
         <div class="stage" aria-hidden="true">
           <canvas class="preview-companion" width="192" height="192" aria-label="Companion preview"></canvas>
           <svg class="preview" viewBox="0 0 280 120">
             <defs>
               <linearGradient id="island-fill" x1="0" y1="0" x2="0" y2="1">
-                <stop id="fill-top" offset="0%" stop-color="#20242e" />
-                <stop id="fill-bottom" offset="70%" stop-color="#13161c" />
+                <stop id="fill-top" offset="0%" stop-color="#0a0a0a" />
+                <stop id="fill-bottom" offset="70%" stop-color="#000000" />
               </linearGradient>
             </defs>
             <rect width="280" height="120" fill="#0b0c0e" />
@@ -73,6 +73,13 @@
         </div>
         <div class="mood-preview" aria-label="Preview companion expressions"></div>
         <form id="look-form">
+          <div class="appearance-options">
+            <label>App theme<select name="theme" id="app-theme"><option value="black">Black (default)</option><option value="graphite">Graphite</option><option value="midnight">Midnight</option><option value="forest">Forest</option></select></label>
+            <label>Spacing<select name="density"><option value="comfortable">Comfortable</option><option value="compact">Compact</option></select></label>
+            <label>Animation<select name="motion"><option value="full">Full · 30 fps companion</option><option value="economy">Economy · 15 fps companion</option><option value="reduced">Reduced · still companion</option></select></label>
+            <label>Expanded notch width <span id="notch-width-value">620 px</span><input type="range" name="notchWidth" min="520" max="820" step="20" value="620"></label>
+            <p class="note">Themes style the app; colors below style the notch. Motion applies to every companion and respects Windows reduced motion.</p>
+          </div>
           <label>
             ChatGPT model
             <input id="model-chatgpt" data-model="chatgpt" value="gpt-4.1-mini" maxlength="80" />
@@ -87,11 +94,11 @@
           </label>
           <label>
             Island top
-            <input id="islandTop" name="islandTop" type="color" value="#20242e" />
+            <input id="islandTop" name="islandTop" type="color" value="#0a0a0a" />
           </label>
           <label>
             Island bottom
-            <input id="islandBottom" name="islandBottom" type="color" value="#13161c" />
+            <input id="islandBottom" name="islandBottom" type="color" value="#000000" />
           </label>
           <label>
             Text
@@ -108,6 +115,7 @@
           </label>
         </form>
         <button type="button" class="ghost" id="reset-look">Reset look</button>
+        <p id="appearance-status" class="note" role="status"></p>
         <div id="agent-colors"></div>
       </section>
       <section id="page-keys" hidden>
@@ -339,7 +347,7 @@
       </section>
       <section id="page-updates" hidden>
         <header><div class="eyebrow">ALWAYS GETTING BETTER</div><h1>Updates</h1><p>The latest Nook, directly from its GitHub releases.</p></header>
-        <div class="settings-group"><h2>Private repository access</h2><p class="feature-copy">Your GitHub account must have access to Nook's repository. Use a fine-grained token restricted to this repository with Contents: read-only permission.</p><form id="update-access-form"><label class="model-field">GitHub access token<input id="update-token" type="password" maxlength="500" autocomplete="off" spellcheck="false" placeholder="github_pat_…"></label><div class="settings-actions"><button type="submit" id="update-token-save" class="solid">Save token</button><button type="button" id="update-token-clear" class="ghost">Remove token</button></div></form><p id="update-token-state" class="note" role="status">No token saved.</p><small class="feature-copy">Encrypted by Windows on this PC. Used only for this repository's release downloads; never included in the app or sent to your phone.</small></div>
+        <div class="settings-group"><h2>Optional GitHub access</h2><p class="feature-copy">Nook's releases are public. You can check and download updates without a GitHub account or token. Keep a token here only if you want authenticated requests.</p><form id="update-access-form"><label class="model-field">GitHub access token (optional)<input id="update-token" type="password" maxlength="500" autocomplete="off" spellcheck="false" placeholder="github_pat_…"></label><div class="settings-actions"><button type="submit" id="update-token-save" class="solid">Save token</button><button type="button" id="update-token-clear" class="ghost">Remove token</button></div></form><p id="update-token-state" class="note" role="status">No token saved.</p><small class="feature-copy">Encrypted by Windows on this PC. Used only for this repository's release downloads; never included in the app or sent to your phone.</small></div>
         <div class="settings-group update-card"><span id="update-version" class="eyebrow">Nook</span><h2 id="update-message" role="status" aria-live="polite">Checking your version…</h2><progress id="update-progress" max="100" value="0" hidden></progress><p id="update-checked" class="note"></p><div class="settings-actions"><button type="button" id="update-check" class="solid">Check for updates</button><button type="button" id="update-download" class="solid" hidden>Download update</button><button type="button" id="update-install" class="solid" hidden>Restart and install</button><button type="button" id="update-github" class="ghost">View release on GitHub</button></div></div>
         <div class="settings-group"><label class="feature-toggle"><input type="checkbox" id="update-auto"> Automatically check for updates <small>At startup and every six hours</small></label><p class="feature-copy">You choose when to download and restart. Your settings and encrypted provider keys stay on this PC.</p><p class="note">Releases are currently unsigned. Downloads come from this repository over HTTPS and are checked against the release checksum.</p></div>
       </section>
@@ -371,6 +379,7 @@
     <script src="lib/shortcuts.js"></script>
     <script src="lib/companion.js"></script>
     <script src="lib/seed.js"></script>
+    <script src="lib/provider-guides.js"></script>
     <script src="settings.js"></script>
     <script src="settings-enhance.js"></script>
     <script src="companion-settings.js"></script>

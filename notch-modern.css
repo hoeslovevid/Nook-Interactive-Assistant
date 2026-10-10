@@ -1,5 +1,5 @@
 .ui-icon { width:18px; height:18px; fill:none; stroke:currentColor; stroke-width:1.65; stroke-linecap:round; stroke-linejoin:round; flex:none; }
-.island { background:linear-gradient(160deg,color-mix(in srgb,var(--island-top) 75%,#090b11),var(--island-bottom)); }
+.island { background:linear-gradient(160deg,color-mix(in srgb,var(--island-top) 75%,#000000),var(--island-bottom)); }
 .island::before { background:transparent; }
 body.is-open .top { margin:0; height:60px; padding:0 18px; border:0; gap:10px; }
 body.is-open .top .seed { width:28px; height:28px; }
@@ -106,3 +106,16 @@ body.is-peek .chrome-tools,body.is-peek .notch-nav { display:none; }
 @keyframes task-spin { to { transform:rotate(360deg) } }
 @media(max-width:560px) { #meters,#week-grid { display:none; }.top .titles{flex:1}.workbench{gap:10px;padding:12px}.task-rail{flex-basis:82px}.task-pet{width:56px;height:56px}.editor-tab{padding:10px 8px}#diff-path{display:none}.session-focus{padding:18px}.focus-pet{width:56px;height:56px} }
 @media(prefers-reduced-motion:reduce) { *,*::before,*::after { animation:none!important; transition:none!important; scroll-behavior:auto!important; } }
+
+:root[data-density=compact] body.is-open .top { height:50px; }
+:root[data-density=compact] .focus-card,:root[data-density=compact] .task-rail { padding:14px; }
+:root[data-density=compact] .bubble { padding:9px 12px; }
+:root[data-density=compact] .chat-compose { padding:6px; }
+
+#chat-choose-model { margin:0 0 10px; font-size:10px; color:var(--lime); }
+.chat-model-picker { border:1px solid var(--line); border-radius:14px; padding:12px; background:var(--island-bottom); margin-bottom:12px; }
+.chat-model-picker input,.chat-model-picker select { width:100%; margin-bottom:8px; padding:9px; border:1px solid var(--line); border-radius:9px; color:var(--paper); background:var(--island-top); font:11px 'Segoe UI',sans-serif; }
+.chat-model-picker .hint { margin:0; }
+
+:root[data-theme=black] .session-focus { background:#ffffff03; }
+:root[data-theme=black] .editor-panel { background:#080808; }

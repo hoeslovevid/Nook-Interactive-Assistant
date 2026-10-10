@@ -110,7 +110,7 @@ test("source builds never contact the update server; automatic preference persis
 });
 test("private updates require a saved token, keep it out of UI state, and reset on removal", async () => {
   let token = "";
-  const f = fixture({ getToken: () => token });
+  const f = fixture({ getToken: () => token, requireToken: true });
   try {
     assert.equal((await f.controller.check()).phase, "access-required");
     assert.equal(f.counts().checks, 0);
@@ -127,4 +127,22 @@ test("private updates require a saved token, keep it out of UI state, and reset 
   } finally {
     f.close();
   }
+});
+
+test('public releases check and download without a token; removing optional access still permits updates', async () => {
+  let token = '';
+  const f = fixture({ getToken: () => token });
+  try {
+    assert.equal(f.controller.snapshot().phase, 'idle');
+    assert.equal(f.controller.snapshot().accessRequired, false);
+    await f.controller.check(); assert.equal(f.counts().checks, 1);
+    assert.equal(f.updater.feed.token, ''); assert.equal(f.updater.feed.private, false);
+    await f.controller.download(); assert.equal(f.controller.snapshot().phase, 'ready');
+    token = 'optional_update_token'; f.controller.refreshAccess(); await f.controller.check();
+    assert.equal(f.updater.feed.token, token);
+    token = ''; f.controller.refreshAccess();
+    assert.equal(f.controller.snapshot().phase, 'idle');
+    await f.controller.check(); assert.equal(f.counts().checks, 3);
+    assert.ok(!JSON.stringify(f.controller.snapshot()).includes('optional_update_token'));
+  } finally { f.close(); }
 });

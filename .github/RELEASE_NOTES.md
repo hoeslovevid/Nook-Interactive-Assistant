@@ -1,52 +1,30 @@
-## Install Nook on Windows
+## Install Nook 0.5.0 on Windows
 
-Download **Nook-Setup-0.4.0-x64.exe** from the assets below, run it, and follow the setup wizard. Requires Windows 10 or 11, 64-bit Intel/AMD. Nook includes its desktop runtime; Node.js is not required to install or use it.
+Download **Nook-Setup-0.5.0-x64.exe** from the assets below and follow the setup wizard. Supports Windows 10 and 11 on 64-bit Intel/AMD PCs. Nook includes its runtime; Node.js is not required. Existing settings and encrypted provider keys are retained.
 
-The installer adds Start menu and desktop shortcuts. **Users on 0.1.0 or 0.2.0: quit Nook and install this release once manually.** From 0.2.1 onward, Nook checks GitHub automatically and lets you download and restart from the Updates page. Your settings and encrypted provider keys stay on this PC. Uninstall through Windows Settings → Apps; saved settings are retained.
+For an existing installation, open **Updates**, check for the new version, download it, then choose **Restart and install**. Versions 0.1.0 and 0.2.0 require one manual upgrade using the installer. Uninstall through Windows Settings → Apps; saved settings are retained.
 
-This release is unsigned. Windows may display an unknown-publisher or SmartScreen warning. A signing certificate is not yet configured. SHA256SUMS.txt provides download checksums.
+## New in 0.5.0
 
-Includes the animated notch and companion, wardrobe, multi-provider AI chat, modern settings and shortcuts, Windows media controls, dictation, screenshot context, and the local phone companion. Cloud chat requires your provider API key; local models require a running local server. Phone access is opt-in and works on trusted local Wi-Fi while Nook is running.
+- **Public updates:** download releases and check for updates without a GitHub token. Optional saved tokens remain supported.
+- **Black by default:** black app and notch surfaces, readable charcoal panels, and periwinkle accents. Original untouched notch colors upgrade to black; explicit themes and custom colors are preserved.
+- **Pet branding:** Nook's actual notch companion silhouette, eyes, and smile replace the arch logo. Black-background icons cover the executable, installer/uninstaller, tray at three scales, app screens, browser/phone home screen, iPhone app and widget artwork, and recap exports.
+- **Appearance controls:** Black, Graphite, Midnight, and Forest app themes; comfortable or compact spacing; a 520–820 px expanded notch width that fits the display; and Full, Economy, or Reduced companion motion. Windows reduced motion takes priority.
+- **Guided AI connections:** provider key-page links, show/hide controls, encrypted local saving, and model-directory checks after saving. Errors explain missing keys, denied access, rate limits, and offline local servers. Checks do not generate a chat response or verify available credits.
+- **Better model selection:** search live model lists in settings and switch models directly in notch chat. Known non-chat entries are filtered using IDs and supplied capabilities; manual IDs remain supported. Discovery does not guarantee every model supports all chat features or attachments.
+- **Less background work:** hidden and offscreen companions stop drawing; Full caps companion drawing at 30 fps and Economy at 15 fps. Reduced uses still poses, and pointer tracking stops after the gaze settles.
+- **Smoother chat and history:** unchanged transcript/provider controls retain their existing elements, each provider keeps a bounded conversation, and history recaps cache unchanged activity instead of rereading the lifetime log on each streamed response.
+- **Reliable customization:** appearance changes are coalesced and saved when a control change finishes; unsaved edits survive unrelated background updates, and older theme requests cannot overwrite newer ones.
+- New repository screenshots show the black app/notch, customization controls, and guided model setup.
 
-## New in 0.4.0
+Includes the task workbench, approvals and questions, animated wardrobe, multi-provider chat, Windows media controls, dictation, screenshot context, optional local phone access, encrypted history, and agent integrations from earlier releases.
 
-- Modern app navigation with original line icons, a live workspace status strip, and consistent rounded connection cards.
-- Wider, responsive notch with activity/chat/file controls, settings and sound buttons, an animated task sidebar, line-numbered diffs, and real task progress.
-- Clearer approvals with queue counts, waiting timers, larger Allow/Deny buttons, and secondary actions. Typed-only questions and empty-answer validation work correctly; deferring a request no longer hides the next one.
-- Cleaner chat bubbles, typing indicators, a compact composer, and a reviewable error panel. Streaming handles CRLF frames, final events, provider completion markers, and errors; stalled requests time out.
-- File picker and PNG/JPEG context support, bounded file reads, correct custom-key status, and session shortcuts that navigate sessions.
-- Unsaved workspace preferences survive background updates; exiting the walkthrough reliably restores real state.
-- Reliable phone push retries and periodic Live Activity refreshes; expired tokens are pruned and failed encryption preserves existing registrations.
-- Service actions expire if connection settings or credentials change. Malformed history and invalid or duplicate hook messages are handled safely.
-- iPhone query encoding, pairing-change checks, and activity cleanup fixes. iPhone app and widget source are checked with an unsigned Mac simulator build; device signing and push deployment still require owner setup.
-- Seven animated repository previews covering the notch, task workbench, approvals, chat, wardrobe, app settings, and walkthrough.
+## Verification and access
 
-Validation: 71 automated tests, isolated desktop workflow checks, and packaged Windows startup/resource/native-hook checks. All demonstrations use local sample data; no provider calls or real service writes are made by the preview recorder.
+Validation: **80 automated tests**, isolated Windows UI checks for appearance persistence, notch sizing, hidden/reduced animation, key setup, model switching, transcript preservation, gaze settling, and existing workflows; packaged startup/resource/native-hook checks; and installer/update checksum verification. AI setup checks use simulated providers, with no paid chat requests.
 
-## Included from 0.3.0
+This repository is public. Version 0.5.0 checks and downloads public releases without a GitHub account or token. Existing saved tokens remain optional; remove an expired one under **Updates → Optional GitHub access**. Older versions 0.2.1–0.4.0 can update with a valid saved token, or install this release manually once. Tokens remain encrypted on the PC and are never bundled or shared with phones.
 
-- Minimal Nook logo across Windows executable, installer, uninstaller, tray, app screens, browser and phone icons, and recap exports.
-- Smoother pet docking and return after the whole approval queue is resolved; abandoned hook requests clear without a decision.
-- Animated wardrobe motion and transitions, plus crown, bow, and raincoat outfits.
-- Workspace & alerts page with Windows notifications, quiet hours, and per-agent muting.
-- Optional encrypted session and decision history, text/agent/project search, 7/30/90-day retention, bounded storage, and deletion controls.
-- Detailed GitHub, Vercel, and n8n views. Optional one-use, expiring service actions require confirmation on the PC.
-- 1080 × 1920 PNG recap export and an optional stable phone listener across restarts.
-- Native iOS app and self-hosted APNs relay **source**, with Keychain pairing, authenticated approvals, widgets, Siri shortcuts, and Live Activity support. The app and widgets passed an unsigned Mac simulator build. Apple signing, push credentials, and relay deployment are not configured. Session details and actions continue to use trusted local Wi-Fi.
+Windows installers are unsigned and may show SmartScreen or unknown-publisher prompts. **SHA256SUMS.txt** provides download checksums; **latest.yml** and the **.blockmap** support verified in-app updates.
 
-## Included from 0.2.1
-
-This repository remains private. Users need repository access to download the installer. Save a fine-grained GitHub token in the Updates page, restricted to this repository with Contents: read-only permission. The token is encrypted on the PC, never bundled in the app, and never shared with phones. Missing access shows setup instructions instead of repeated failed checks.
-
-## Included from 0.2.0
-
-- Automatic stable-release checks at startup and every six hours, download progress, and a user-controlled restart. No silent download or restart.
-- Animated recordings in the repository README.
-- Pet wardrobe and shortcuts on right-click, double-click home, hover hearts, agent colors, smoother movement, and lighter idle animation.
-- Drag the desktop pet onto a window to review a screenshot in chat before sending.
-- Seven-step offline walkthrough with sample sessions, diffs, approvals, questions, chat, and service cards.
-- Opt-in phone timelines, bounded diffs, completed answers, service summaries, and an approval focus filter.
-- Phone follow-up drafts arrive in the PC inbox for review, copy, and terminal handoff; they never run automatically.
-- Shuffle and repeat controls for compatible Windows media players.
-
-`latest.yml` and the `.blockmap` asset support in-app updates; download the `.exe` to install manually. The browser phone companion uses trusted Wi-Fi. Native iPhone Live Activities and push notifications require building and configuring the separate iOS and relay source.
+Native iPhone app, widgets, Live Activities, and the self-hosted push relay are included as **source**. Device signing, Apple push credentials, and relay deployment require owner setup. This release does not include an installable iPhone binary.

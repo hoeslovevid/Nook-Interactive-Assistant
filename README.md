@@ -34,7 +34,7 @@ Prefer still images? See the [welcome screen](assets/previews/welcome.png), [mod
 
 The latest source UI has a compact toolbar, animated task companion, line-numbered changes, queue-aware approvals, and a quieter chat composer. See the [task workbench](assets/previews/notch-workbench.png), [approval card](assets/previews/notch-approval.png), and [chat view](assets/previews/notch-chat.png). The app includes a live workspace status strip and consistent navigation icons. These screenshots use isolated sample sessions.
 
-Run `npm run smoke:workspace` on Windows to check session selection, typed-only questions, approval queues, unsaved preferences, narrow layouts, history, phone revocation, and recap export without changing your real app data or sending real service actions.
+Run `npm run smoke:workspace` on Windows to check session selection, typed-only questions, approval queues, unsaved preferences, narrow layouts, appearance persistence, notch sizing, hidden/reduced animation, key setup, searchable model selection, transcript preservation, history, phone revocation, and recap export without changing your real app data or sending real service actions.
 
 ## Install on Windows
 
@@ -42,7 +42,9 @@ Download the latest **Nook-Setup-…-x64.exe** from [GitHub Releases](https://gi
 
 Nook is currently unsigned, so Windows may show a SmartScreen or unknown-publisher warning. Download only from this repository's releases. Verify a download against the included SHA256SUMS.txt with `Get-FileHash` if needed.
 
-This repository is private: downloads and updates require a GitHub account with repository access. From version 0.2.1, Nook checks stable GitHub releases at startup and every six hours. Open **Updates** in settings, or choose **Check for updates** from the tray. Download the update, then choose **Restart and install** when ready. Downloads are verified against SHA-512 release metadata; settings and provider keys are retained. First save a fine-grained GitHub token in **Updates → Private repository access**, restricted to this repository with **Contents: read-only** permission. Windows encrypts it locally; no token is bundled with the app or shared with phones. Without a token, Nook asks for access instead of making failing requests. Automatic checks can be turned off. Nook never downloads or restarts silently.
+This repository is public. From version 0.5.0, downloading releases and checking for updates do not require a GitHub account or token. Nook checks stable releases at startup and every six hours. Open **Updates** in settings, or choose **Check for updates** from the tray. Download the update, then choose **Restart and install** when ready. Downloads are verified against SHA-512 release metadata; settings and provider keys are retained. Saved update tokens remain optional and encrypted locally; remove one under **Optional GitHub access** if it is expired. Automatic checks can be turned off. Nook never downloads or restarts silently.
+
+Versions 0.2.1–0.4.0 used authenticated update checks. Those installations can use a valid saved token to download this release, or install it once manually to get updates without a token.
 
 Versions 0.1.0 and 0.2.0 need a one-time manual upgrade using the latest installer. Manual installation remains available for any version: quit Nook through its tray menu, then run the newer installer. Uninstall from Windows Settings → Apps; saved settings are kept.
 
@@ -50,19 +52,31 @@ Versions 0.1.0 and 0.2.0 need a one-time manual upgrade using the latest install
 
 Install dependencies with npm install, then run npm start. Run npm test for the test suite.
 
+## Appearance and performance
+
+Preview the default [black app](assets/previews/black-theme.png) and [black notch](assets/previews/black-notch.png), the [appearance controls](assets/previews/customization.png) and [guided model setup](assets/previews/model-setup.png). These screenshots use isolated sample data.
+
+**Appearance** offers Black (default), Graphite, Midnight, and Forest app themes, comfortable or compact spacing, a 520–820 px expanded notch width (clamped to your display), and the existing notch colors and corner controls. Animation modes apply to the app, notch, and desktop companion: Full caps companion drawing at 30 fps, Economy at 15 fps, and Reduced draws still poses when they change. Windows reduced motion always takes priority.
+
+Hidden and offscreen companion previews stop drawing. Unchanged chat transcripts and provider choices retain their existing interface elements; pointer tracking stops after the gaze settles. Each provider retains its own last 24 chat messages in memory. Activity recaps reuse unchanged history and refresh the rolling week at least every minute, using at most the last 2,000 log lines within a 4 MB tail to keep lifetime log growth from blocking the interface.
+
 ## Build and publish installers
 
-The Nook logo is an arch and dot in periwinkle on slate. Editable vector sources live in `assets/logo.svg`, `assets/icon.svg`, and `assets/tray.svg`. Run `npm run brand` on Windows to regenerate the application and installer icons, high-DPI tray images, phone home-screen icon, and installer sidebar from those sources. The animated companion remains the activity character.
+The Nook logo uses the original notch companion: a pale seed silhouette, periwinkle pupils, and a small smile on a black tile. Editable vector sources live in `assets/logo.svg`, `assets/icon.svg`, and `assets/tray.svg`. Run `npm run brand` on Windows to regenerate the application and installer icons, high-DPI tray images, phone home-screen icon, and installer sidebar from those sources. The animated companion remains the activity character.
 
 Use Node.js 22 or newer, run `npm ci`, then `npm run dist` on Windows. The installer appears in `dist/`. `npm run pack` creates the unpacked app for testing. Run `npm run smoke:packaged` on a Windows desktop with Nook closed to verify packaged pages, native media, and agent hooks with isolated app data. Runtime files are explicitly included; tests, previews, and development dependencies are excluded. Native scripts and agent hooks are kept outside an ASAR archive so Windows can execute them. Installed agent hooks use Nook's bundled runtime.
 
-For a release, update the version in package.json and package-lock.json, update `.github/RELEASE_NOTES.md`, commit, and push a matching tag such as `v0.2.0`. The Windows release workflow runs tests, builds and verifies the installer and update metadata, then publishes the installer, block map, `latest.yml`, and SHA-256 checksums together. A manual workflow run produces a downloadable build artifact without publishing a release. Releases currently use unsigned executables; code signing is not configured. The updater uses this private GitHub repository over HTTPS using a token saved on the user's PC and SHA-512 artifact checksums; Authenticode verification is disabled until signed installers are available.
+For a release, update the version in package.json and package-lock.json, update `.github/RELEASE_NOTES.md`, commit, and push a matching tag such as `v0.2.0`. The Windows release workflow runs tests, builds and verifies the installer and update metadata, then publishes the installer, block map, `latest.yml`, and SHA-256 checksums together. A manual workflow run produces a downloadable build artifact without publishing a release. Releases currently use unsigned executables; code signing is not configured. The updater uses this public GitHub repository over HTTPS with optional locally saved authentication and SHA-512 artifact checksums; Authenticode verification is disabled until signed installers are available.
 
 To refresh the animated previews, run `npx electron scripts/capture-previews.cjs`, then `python scripts/encode-previews.py` with Pillow installed. The recorder uses isolated sample data and writes frames under `dist/`; only the resulting GIFs are committed and they are excluded from the installer.
 
 ## Connect models
 
-Open Models & connections in settings, find a provider, save your API key, and choose a model ID. Find available models loads suggestions from the provider; model IDs can also be entered manually. Switch providers from the notch chat selector.
+Open **Models & connections**, expand a provider, and choose **Get an API key** to open its key page. Paste the key (Show/Hide is available), then Save. Nook encrypts it locally and checks the provider's model directory, with clear feedback for missing keys, denied access, rate limits, and offline local servers. Connection checks do not generate a chat response or check your available credits.
+
+Search the returned chat models and select one, or enter a model ID manually. Known embedding, speech-only, image-generation, reranking, and other non-chat entries are excluded where the provider identifies them. Discovery does not guarantee a listed model supports every chat feature or attachment type. Switch providers in notch chat, then choose **Switch model…** to select a different model without opening settings. Successful lists are cached for one minute; the settings check button refreshes them. API keys stay in the main process and are not returned to the interface.
+
+Model discovery follows the providers' APIs, including [OpenAI's model list](https://developers.openai.com/api/reference/resources/models/methods/list), so users can choose models available to their account without waiting for a Nook release.
 
 Supported connections: OpenAI, Gemini, Claude, OpenRouter, DeepSeek, Mistral, Groq, Grok, Ollama, LM Studio, and a custom OpenAI-compatible endpoint. OpenRouter provides access to additional model families with one key. API access requires the provider's API credentials; chat website subscriptions do not configure API access.
 

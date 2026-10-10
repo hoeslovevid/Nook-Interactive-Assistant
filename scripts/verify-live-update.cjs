@@ -33,14 +33,7 @@ const controller = createUpdateController({
   },
   updater,
   schedule: false,
-  getToken: () =>
-    process.env.NOOK_UPDATE_TEST_TOKEN ||
-    require("child_process")
-      .execFileSync("gh", ["auth", "token"], {
-        encoding: "utf8",
-        windowsHide: true,
-      })
-      .trim(),
+  getToken: () => process.argv.includes('--public') ? '' : process.env.NOOK_UPDATE_TEST_TOKEN || require('child_process').execFileSync('gh', ['auth', 'token'], { encoding: 'utf8', windowsHide: true }).trim(),
 });
 app.whenReady().then(async () => {
   try {

@@ -34,10 +34,21 @@ for(const form of connectionForms){
   details.addEventListener('toggle',()=>{if(details.open){for(const other of connectionGrid.querySelectorAll('details'))if(other!==details)other.open=false;}});
   if(model){model.addEventListener('change',()=>{summaryCopy.textContent=model.value;});
     const picker=document.createElement('select');picker.className='discovered-models';picker.hidden=true;picker.setAttribute('aria-label','Available '+form.querySelector('h2').textContent+' models');model.closest('label').after(picker);
-    const list=form.querySelector('datalist');new MutationObserver(()=>{picker.replaceChildren();const placeholder=document.createElement('option');placeholder.value='';placeholder.textContent='Choose an available model';picker.append(placeholder);for(const item of list.options){const option=document.createElement('option');option.value=item.value;option.textContent=item.value;picker.append(option);}picker.hidden=list.options.length===0;}).observe(list,{childList:true});
+    const search=document.createElement('input');search.type='search';search.className='model-search';search.placeholder='Search available models…';search.setAttribute('aria-label','Search '+form.querySelector('h2').textContent+' models');search.hidden=true;picker.before(search);
+    const list=form.querySelector('datalist');
+    function paintModelOptions(){picker.replaceChildren();const placeholder=document.createElement('option');placeholder.value='';placeholder.textContent='Choose an available model';picker.append(placeholder);for(const item of list.options){if(!item.value.toLowerCase().includes(search.value.trim().toLowerCase()))continue;const option=document.createElement('option');option.value=item.value;option.textContent=item.value;picker.append(option);}picker.hidden=search.hidden=list.options.length===0;}
+    new MutationObserver(paintModelOptions).observe(list,{childList:true});search.addEventListener('input',paintModelOptions);
     picker.addEventListener('change',()=>{if(!picker.value)return;model.value=picker.value;model.dispatchEvent(new Event('change'));});
   }
-  for(const input of form.querySelectorAll('input[type=password]'))input.setAttribute('aria-label',form.querySelector('h2').textContent+' API key');
+  const guide=window.NookProviderGuides[id];
+  if(guide){contents.querySelector(':scope > p:not(.note)')?.remove();const help=document.createElement('div');help.className='provider-guide';const copy=document.createElement('p');copy.textContent=guide.text;help.append(copy);if(guide.url){const link=document.createElement('button');link.type='button';link.className='ghost';link.textContent='Get an API key ↗';link.addEventListener('click',async()=>{const result=await window.nook.providerGuide(id);if(!result.ok)form.querySelector('.note').textContent='Could not open your browser. Try again.';});help.append(link);}contents.prepend(help);}
+  for(const input of form.querySelectorAll('input[type=password]')){
+    input.dataset.secret='true';input.setAttribute('aria-label',form.querySelector('h2').textContent+' API key');input.spellcheck=false;
+    const toggle=document.createElement('button');toggle.type='button';toggle.className='ghost secret-toggle';toggle.textContent='Show';toggle.setAttribute('aria-label','Show or hide '+form.querySelector('h2').textContent+' key');toggle.setAttribute('aria-pressed','false');
+    toggle.addEventListener('click',()=>{const show=input.type==='password';input.type=show?'text':'password';toggle.textContent=show?'Hide':'Show';toggle.setAttribute('aria-pressed',String(show));});input.after(toggle);
+    details.addEventListener('toggle',()=>{if(!details.open){input.type='password';toggle.textContent='Show';toggle.setAttribute('aria-pressed','false');}});
+    form.addEventListener('focusout',()=>{if(!form.contains(document.activeElement)){input.type='password';toggle.textContent='Show';toggle.setAttribute('aria-pressed','false');}});
+  }
 }
 window.nook.onState(state=>{
   configuredKeys={...state.serviceKeys};for(const id of cloudProviders)configuredKeys[id]=Boolean(state.keys?.[id]);

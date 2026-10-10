@@ -31,7 +31,7 @@ function run(command, args, options = {}, input = '') {
     assert.ok(fs.existsSync(path.join(appDir, file)), `Missing runtime resource: ${file}`);
   }
   assert.ok(!fs.existsSync(path.join(appDir, 'test')), 'Tests should not ship');
-  for (const file of ['notch-modern.css', 'app-modern.css', 'app-modern.js', 'lib/ui-icons.js', 'lib/workbench.js', 'lib/chat-transport.js', 'lib/attachments.js']) assert.ok(fs.existsSync(path.join(appDir, file)), `Missing modern UI resource: ${file}`);
+  for (const file of ['notch-modern.css', 'app-modern.css', 'app-modern.js', 'lib/ui-icons.js', 'lib/workbench.js', 'lib/chat-transport.js', 'lib/attachments.js', 'lib/model-discovery.js', 'lib/provider-guides.js', 'lib/chat-memory.js', 'lib/history-tail.js']) assert.ok(fs.existsSync(path.join(appDir, file)), `Missing modern UI resource: ${file}`);
   assert.ok(!fs.existsSync(path.join(appDir, 'assets/previews')), 'Previews should not ship');
   fs.mkdirSync(data, { recursive: true });
   const original = fs.readFileSync(manifest, 'utf8');

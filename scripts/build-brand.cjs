@@ -90,7 +90,8 @@ app.whenReady().then(async () => {
     save('assets/icon.png', await raster(icon, 512));
     save('assets/logo.png', await raster(mark, 512));
     for (const [scale, suffix] of [[1, ''], [2, '@2x'], [3, '@3x']]) save(`assets/tray${suffix}.png`, await raster(tray, 16 * scale));
-    const touch = icon.replace('<rect x="8" y="8" width="240" height="240" rx="56"', '<rect x="0" y="0" width="256" height="256"');
+    // The operating system supplies the home-screen mask; fill every source pixel.
+    const touch = icon.replace('<rect x="8" y="8" width="240" height="240" rx="56"', '<rect x="0" y="0" width="256" height="256" rx="0"');
     save('assets/apple-touch-icon.png', await raster(touch, 180));
     const phoneIcon = path.join(root, 'ios/Assets.xcassets/AppIcon.appiconset');
     if (fs.existsSync(phoneIcon)) save('ios/Assets.xcassets/AppIcon.appiconset/AppIcon.png', rgbPng(await raster(touch, 1024, 1024, true)));
