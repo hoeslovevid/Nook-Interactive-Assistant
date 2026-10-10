@@ -62,7 +62,8 @@ const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 const dropCue = document.querySelector("#drop-cue");
 function updateCompanion() {
   const working = ((state && state.sessions) || []).some(s => !s.finished);
-  seed.dataset.mood = window.NookMotion.companionMood({pending:waiting(),drop:island.classList.contains("is-drop"),receiving,thinking:sending,celebrating,working,hover:hovering||welcome,sleeping:!chatting&&!welcome&&!working});
+  const activeSession = ((state && state.sessions) || []).find(s => !s.finished);
+  seed.dataset.mood = window.NookMotion.companionMood({task:activeSession && activeSession.task,pending:waiting(),drop:island.classList.contains("is-drop"),receiving,thinking:sending,celebrating,dancing:Boolean(state?.features?.music?.playing),working,hover:hovering||welcome,sleeping:!chatting&&!welcome&&!working});
   document.body.classList.toggle("is-thinking", sending);
 }
 function celebrateCompanion() {
@@ -551,7 +552,7 @@ function paint() {
   chatInput.placeholder = `Ask ${label}`;
   const attached = state && state.attachment;
   fileChip.hidden = !attached;
-  fileChip.textContent = attached ? attached.name : "";
+  fileChip.textContent = attached ? attached.name + " ×" : "";
   keyStatus.textContent =
     chatError ||
     (local ? `${label} uses the server on this PC.` : keys[provider] ? `${label} key saved` : `Add the ${label} key in the Nook app.`);

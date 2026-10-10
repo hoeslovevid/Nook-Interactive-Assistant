@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#11141b" />
+    <title>Nook · Pocket</title>
+    <link rel="stylesheet" href="/phone.css" />
+  </head>
+  <body>
+    <main>
+      <header>
+        <span class="brand">◈ Nook</span
+        ><span class="sub">Pocket companion</span>
+      </header>
+      <section id="pair">
+        <h1>Your agents, nearby.</h1>
+        <p>
+          Enter the pairing code shown in Nook on your PC. Keep both devices on
+          the same trusted Wi-Fi.
+        </p>
+        <form id="pair-form">
+          <label
+            >Pairing code<input
+              id="code"
+              inputmode="numeric"
+              autocomplete="one-time-code"
+              maxlength="6"
+              pattern="[0-9]{6}"
+              required /></label
+          ><button>Connect to Nook</button>
+        </form>
+      </section>
+      <section id="dashboard" hidden>
+        <div class="heading">
+          <h1 id="status">Connecting…</h1>
+          <button id="logout" class="quiet">Disconnect</button>
+        </div>
+        <p id="connection">Updating…</p>
+        <section id="approval" hidden></section>
+        <h2>Sessions</h2>
+        <div id="sessions"></div>
+        <h2>Recent activity</h2>
+        <div id="activity"></div>
+      </section>
+      <p id="message" role="status"></p>
+    </main>
+    <script src="/phone.js"></script>
+  </body>
+</html>

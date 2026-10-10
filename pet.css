@@ -1,4 +1,4 @@
 :root { --seed:#edf0f6; --lime:#b7c6ff; --ink:#13161c; }
 html,body { margin:0; background:transparent; overflow:hidden; }
-.seed { display:block; width:72px; height:72px; margin:8px; cursor:grab; touch-action:none; filter:drop-shadow(0 6px 8px rgba(0,0,0,.22)); }
+.seed { display:block; width:120px; height:120px; margin:12px; cursor:grab; touch-action:none; filter:drop-shadow(0 6px 8px rgba(0,0,0,.22)); }
 .seed:active { cursor:grabbing; }

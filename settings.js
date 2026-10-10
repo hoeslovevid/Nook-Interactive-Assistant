@@ -4,6 +4,7 @@ const pages = {
   agents: document.querySelector("#page-agents"),
   shortcuts: document.querySelector("#page-shortcuts"),
   week: document.querySelector("#page-week"),
+  companion: document.querySelector("#page-companion"),
 };
 const navButtons = document.querySelectorAll(".nav");
 const lookForm = document.querySelector("#look-form");
@@ -17,6 +18,7 @@ const brandSeed = document.querySelector("#brand-seed");
 let look = null;
 
 function showPage(name) {
+  document.querySelector("main").scrollTop = 0;
   for (const [id, page] of Object.entries(pages)) {
     const visible = id === name;
     page.hidden = !visible;
@@ -286,9 +288,14 @@ document.querySelectorAll(".key-card:not(.local-card)").forEach((form) => {
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
     const input = form.querySelector('input[type="password"]');
-    const result = await window.nook.saveKey(provider, input.value);
-    input.value = "";
-    note.textContent = result.ok ? "Saved." : result.error || "Could not save the key.";
+    const submit = form.querySelector('button[type="submit"]');
+    submit.disabled = true;
+    try {
+      const result = await window.nook.saveKey(provider, input.value);
+      if (result.ok) input.value = "";
+      note.textContent = result.ok ? "Key saved securely." : result.error || "Could not save the key.";
+    } catch (_) { note.textContent = "Could not save. Please try again."; }
+    finally { submit.disabled = false; }
   });
   form.querySelector(".remove").addEventListener("click", async () => {
     const result = await window.nook.clearKey(provider);
@@ -308,6 +315,7 @@ function fillPrefs(prefs) {
     const value = prefs.shortcuts && prefs.shortcuts[field.dataset.shortcut];
     if (document.activeElement !== field && value) {
       field.value = value;
+      field.dispatchEvent(new Event("shortcut-paint"));
     }
   }
   for (const field of document.querySelectorAll("[data-color]")) {
@@ -424,36 +432,6 @@ for (const name of ["gemini", "copilot", "muse", "opencode", "amp", "hermes", "c
   pillBox.appendChild(label);
 }
 
-document.querySelectorAll("[data-shortcut]").forEach((field) => {
-  field.readOnly = true;
-  field.addEventListener("keydown", (event) => {
-    event.preventDefault();
-    if (["Control", "Shift", "Alt", "Meta"].includes(event.key)) {
-      return;
-    }
-    const parts = [];
-    if (event.ctrlKey || event.metaKey) {
-      parts.push("CommandOrControl");
-    }
-    if (event.shiftKey) {
-      parts.push("Shift");
-    }
-    if (event.altKey) {
-      parts.push("Alt");
-    }
-    const named = { ArrowRight: "Right", ArrowLeft: "Left", ArrowUp: "Up", ArrowDown: "Down", " ": "Space" };
-    const key = named[event.key] || (event.key.length === 1 ? event.key.toUpperCase() : event.key);
-    parts.push(key);
-    const combo = parts.join("+");
-    if (/^CommandOrControl\+Alt\+[A-Z]$/.test(combo)) {
-      document.querySelector("#week-note").textContent = "That shortcut types a character on some keyboards.";
-      return;
-    }
-    field.value = combo;
-    window.nook.savePrefs(collectPrefs());
-  });
-});
-
 document.querySelector("#save-recap").addEventListener("click", async () => {
   const result = await window.nook.saveRecap();
   document.querySelector("#week-note").textContent = result.ok ? "Saved the week image to Pictures." : "Could not save the image.";
@@ -484,7 +462,7 @@ window.nook.onState((state) => {
 showPage("look");
 
 const companionPreview = document.querySelector('.preview-companion');
-for (const [mood,label] of [['idle','Idle'],['curious','Curious'],['focused','Working'],['thinking','Thinking'],['expectant','Approval'],['happy','Complete'],['receiving','File drop'],['sleepy','Sleepy']]) {
+for (const [mood,label] of [['idle','Idle'],['curious','Curious'],['focused','Working'],['reading','Reading'],['coding','Editing'],['running','Terminal'],['thinking','Thinking'],['expectant','Approval'],['happy','Complete'],['receiving','File drop'],['sleepy','Sleepy']]) {
   const button=document.createElement('button');button.type='button';button.className='ghost';button.textContent=label;button.setAttribute('aria-pressed',mood==='idle'?'true':'false');
   button.addEventListener('click',()=>{companionPreview.dataset.mood=mood;document.querySelectorAll('.mood-preview button').forEach(b=>b.setAttribute('aria-pressed',b===button?'true':'false'));});document.querySelector('.mood-preview').append(button);
 }

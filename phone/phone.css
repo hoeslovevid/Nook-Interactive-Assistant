@@ -1,0 +1,150 @@
+:root {
+  color-scheme: dark;
+  font-family: system-ui, sans-serif;
+  background: #11141b;
+  color: #edf0f6;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+}
+main {
+  max-width: 600px;
+  margin: auto;
+  padding: 28px 22px 50px;
+}
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 12px 0 48px;
+}
+.brand {
+  font-weight: 650;
+  font-size: 22px;
+}
+.sub,
+p,
+small {
+  color: #a3adbf;
+  font-size: 13px;
+  line-height: 1.7;
+}
+h1 {
+  font-size: 28px;
+  font-weight: 550;
+  letter-spacing: -0.8px;
+}
+h2 {
+  font-size: 12px;
+  color: #9ea8ba;
+  margin-top: 30px;
+  font-weight: 500;
+}
+label {
+  display: block;
+  font-size: 12px;
+  color: #a3adbf;
+}
+input {
+  width: 100%;
+  padding: 14px;
+  border: 1px solid #354057;
+  border-radius: 10px;
+  background: #191f2b;
+  color: #edf0f6;
+  font: inherit;
+  margin: 8px 0 14px;
+}
+#code {
+  font-size: 26px;
+  letter-spacing: 8px;
+  text-align: center;
+}
+button {
+  border: 0;
+  border-radius: 10px;
+  padding: 13px 17px;
+  background: #b7c6ff;
+  color: #141823;
+  font-weight: 600;
+  cursor: pointer;
+  min-height: 44px;
+}
+.quiet {
+  background: #222a39;
+  color: #c4cde1;
+  font-size: 11px;
+}
+.heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+#approval,
+.card {
+  background: #1b212d;
+  border: 1px solid #30394b;
+  border-radius: 14px;
+  padding: 18px;
+  margin: 12px 0;
+}
+#approval {
+  border-color: #697fae;
+}
+pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 12px;
+  line-height: 1.6;
+  color: #bbc6db;
+}
+#approval button {
+  margin: 5px 6px 0 0;
+}
+.deny {
+  background: #422c35;
+  color: #edbbc8;
+}
+button:disabled {
+  opacity: 0.5;
+}
+.card strong {
+  display: block;
+  font-size: 14px;
+}
+#message {
+  color: #b7c6ff;
+}
+.question {
+  margin-top: 18px;
+}
+.question label {
+  color: #d1d8e7;
+  line-height: 1.6;
+}
+.choice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.choice input {
+  width: auto;
+  margin: 0;
+}
+button:focus-visible,
+input:focus-visible {
+  outline: 2px solid #c8d4ff;
+  outline-offset: 3px;
+}
+[hidden] {
+  display: none !important;
+}
+@media (prefers-reduced-motion: no-preference) {
+  button:active {
+    transform: scale(0.97);
+  }
+}

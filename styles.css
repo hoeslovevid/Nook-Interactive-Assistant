@@ -776,3 +776,34 @@ body.is-thinking .seed { filter:drop-shadow(0 0 7px color-mix(in srgb,var(--lime
 @keyframes attachment-arrive { from { opacity:0; transform:translateY(-8px) scale(.9) } to { opacity:1; transform:translateY(0) scale(1) } }
 button:disabled { opacity:.65; cursor:wait; }
 @media(prefers-reduced-motion:reduce) { *,*::before,*::after { animation:none!important; transition:none!important; } }
+
+/* Rounded accent scrollbars retain native drag, wheel, and keyboard behavior. */
+*::-webkit-scrollbar { width:10px; height:10px; }
+*::-webkit-scrollbar-track { background:rgba(255,255,255,.018); border-radius:20px; margin:8px 0; }
+*::-webkit-scrollbar-thumb { border:3px solid transparent; border-radius:20px; background:linear-gradient(180deg,#697ba9,#414e73); background-clip:padding-box; min-height:38px; }
+*::-webkit-scrollbar-thumb:hover { background:linear-gradient(180deg,#c0cdff,#8197d7); background-clip:padding-box; border-width:2px; }
+*::-webkit-scrollbar-thumb:active { background:var(--lime,#b7c6ff); background-clip:padding-box; }
+*::-webkit-scrollbar-corner { background:transparent; }
+main,.details,.transcript { scrollbar-gutter:stable; }
+@media(forced-colors:active) { *::-webkit-scrollbar-thumb { background:ButtonText; background-clip:padding-box; } }
+
+.chat-tools { display:flex; align-items:center; gap:8px; margin:12px 0; flex-wrap:wrap; }
+.tool-button { border:1px solid var(--line); border-radius:8px; background:#222936; color:var(--muted); padding:7px 10px; font:11px 'Segoe UI',sans-serif; cursor:pointer; }
+.tool-button:hover { color:var(--paper); border-color:#7486b4; }
+.voice-wave { display:flex; gap:3px; align-items:center; height:24px; }
+.voice-wave i { display:block; width:3px; height:7px; border-radius:4px; background:var(--lime); }
+.window-picker { margin:14px 0; padding:12px; border:1px solid var(--line); border-radius:10px; background:#1a202c; }
+#window-sources { display:grid; grid-template-columns:1fr 1fr; gap:8px; max-height:200px; overflow:auto; margin-top:12px; }
+.window-choice { min-width:0; padding:7px; border:1px solid var(--line); border-radius:8px; background:#111720; color:var(--paper); text-align:left; cursor:pointer; }
+.window-choice img { display:block; width:100%; height:65px; object-fit:contain; border-radius:4px; background:#0d1118; }
+.window-choice span { display:block; font:10px 'Segoe UI',sans-serif; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-top:6px; }
+.screenshot-preview { padding:8px; background:#1a202c; border:1px solid var(--line); border-radius:10px; margin-top:10px; }
+.screenshot-preview img { display:block; max-width:100%; max-height:120px; margin:auto; border-radius:6px; }
+.music-card { display:flex; gap:12px; padding:14px; border:1px solid var(--line); border-radius:12px; background:linear-gradient(135deg,#222b40,#171d28); margin:14px 0; }
+#music-art { width:62px; height:62px; object-fit:cover; border-radius:10px; }
+.music-copy { min-width:0; flex:1; }
+.music-copy strong,.music-copy small { display:block; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+.music-copy strong { font-size:12px; }.music-copy small { margin-top:4px; color:var(--muted); font-size:10px; }
+.music-controls { display:flex; gap:6px; margin-top:10px; }.music-controls button { cursor:pointer; color:var(--paper); background:#303b54; border:0; border-radius:7px; padding:6px 12px; font-size:11px; }
+#music-position { width:100%; margin-top:10px; padding:0; height:4px; accent-color:var(--lime); }
+@media(prefers-reduced-motion:reduce) { *,*::before,*::after { animation:none!important;transition:none!important; } }

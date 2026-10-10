@@ -9,7 +9,7 @@ seed.addEventListener("pointerdown", (event) => {
   originY = event.screenY;
   startX = window.screenX;
   startY = window.screenY;
-  seed.setPointerCapture(event.pointerId);
+  if (event.isTrusted) seed.setPointerCapture(event.pointerId);
 });
 
 seed.addEventListener("pointermove", (event) => {
@@ -26,6 +26,9 @@ let seenCelebrate = 0;
 let celebrationUntil = 0;
 function updateMood() {
   seed.dataset.mood = window.NookMotion.companionMood({
+    task: (latestState.sessions || []).find(session => !session.finished)?.task,
+    dancing: Boolean(latestState.features?.music?.playing),
+    thinking: Boolean(latestState.chatBusy),
     pending: Boolean(latestState.pending),
     celebrating: Date.now() < celebrationUntil,
     working: (latestState.sessions || []).some(session => !session.finished),
@@ -39,6 +42,7 @@ window.nook.onPet(mode => {
 });
 window.nook.onState(state => {
   latestState = state;
+  window.NookCompanion.apply(seed, state.features?.companion);
   if (state.celebrate && seenCelebrate !== state.celebrate) {
     seenCelebrate = state.celebrate;
     celebrationUntil = Date.now() + 1200;

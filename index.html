@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'none'; style-src 'self'; script-src 'self'; img-src 'self'; media-src data:"
+      content="default-src 'none'; style-src 'self'; script-src 'self'; img-src 'self' data:; media-src data: blob:"
     />
     <title>Nook</title>
     <link rel="stylesheet" href="styles.css" />
@@ -60,6 +60,9 @@
             />
             <button type="submit" class="choice allow">Send</button>
           </form>
+          <div class="chat-tools"><button type="button" class="tool-button" id="voice-button" aria-label="Start dictation">◉ Dictate</button><button type="button" class="tool-button" id="window-button">▣ Window context</button><span id="voice-wave" class="voice-wave" hidden><i></i><i></i><i></i><i></i><i></i></span></div>
+          <p id="feature-status" class="hint" role="status" hidden></p>
+          <div id="window-picker" class="window-picker" hidden><div class="chat-heading"><strong>Choose a window</strong><button type="button" class="text-button" id="window-cancel">Cancel</button></div><p class="hint">Capture once, then review before sending. Choose a model that supports images.</p><div id="window-sources"></div></div><div id="screenshot-preview" class="screenshot-preview" hidden><img id="screenshot-image" alt="Window captured for chat"><button type="button" class="text-button" id="remove-screenshot">Remove screenshot</button></div>
           <p class="hint" id="key-status"></p>
         </div>
 
@@ -70,7 +73,7 @@
             <div id="sessions" class="pills"></div>
             <button type="button" class="pill" id="chat-pill">Chat</button>
           </div>
-          <div id="extras" class="pills"></div>
+          <div id="extras" class="pills"></div><div id="music-card" class="music-card" hidden><img id="music-art" alt="Album artwork" hidden><div class="music-copy"><strong id="music-title"></strong><small id="music-artist"></small><div class="music-controls"><button type="button" id="music-previous" aria-label="Previous track">‹</button><button type="button" id="music-toggle" aria-label="Play or pause">Play</button><button type="button" id="music-next" aria-label="Next track">›</button></div><input id="music-position" type="range" min="0" max="100" value="0" aria-label="Playback position"><p id="media-note" class="hint" role="status"></p></div></div>
           <div id="github-list" class="github-list" hidden></div>
           <ul id="ticker" class="activity"></ul>
           <button type="button" class="text-button" id="open-terminal">Open terminal</button>
@@ -79,7 +82,10 @@
     </div>
     <script src="lib/markdown.js"></script>
     <script src="lib/motion.js"></script>
+    <script src="lib/companion.js"></script>
+    <script src="lib/audio.js"></script>
     <script src="lib/seed.js"></script>
     <script src="renderer.js"></script>
+    <script src="companion-ui.js"></script>
   </body>
 </html>

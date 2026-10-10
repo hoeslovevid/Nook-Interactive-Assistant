@@ -1,5 +1,7 @@
 const {
   app,
+  desktopCapturer,
+  clipboard,
   BrowserWindow,
   globalShortcut,
   ipcMain,
@@ -52,6 +54,8 @@ const { LANGUAGES, translate } = require("./lib/i18n");
 const { pluginSource, ampSource, hermesManifest } = require("./lib/plugins");
 const { takeSseEvents, deltaText } = require("./lib/stream");
 
+const { installFeatures } = require("./lib/features");
+let featureKit = null;
 const { springProgress } = require("./lib/motion");
 const GUTTER_X = 22;
 const GUTTER_BOTTOM = 28;
@@ -74,6 +78,7 @@ const activity = [];
 const sessions = new Map();
 const pending = [];
 const messages = [];
+const chatBusyProviders = new Set();
 const lookCssKeys = new Map();
 let hookMessage = "";
 let celebrate = 0;
@@ -819,7 +824,7 @@ function keyStatus() {
 function serviceKeyStatus() {
   const keys = readKeys();
   const status = {};
-  for (const name of SERVICES) {
+  for (const name of [...SERVICES, "custom"]) {
     status[name] = Boolean(keys[name]);
   }
   return status;
@@ -1213,6 +1218,7 @@ function applyColors(target) {
 }
 
 function registerShortcuts() {
+  const errors = [];
   globalShortcut.unregisterAll();
   const shortcuts = readPrefs().shortcuts;
   const actions = {
@@ -1240,11 +1246,12 @@ function registerShortcuts() {
       continue;
     }
     try {
-      globalShortcut.register(accelerator, action);
+      if (!globalShortcut.register(accelerator, action)) errors.push(name);
     } catch (_error) {
-      // A shortcut already taken by Windows is skipped.
+      errors.push(name);
     }
   }
+  return errors;
 }
 
 function sendIsland(action) {
@@ -1265,8 +1272,8 @@ function togglePet() {
   const y = prefs.petY == null ? point.y + 24 : prefs.petY;
   if (!pet || pet.isDestroyed()) {
     pet = new BrowserWindow({
-      width: 88,
-      height: 88,
+      width: 144,
+      height: 144,
       x,
       y,
       frame: false,
@@ -1467,9 +1474,11 @@ function currentState() {
     strings: translate(readPrefs().language),
     prefs: readPrefs(),
     demo: demoOn,
+    features: featureKit ? featureKit.snapshot() : {},
     models: readModels(),
     look: readLook(),
     messages: messages.slice(-12),
+    chatBusy: chatBusyProviders.size > 0,
   };
 }
 
@@ -1662,6 +1671,7 @@ app.on("second-instance", () => {
 
 if (gotLock) {
   app.whenReady().then(async () => {
+    featureKit = installFeatures({ app, ipcMain, desktopCapturer, clipboard, getState: currentState, readVoiceKey: () => readKeys().chatgpt, decide: handleDecision, broadcast, setAttachment: (file) => { attachment = file; } });
     relay = createRelay(PIPE, {
       onActivity: rememberActivity,
       onApproval: rememberApproval,
@@ -1800,15 +1810,16 @@ ipcMain.handle("nook:clear-key", (_event, provider) => {
   }
 });
 
-ipcMain.on("nook:decide", (_event, choice) => {
+function handleDecision(choice) {
   if (!choice || typeof choice.id !== "string" || (!relay && !choice.id.startsWith("demo-"))) {
-    return;
+    return false;
   }
   const item = pending.find((entry) => entry.id === choice.id);
   if (!item) {
-    return;
+    return false;
   }
   const action = choice.action || (choice.allow ? "allow" : "deny");
+  if (!["allow", "deny", "always", "terminal"].includes(action) || action === "always" && !item.always) return false;
   if (!choice.id.startsWith("demo-")) {
   if (action === "terminal") {
     relay.respond(item.id, null);
@@ -1846,7 +1857,9 @@ ipcMain.on("nook:decide", (_event, choice) => {
     detail: `${verb} ${item.detail}`,
   });
   broadcast();
-});
+  return true;
+}
+ipcMain.on("nook:decide", (_event, choice) => handleDecision(choice));
 
 ipcMain.handle("nook:preview-hooks", () => {
   try {
@@ -1951,6 +1964,8 @@ ipcMain.handle("nook:chat", async (_event, input) => {
   if (spec.auth === "bearer" && !key) {
     return { ok: false, error: `Save a ${spec.label} API key first.` };
   }
+  if (chatBusyProviders.has(provider)) return { ok: false, error: "This model is still responding." };
+  chatBusyProviders.add(provider);
   const models = readModels();
   const file = attachment;
   const content = file ? `${text}\n\n[${file.name} attached]` : text;
@@ -1987,12 +2002,18 @@ ipcMain.handle("nook:chat", async (_event, input) => {
     replyMessage.content = error.message;
     broadcast();
     return { ok: false, error: error.message };
+  } finally {
+    chatBusyProviders.delete(provider);
+    broadcast();
   }
 });
 
 ipcMain.handle("nook:save-prefs", (_event, patch) => {
-  const next = writePrefs(patch);
-  registerShortcuts();
+  const previous = readPrefs();
+  let next = writePrefs(patch);
+  const registrationErrors = registerShortcuts();
+  const shortcutErrors = registrationErrors.filter(name => patch && patch.shortcuts && Object.hasOwn(patch.shortcuts, name));
+  if (shortcutErrors.length) { next = writePrefs({ shortcuts: previous.shortcuts }); registerShortcuts(); }
   applyColors(win);
   applyColors(appWin);
   if (win && !win.isDestroyed() && !anim) {
@@ -2000,7 +2021,7 @@ ipcMain.handle("nook:save-prefs", (_event, patch) => {
     clipIsland(mode);
   }
   broadcast();
-  return next;
+  return { ...next, shortcutErrors };
 });
 
 ipcMain.handle("nook:demo", (_event, start) => {
@@ -2181,6 +2202,7 @@ ipcMain.handle("nook:toggle-pet", () => {
 });
 
 app.on("before-quit", () => {
+  if (featureKit) featureKit.stop().catch(() => {});
   globalShortcut.unregisterAll();
   if (petTimer) {
     clearInterval(petTimer);

@@ -111,6 +111,13 @@ contextBridge.exposeInMainWorld("nook", {
   saveRecap() {
     return ipcRenderer.invoke("nook:save-recap");
   },
+  saveCompanion(patch) { return ipcRenderer.invoke("nook:companion-save", patch); },
+  media(action, position) { return ipcRenderer.invoke("nook:media", { action, position }); },
+  windows() { return ipcRenderer.invoke("nook:windows"); },
+  captureWindow(id) { return ipcRenderer.invoke("nook:capture-window", id); },
+  transcribe(bytes) { return ipcRenderer.invoke("nook:transcribe", { bytes }); },
+  phone(action) { return ipcRenderer.invoke("nook:phone", action); },
+  copyPhone() { return ipcRenderer.invoke("nook:copy-phone"); },
   listModels(provider) {
     return ipcRenderer.invoke("nook:models", provider);
   },
