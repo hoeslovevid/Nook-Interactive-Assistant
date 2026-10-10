@@ -1,0 +1,36 @@
+appId: com.nook.companion
+productName: Nook
+directories:
+  output: dist
+  buildResources: build
+# Native Windows scripts and agent hooks need real filesystem paths.
+asar: false
+npmRebuild: false
+files:
+  - "*.js"
+  - "*.html"
+  - "*.css"
+  - "package.json"
+  - "lib/**"
+  - "hooks/**"
+  - "phone/**"
+  - "assets/tray.png"
+  - "assets/icon.png"
+win:
+  icon: build/icon.ico
+  executableName: Nook
+  target:
+    - target: nsis
+      arch: [x64]
+nsis:
+  artifactName: "Nook-Setup-${version}-${arch}.${ext}"
+  oneClick: false
+  perMachine: false
+  allowElevation: true
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: Nook
+  uninstallDisplayName: Nook
+  deleteAppDataOnUninstall: false
+publish: null

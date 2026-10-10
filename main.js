@@ -314,7 +314,7 @@ function openApp() {
     autoHideMenuBar: true,
     center: true,
     show: true,
-    icon: path.join(__dirname, "assets", "tray.png"),
+    icon: path.join(__dirname, "assets", "icon.png"),
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,

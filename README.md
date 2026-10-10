@@ -2,9 +2,23 @@
 
 A Windows desktop companion for coding agents, with a compact notch and multi-provider AI chat.
 
-## Run
+## Install on Windows
+
+Download the latest **Nook-Setup-…-x64.exe** from [GitHub Releases](https://github.com/hoeslovevid/Nook-Interactive-Assistant/releases/latest). Run the setup wizard to choose an install location and create shortcuts. Supports Windows 10 and 11 on 64-bit Intel/AMD PCs. No Node.js installation is needed.
+
+Nook is currently unsigned, so Windows may show a SmartScreen or unknown-publisher warning. Download only from this repository's releases. Verify a download against the included SHA256SUMS.txt with `Get-FileHash` if needed.
+
+To update, quit Nook through its tray menu and run the new installer. Settings and provider keys are retained. Uninstall from Windows Settings → Apps; saved settings are kept.
+
+## Run from source
 
 Install dependencies with npm install, then run npm start. Run npm test for the test suite.
+
+## Build and publish installers
+
+Use Node.js 22 or newer, run `npm ci`, then `npm run dist` on Windows. The installer appears in `dist/`. `npm run pack` creates the unpacked app for testing. Run `npm run smoke:packaged` on a Windows desktop with Nook closed to verify packaged pages, native media, and agent hooks with isolated app data. Runtime files are explicitly included; tests, previews, and development dependencies are excluded. Native scripts and agent hooks are kept outside an ASAR archive so Windows can execute them. Installed agent hooks use Nook's bundled runtime.
+
+For a release, update the version in package.json and package-lock.json, update `.github/RELEASE_NOTES.md`, commit, and push a matching tag such as `v0.1.0`. The Windows release workflow runs tests, builds the installer, and publishes it with SHA-256 checksums. A manual workflow run produces a downloadable build artifact without publishing a release. Releases currently use unsigned executables; code signing is not configured.
 
 ## Connect models
 
