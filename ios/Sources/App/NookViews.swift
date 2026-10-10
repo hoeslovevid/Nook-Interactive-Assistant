@@ -20,7 +20,8 @@ struct NookRootView: View {
 }
 struct PairView: View {
     @EnvironmentObject var store: NookStore
-    @State private var address = "", code = ""
+    @State private var address = ""
+    @State private var code = ""
     var body: some View {
         NavigationStack {
             Form {
@@ -50,7 +51,8 @@ struct SessionsView: View {
 struct RequestView: View {
     @EnvironmentObject var store: NookStore
     let request: AgentRequest
-    @State private var selections: [String: Set<String>] = [:], typed: [String: String] = [:]
+    @State private var selections: [String: Set<String>] = [:]
+    @State private var typed: [String: String] = [:]
     private var answers: [String: String] { Dictionary(uniqueKeysWithValues: request.questions.map { question in (question.question, typed[question.question]?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false ? typed[question.question]! : (selections[question.question] ?? []).sorted().joined(separator: ", ")) }) }
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -78,7 +80,9 @@ struct SessionView: View {
     @EnvironmentObject var store: NookStore
     let id: String
     let archived: Bool
-    @State private var detail: SessionDetail?, draft = "", error = ""
+    @State private var detail: SessionDetail?
+    @State private var draft = ""
+    @State private var error = ""
     var body: some View {
         List {
             if !error.isEmpty { Text(error).foregroundStyle(.secondary) }
@@ -101,7 +105,9 @@ struct ServicesView: View {
 struct ServiceView: View {
     @EnvironmentObject var store: NookStore
     let id: String
-    @State private var detail: ServiceDetail?, error = "", action: ServiceAction?
+    @State private var detail: ServiceDetail?
+    @State private var error = ""
+    @State private var action: ServiceAction?
     var body: some View {
         List { if !error.isEmpty { Text(error).foregroundStyle(.secondary) }; ForEach(detail?.items ?? []) { item in VStack(alignment: .leading, spacing: 10) { Text(item.title).font(.headline); Text(item.detail).font(.caption).foregroundStyle(.secondary); if let url = URL(string: item.url), url.scheme == "https" { Link("Open in browser", destination: url) }; ForEach(item.actions) { action in Button(action.label) { self.action = action } } } } }
             .navigationTitle(id.capitalized).task { await load() }.refreshable { await load() }
@@ -112,7 +118,9 @@ struct ServiceView: View {
 }
 struct HistoryView: View {
     @EnvironmentObject var store: NookStore
-    @State private var query = "", items: [HistoryItem] = [], error = ""
+    @State private var query = ""
+    @State private var items: [HistoryItem] = []
+    @State private var error = ""
     var body: some View { NavigationStack { List { if !error.isEmpty { Text(error).foregroundStyle(.secondary) }; ForEach(items) { item in NavigationLink { SessionView(id: item.id, archived: true) } label: { VStack(alignment: .leading, spacing: 5) { Text(item.label); Text([item.agent, item.project].filter { !$0.isEmpty }.joined(separator: " · ")).font(.caption).foregroundStyle(.secondary) } } } }.navigationTitle("History").searchable(text: $query).task(id: query) { do { try await Task.sleep(for: .milliseconds(250)); let response: HistoryResponse = try await store.request("/history?q=" + (query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "")); items = response.items; error = "" } catch is CancellationError {} catch { self.error = error.localizedDescription } } } }
 }
 struct PhoneSettingsView: View {
