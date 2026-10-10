@@ -15,7 +15,7 @@ enum ConnectionKeychain {
         if updated == errSecSuccess { return }
         guard updated == errSecItemNotFound else { throw NSError(domain: "Keychain", code: Int(updated)) }
         var query = base; query[kSecValueData as String] = data; query[kSecAttrAccessible as String] = kSecAttrAccessibleWhenUnlockedThisDeviceOnly
-        let status = SecItemAdd(query as CFDictionary)
+        let status = SecItemAdd(query as CFDictionary, nil)
         guard status == errSecSuccess else { throw NSError(domain: "Keychain", code: Int(status)) }
     }
     static func clear() { SecItemDelete(base as CFDictionary) }
