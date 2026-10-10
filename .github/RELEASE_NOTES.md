@@ -1,10 +1,12 @@
-## Install Nook 0.5.0 on Windows
+## Install Nook 0.5.1 on Windows
 
-Download **Nook-Setup-0.5.0-x64.exe** from the assets below and follow the setup wizard. Supports Windows 10 and 11 on 64-bit Intel/AMD PCs. Nook includes its runtime; Node.js is not required. Existing settings and encrypted provider keys are retained.
+Download **Nook-Setup-0.5.1-x64.exe** from the assets below and follow the setup wizard. Supports Windows 10 and 11 on 64-bit Intel/AMD PCs. Nook includes its runtime; Node.js is not required. Existing settings and encrypted provider keys are retained.
 
 For an existing installation, open **Updates**, check for the new version, download it, then choose **Restart and install**. Versions 0.1.0 and 0.2.0 require one manual upgrade using the installer. Uninstall through Windows Settings → Apps; saved settings are retained.
 
-## New in 0.5.0
+## New in 0.5.1
+
+Fixes anonymous update discovery by omitting empty authentication tokens. Includes all 0.5.0 appearance, branding, model setup, and performance changes below.
 
 - **Public updates:** download releases and check for updates without a GitHub token. Optional saved tokens remain supported.
 - **Black by default:** black app and notch surfaces, readable charcoal panels, and periwinkle accents. Original untouched notch colors upgrade to black; explicit themes and custom colors are preserved.
@@ -21,9 +23,9 @@ Includes the task workbench, approvals and questions, animated wardrobe, multi-p
 
 ## Verification and access
 
-Validation: **80 automated tests**, isolated Windows UI checks for appearance persistence, notch sizing, hidden/reduced animation, key setup, model switching, transcript preservation, gaze settling, and existing workflows; packaged startup/resource/native-hook checks; and installer/update checksum verification. AI setup checks use simulated providers, with no paid chat requests.
+Validation: **81 automated tests**, isolated Windows UI checks for appearance persistence, notch sizing, hidden/reduced animation, key setup, model switching, transcript preservation, gaze settling, and existing workflows; packaged startup/resource/native-hook checks; and installer/update checksum verification. AI setup checks use simulated providers, with no paid chat requests.
 
-This repository is public. Version 0.5.0 checks and downloads public releases without a GitHub account or token. Existing saved tokens remain optional; remove an expired one under **Updates → Optional GitHub access**. Older versions 0.2.1–0.4.0 can update with a valid saved token, or install this release manually once. Tokens remain encrypted on the PC and are never bundled or shared with phones.
+This repository is public. Version 0.5.1 checks and downloads public releases without a GitHub account or token. Existing saved tokens remain optional; remove an expired one under **Updates → Optional GitHub access**. Older versions 0.2.1–0.5.0 can update with a valid saved token, or install this release manually once. Tokens remain encrypted on the PC and are never bundled or shared with phones.
 
 Windows installers are unsigned and may show SmartScreen or unknown-publisher prompts. **SHA256SUMS.txt** provides download checksums; **latest.yml** and the **.blockmap** support verified in-app updates.
 

@@ -136,7 +136,7 @@ test('public releases check and download without a token; removing optional acce
     assert.equal(f.controller.snapshot().phase, 'idle');
     assert.equal(f.controller.snapshot().accessRequired, false);
     await f.controller.check(); assert.equal(f.counts().checks, 1);
-    assert.equal(f.updater.feed.token, ''); assert.equal(f.updater.feed.private, false);
+    assert.equal(f.updater.feed.token, undefined); assert.equal(f.updater.feed.private, false);
     await f.controller.download(); assert.equal(f.controller.snapshot().phase, 'ready');
     token = 'optional_update_token'; f.controller.refreshAccess(); await f.controller.check();
     assert.equal(f.updater.feed.token, token);
@@ -145,4 +145,24 @@ test('public releases check and download without a token; removing optional acce
     await f.controller.check(); assert.equal(f.counts().checks, 3);
     assert.ok(!JSON.stringify(f.controller.snapshot()).includes('optional_update_token'));
   } finally { f.close(); }
+});
+
+test('token-free checks select the real public GitHub provider even with ambient credentials', async () => {
+  const { createClient } = require('electron-updater/out/providerFactory');
+  const { GitHubProvider } = require('electron-updater/out/providers/GitHubProvider');
+  const f = fixture({ getToken: () => '' });
+  const previous = process.env.GH_TOKEN;
+  process.env.GH_TOKEN = 'ambient_token_must_be_ignored';
+  try {
+    await f.controller.check();
+    const provider = createClient(f.updater.feed, f.updater, { platform: 'win32', executor: {} });
+    assert.ok(provider instanceof GitHubProvider, 'Anonymous checks must not select PrivateGitHubProvider');
+    assert.equal(provider.fileExtraDownloadHeaders, null);
+    f.controller.refreshAccess();
+    assert.ok(createClient(f.updater.feed, f.updater, { platform: 'win32', executor: {} }) instanceof GitHubProvider);
+  } finally {
+    if (previous === undefined) delete process.env.GH_TOKEN;
+    else process.env.GH_TOKEN = previous;
+    f.close();
+  }
 });

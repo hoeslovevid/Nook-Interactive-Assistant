@@ -42,9 +42,9 @@ Download the latest **Nook-Setup-…-x64.exe** from [GitHub Releases](https://gi
 
 Nook is currently unsigned, so Windows may show a SmartScreen or unknown-publisher warning. Download only from this repository's releases. Verify a download against the included SHA256SUMS.txt with `Get-FileHash` if needed.
 
-This repository is public. From version 0.5.0, downloading releases and checking for updates do not require a GitHub account or token. Nook checks stable releases at startup and every six hours. Open **Updates** in settings, or choose **Check for updates** from the tray. Download the update, then choose **Restart and install** when ready. Downloads are verified against SHA-512 release metadata; settings and provider keys are retained. Saved update tokens remain optional and encrypted locally; remove one under **Optional GitHub access** if it is expired. Automatic checks can be turned off. Nook never downloads or restarts silently.
+This repository is public. From version 0.5.1, downloading releases and checking for updates do not require a GitHub account or token. Nook checks stable releases at startup and every six hours. Open **Updates** in settings, or choose **Check for updates** from the tray. Download the update, then choose **Restart and install** when ready. Downloads are verified against SHA-512 release metadata; settings and provider keys are retained. Saved update tokens remain optional and encrypted locally; remove one under **Optional GitHub access** if it is expired. Automatic checks can be turned off. Nook never downloads or restarts silently.
 
-Versions 0.2.1–0.4.0 used authenticated update checks. Those installations can use a valid saved token to download this release, or install it once manually to get updates without a token.
+Versions 0.2.1–0.5.0 used authenticated update checks. Those installations can use a valid saved token to download this release, or install it once manually to get updates without a token.
 
 Versions 0.1.0 and 0.2.0 need a one-time manual upgrade using the latest installer. Manual installation remains available for any version: quit Nook through its tray menu, then run the newer installer. Uninstall from Windows Settings → Apps; saved settings are kept.
 
