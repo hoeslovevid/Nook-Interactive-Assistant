@@ -17,7 +17,7 @@ Includes the animated notch and companion, wardrobe, multi-provider AI chat, mod
 - Optional encrypted session and decision history, text/agent/project search, 7/30/90-day retention, bounded storage, and deletion controls.
 - Detailed GitHub, Vercel, and n8n views. Optional one-use, expiring service actions require confirmation on the PC.
 - 1080 × 1920 PNG recap export and an optional stable phone listener across restarts.
-- Native iOS app and self-hosted APNs relay **source**, with Keychain pairing, authenticated approvals, widgets, Siri shortcuts, and Live Activity support. Apple signing, Mac builds, push credentials, and relay deployment are not bundled or configured. Session details and actions continue to use trusted local Wi-Fi.
+- Native iOS app and self-hosted APNs relay **source**, with Keychain pairing, authenticated approvals, widgets, Siri shortcuts, and Live Activity support. The app and widgets passed an unsigned Mac simulator build. Apple signing, push credentials, and relay deployment are not configured. Session details and actions continue to use trusted local Wi-Fi.
 
 ## Included from 0.2.1
 
@@ -34,4 +34,4 @@ This repository remains private. Users need repository access to download the in
 - Phone follow-up drafts arrive in the PC inbox for review, copy, and terminal handoff; they never run automatically.
 - Shuffle and repeat controls for compatible Windows media players.
 
-`latest.yml` and the `.blockmap` asset support in-app updates; download the `.exe` to install manually. Local phone access uses trusted Wi-Fi and does not provide native iPhone Live Activities or an internet relay.
+`latest.yml` and the `.blockmap` asset support in-app updates; download the `.exe` to install manually. The browser phone companion uses trusted Wi-Fi. Native iPhone Live Activities and push notifications require building and configuring the separate iOS and relay source.
