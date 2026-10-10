@@ -17,7 +17,7 @@ struct NookPetFace: View {
                 }.fill(LinearGradient(colors: [.white, Color(red: 237/255, green: 240/255, blue: 246/255)], startPoint: .top, endPoint: .bottom))
                 ForEach([18.0, 30.0], id: \.self) { x in
                     Ellipse().fill(NookShared.slate).frame(width: waiting ? 8 : 6.6, height: blink ? 1.3 : 8.6).position(x: x, y: 27)
-                    if !blink { Circle().fill(NookShared.accent).frame(width: 3.2, height: 3.2).position(x: x + .4, y: 27.5); Circle().fill(.white).frame(width: 1.4, height: 1.4).position(x: x - .9, y: 25.4) }
+                    if !blink { Circle().fill(NookShared.accent).frame(width: 3.2, height: 3.2).position(x: x + 0.4, y: 27.5); Circle().fill(.white).frame(width: 1.4, height: 1.4).position(x: x - 0.9, y: 25.4) }
                 }
                 Path { path in path.move(to: CGPoint(x: 21.5, y: 33)); path.addQuadCurve(to: CGPoint(x: 26.5, y: 33), control: CGPoint(x: 24, y: happy ? 38 : 35)) }.stroke(NookShared.slate, style: StrokeStyle(lineWidth: 1.1, lineCap: .round))
             }.frame(width: 48, height: 48).scaleEffect(scale, anchor: .topLeading)
@@ -31,7 +31,7 @@ struct NookAnimatedPet: View {
         TimelineView(.animation(minimumInterval: 1/30, paused: reduced)) { timeline in
             let phase = timeline.date.timeIntervalSinceReferenceDate
             NookPetFace(waiting: waiting, blink: !reduced && phase.truncatingRemainder(dividingBy: 5.7) > 5.4)
-                .scaleEffect(reduced ? 1 : 1 + sin(phase * 1.1) * .015)
+                .scaleEffect(reduced ? 1 : 1 + sin(phase * 1.1) * 0.015)
         }
     }
 }

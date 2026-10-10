@@ -34,14 +34,14 @@ struct NookMark: View {
         GeometryReader { geometry in
             let side = min(geometry.size.width, geometry.size.height)
             ZStack {
-                RoundedRectangle(cornerRadius: side * .22).fill(NookShared.slate)
+                RoundedRectangle(cornerRadius: side * 0.22).fill(NookShared.slate)
                 Path { path in
-                    path.move(to: CGPoint(x: side * .3, y: side * .72))
-                    path.addLine(to: CGPoint(x: side * .3, y: side * .47))
-                    path.addArc(center: CGPoint(x: side * .5, y: side * .47), radius: side * .2, startAngle: .degrees(180), endAngle: .degrees(0), clockwise: false)
-                    path.addLine(to: CGPoint(x: side * .7, y: side * .72))
-                }.stroke(NookShared.accent, style: StrokeStyle(lineWidth: side * .115, lineCap: .round))
-                Circle().fill(NookShared.accent).frame(width: side * .094, height: side * .094).offset(y: side * .08)
+                    path.move(to: CGPoint(x: side * 0.3, y: side * 0.72))
+                    path.addLine(to: CGPoint(x: side * 0.3, y: side * 0.47))
+                    path.addArc(center: CGPoint(x: side * 0.5, y: side * 0.47), radius: side * 0.2, startAngle: .degrees(180), endAngle: .degrees(0), clockwise: false)
+                    path.addLine(to: CGPoint(x: side * 0.7, y: side * 0.72))
+                }.stroke(NookShared.accent, style: StrokeStyle(lineWidth: side * 0.115, lineCap: .round))
+                Circle().fill(NookShared.accent).frame(width: side * 0.094, height: side * 0.094).offset(y: side * 0.08)
             }.frame(width: side, height: side)
         }.accessibilityHidden(true)
     }
