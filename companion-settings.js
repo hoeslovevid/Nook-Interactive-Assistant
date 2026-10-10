@@ -16,6 +16,7 @@ const outfitLabels = {
   headphones: "Headphones",
   scarf: "Cozy scarf",
   winter: "Winter",
+  crown: "Little monarch", bow: "Blush bow", raincoat: "Rainy day",
 };
 for (const outfit of window.NookCompanion.OUTFITS) {
   const button = document.createElement("button");
@@ -37,6 +38,7 @@ for (const outfit of window.NookCompanion.OUTFITS) {
   featureSelect("wardrobe").append(button);
 }
 function paintCompanionSettings() {
+  if (featureSelect('phone-auto-start')) featureSelect('phone-auto-start').checked = companionConfig.phoneAutoStart;
   featureSelect("phone-details").checked = companionConfig.phoneDetails;
   featureSelect("phone-instructions").checked =
     companionConfig.phoneInstructions;
@@ -51,10 +53,14 @@ function paintCompanionSettings() {
         : "false",
     );
   for (const canvas of document.querySelectorAll(
-    ".brand-seed,.preview-companion",
+    ".preview-companion",
   ))
     window.NookCompanion.apply(canvas, companionConfig);
 }
+const autoPhone = document.createElement('label'); autoPhone.className = 'feature-toggle';
+autoPhone.innerHTML = '<input type="checkbox" id="phone-auto-start"> Start phone access with Nook <small>Use the same address after restarting; only enable on trusted Wi-Fi</small>';
+document.querySelector('.phone-setup').append(autoPhone);
+autoPhone.querySelector('input').addEventListener('change', event => saveCompanion({ phoneAutoStart: event.target.checked }));
 featureSelect("seasonal-outfit").addEventListener("change", (event) =>
   saveCompanion({ seasonal: event.target.checked }),
 );

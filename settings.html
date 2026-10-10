@@ -7,12 +7,13 @@
       content="default-src 'none'; style-src 'self'; script-src 'self'; img-src 'self'"
     />
     <title>Nook</title>
+    <link rel="icon" href="assets/favicon.ico" sizes="any" />
     <link rel="stylesheet" href="settings.css" />
   </head>
   <body>
     <aside>
       <div class="brand">
-        <canvas class="brand-seed" id="brand-seed" width="64" height="64" aria-hidden="true"></canvas>
+        <img class="brand-logo" src="assets/icon.svg" width="36" height="36" alt="" />
         <div>
           <strong>Nook</strong>
           <span>Workspace companion</span>
@@ -36,6 +37,7 @@
         </button>
         <button type="button" class="nav" id="nav-companion" data-page="companion">Companion & devices</button>
         <button type="button" class="nav" data-page="updates">Updates <span id="update-badge" hidden>New</span></button>
+        <button type="button" class="nav" data-page="workspace">Workspace & alerts</button>
       </nav><div class="sidebar-footer"><span class="connection-dot"></span> Made for your flow<span class="version">Nook · Desktop</span></div>
     </aside>
     <main>
@@ -326,6 +328,7 @@
         <pre id="recap" class="diff"></pre>
         <button type="button" class="ghost" id="copy-recap">Copy share image</button>
         <button type="button" class="ghost" id="save-recap">Save image</button>
+        <button type="button" class="ghost" id="save-recap-png">Save PNG</button>
         <label class="week-option">
           <input id="hide-project" type="checkbox" />
           Hide project names on the share image
@@ -337,6 +340,28 @@
         <div class="settings-group update-card"><span id="update-version" class="eyebrow">Nook</span><h2 id="update-message" role="status" aria-live="polite">Checking your version…</h2><progress id="update-progress" max="100" value="0" hidden></progress><p id="update-checked" class="note"></p><div class="settings-actions"><button type="button" id="update-check" class="solid">Check for updates</button><button type="button" id="update-download" class="solid" hidden>Download update</button><button type="button" id="update-install" class="solid" hidden>Restart and install</button><button type="button" id="update-github" class="ghost">View release on GitHub</button></div></div>
         <div class="settings-group"><label class="feature-toggle"><input type="checkbox" id="update-auto"> Automatically check for updates <small>At startup and every six hours</small></label><p class="feature-copy">You choose when to download and restart. Your settings and encrypted provider keys stay on this PC.</p><p class="note">Releases are currently unsigned. Downloads come from this repository over HTTPS and are checked against the release checksum.</p></div>
       </section>
+      <section id="page-workspace" hidden>
+        <header><div class="eyebrow">KEEP YOUR WORK CLOSE</div><h1>Workspace & alerts</h1><p>Your sessions, connected services, and the moments that need you.</p></header>
+        <form id="workspace-form" class="settings-group">
+          <h2>Companion & notifications</h2>
+          <label class="feature-toggle"><input type="checkbox" name="petTravel"> Bring the desktop pet home for approvals <small>Return to its spot after every waiting request is resolved</small></label>
+          <label class="feature-toggle"><input type="checkbox" name="notifications"> Windows notifications <small>Click an alert to review it in Nook</small></label>
+          <div class="workspace-options"><label><input type="checkbox" name="approvals"> Approvals & questions</label><label><input type="checkbox" name="completions"> Completed sessions</label><label><input type="checkbox" name="ci"> GitHub CI changes</label></div>
+          <label class="feature-toggle"><input type="checkbox" name="quietHours"> Quiet hours <small>Silence notification alerts during this time</small></label>
+          <div class="workspace-options"><label>From<input type="time" name="quietStart"></label><label>Until<input type="time" name="quietEnd"></label></div>
+          <label class="model-field">Mute agents<select name="mutedAgents" id="workspace-muted" multiple size="4" aria-describedby="muted-help"></select></label><p id="muted-help" class="note">Ctrl-click to select more than one agent. Live requests remain available in the notch.</p>
+          <h2>Local session history</h2><label class="feature-toggle"><input type="checkbox" name="archive"> Keep completed sessions and decisions <small>Encrypted on this PC; includes shared code, commands, and answers</small></label>
+          <label class="model-field">Keep history for<select name="retention"><option value="7">7 days</option><option value="30">30 days</option><option value="90">90 days</option></select></label><p class="note">Turning history off stops new recording. Use Clear history to remove existing entries. Provider keys and chat attachments are never included.</p>
+          <h2>Connected service actions</h2><label class="feature-toggle"><input type="checkbox" name="serviceActions"> Offer service actions <small>Retry failed CI, redeploy previews, or activate and pause n8n workflows; each action requires confirmation on this PC</small></label>
+          <h2>Native iPhone notifications</h2><p class="feature-copy">Pair the Nook iPhone app on trusted Wi-Fi. Background alerts and Live Activity updates require your own Apple push relay.</p>
+          <label class="feature-toggle"><input type="checkbox" name="phonePush"> Send phone push updates <small>Only agent status and request IDs go to your relay; quiet hours and per-agent alert settings apply</small></label>
+          <label class="model-field">Relay address<input type="url" name="relayUrl" placeholder="https://push.example.com" maxlength="200"></label>
+          <button type="submit" class="solid">Save preferences</button><p id="workspace-status" class="note" role="status"></p>
+        </form>
+        <div class="settings-group"><h2>Push relay access</h2><form id="relay-access-form"><label class="model-field">Relay access token<input id="relay-token" type="password" autocomplete="off" maxlength="500"></label><div class="settings-actions"><button type="submit" class="ghost">Save relay token</button><button type="button" id="relay-token-clear" class="ghost">Remove token</button><button type="button" id="revoke-native" class="ghost">Revoke native phone devices</button></div></form><p id="relay-status" class="note" role="status"></p></div>
+        <div class="settings-group"><h2>Search history</h2><div class="workspace-options"><input id="history-query" type="search" placeholder="Search projects, commands, diffs, or answers…" maxlength="200" aria-label="Search history"><input id="history-agent" placeholder="Filter by agent" maxlength="30" aria-label="Filter history by agent"></div><div class="settings-actions"><button type="button" id="history-search" class="ghost">Search</button><button type="button" id="history-clear" class="ghost">Clear history</button></div><p id="history-count" class="note" role="status"></p><div id="history-results"></div><div id="history-detail" hidden></div></div>
+        <div class="settings-group"><h2>Service details</h2><div class="workspace-options"><select id="service-choice" aria-label="Service"><option value="github">GitHub</option><option value="vercel">Vercel</option><option value="n8n">n8n</option></select><button type="button" id="service-refresh" class="ghost">Refresh details</button></div><p id="service-status" class="note" role="status"></p><div id="service-items"></div></div>
+      </section>
     </main>
     <script src="lib/motion.js"></script>
     <script src="lib/shortcuts.js"></script>
@@ -347,5 +372,6 @@
     <script src="companion-settings.js"></script>
     <script src="tour.js"></script>
     <script src="updates-ui.js"></script>
+    <script src="workspace-ui.js"></script>
   </body>
 </html>

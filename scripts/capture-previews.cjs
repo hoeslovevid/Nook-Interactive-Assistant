@@ -17,6 +17,8 @@ fs.writeFileSync(
 app.setName("Nook preview recorder");
 app.setPath("userData", data);
 require("os").homedir = () => data;
+const relayModule = require('../lib/relay'), createRelay = relayModule.createRelay;
+relayModule.createRelay = (pipe, options) => createRelay(pipe + '-preview-' + process.pid, options);
 require(path.join(root, "main.js"));
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 async function record(window, name, count) {

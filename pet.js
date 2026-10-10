@@ -71,6 +71,7 @@ function updateMood() {
     });
 }
 window.nook.onPet((mode) => {
+  document.body.classList.toggle('is-travelling', mode === 'travel');
   sleeping = mode === "asleep";
   document.body.classList.toggle("is-asleep", sleeping);
   updateMood();

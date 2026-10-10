@@ -125,6 +125,12 @@ contextBridge.exposeInMainWorld("nook", {
   transcribe(bytes) { return ipcRenderer.invoke("nook:transcribe", { bytes }); },
   phone(action) { return ipcRenderer.invoke("nook:phone", action); },
   copyPhone() { return ipcRenderer.invoke("nook:copy-phone"); },
+  workspace(action, value) { return ipcRenderer.invoke('nook:workspace', { action, value }); },
+  serviceDetail(service) { return ipcRenderer.invoke('nook:service-detail', service); },
+  openService(service) { ipcRenderer.send('nook:open-service', service); },
+  serviceAction(id) { return ipcRenderer.invoke('nook:service-action', id); },
+  openServiceUrl(url) { return ipcRenderer.invoke('nook:service-url', url); },
+  saveRecapPng() { return ipcRenderer.invoke('nook:recap-png'); },
   listModels(provider) {
     return ipcRenderer.invoke("nook:models", provider);
   },

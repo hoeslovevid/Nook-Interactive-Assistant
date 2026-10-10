@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="164" height="314" viewBox="0 0 164 314">
+  <rect width="164" height="314" fill="#171b24"/>
+  <svg x="34" y="45" width="96" height="96" viewBox="0 0 256 256" fill="none">
+    <path d="M76 182V120a52 52 0 0 1 104 0v62" stroke="#b7c6ff" stroke-width="30" stroke-linecap="round"/>
+    <circle cx="128" cy="148" r="12" fill="#b7c6ff"/>
+  </svg>
+  <g font-family="Segoe UI, sans-serif" text-anchor="middle">
+    <text x="82" y="162" fill="#edf0f6" font-size="25" font-weight="600" letter-spacing="-.8">Nook</text>
+    <text x="82" y="187" fill="#a3adbf" font-size="11">Workspace companion</text>
+    <text x="82" y="268" fill="#a3adbf" font-size="11">A little space</text>
+    <text x="82" y="284" fill="#a3adbf" font-size="11">for your flow.</text>
+  </g>
+</svg>

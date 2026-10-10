@@ -27,7 +27,7 @@ function run(command, args, options = {}, input = '') {
 
 (async () => {
   assert.ok(fs.existsSync(exe), 'Build the unpacked app first');
-  for (const file of ['hooks/nook-hook.cmd', 'hooks/nook-hook.js', 'lib/windows-media.ps1', 'lib/windows-speech.ps1', 'phone/phone.html', 'assets/icon.png']) {
+  for (const file of ['hooks/nook-hook.cmd', 'hooks/nook-hook.js', 'lib/windows-media.ps1', 'lib/windows-speech.ps1', 'phone/phone.html', 'assets/icon.png', 'assets/icon.svg', 'assets/logo.svg', 'assets/tray.png', 'assets/tray@2x.png', 'assets/tray@3x.png', 'assets/favicon.ico', 'assets/apple-touch-icon.png']) {
     assert.ok(fs.existsSync(path.join(appDir, file)), `Missing runtime resource: ${file}`);
   }
   assert.ok(!fs.existsSync(path.join(appDir, 'test')), 'Tests should not ship');
@@ -49,10 +49,12 @@ function run(command, args, options = {}, input = '') {
       contents.on('did-fail-load', (_event, code, message) => errors.push(code + ': ' + message));
     });
     process.on('uncaughtException', error => errors.push(error.stack));
+    const relayModule = require('./lib/relay'), createRelay = relayModule.createRelay;
+    relayModule.createRelay = (pipe, options) => createRelay(pipe + '-smoke-' + process.pid, options);
     require('./main.js');
     setTimeout(async () => {
       const windows = BrowserWindow.getAllWindows();
-      const pages = await Promise.all(windows.map(window => window.webContents.executeJavaScript('({title: document.title, ready: document.readyState, text: document.body.innerText.length})').catch(error => { errors.push(error.message); return {}; })));
+      const pages = await Promise.all(windows.map(window => window.webContents.executeJavaScript('({title: document.title, ready: document.readyState, text: document.body.innerText.length, brandCount: document.querySelectorAll(".brand-logo").length, images: [...document.querySelectorAll(".brand-logo")].every(image => image.complete && image.naturalWidth > 0)})').catch(error => { errors.push(error.message); return {}; })));
       const media = await require('./lib/native').media();
       fs.writeFileSync(process.env.NOOK_SMOKE_RESULT, JSON.stringify({windows: windows.length, pages, errors, media}));
       app.quit();
@@ -66,6 +68,8 @@ function run(command, args, options = {}, input = '') {
     assert.ok(result.windows >= 2, 'Notch and settings should open');
     assert.deepEqual(result.errors, [], 'No renderer errors');
     assert.ok(result.pages.every(page => page.ready === 'complete'));
+    assert.ok(result.pages.every(page => page.images), 'Brand images should load in packaged pages');
+    assert.ok(result.pages.some(page => page.brandCount === 1), 'Settings should show the logo');
     assert.ok(result.pages.some(page => page.text > 0), 'Settings should render visible content');
     assert.equal(result.media.ok, true, 'Packaged Windows media script should execute');
     console.log('Packaged startup, pages, resources, and native media passed');

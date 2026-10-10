@@ -1,0 +1,17 @@
+name: iPhone source check
+on:
+  workflow_dispatch:
+  push:
+    paths: ["ios/**", ".github/workflows/ios-check.yml"]
+permissions:
+  contents: read
+jobs:
+  simulator:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: brew install xcodegen
+      - run: xcodegen generate
+        working-directory: ios
+      - run: xcodebuild -project NookPhone.xcodeproj -scheme NookPhone -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build
+        working-directory: ios

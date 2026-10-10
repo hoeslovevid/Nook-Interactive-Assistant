@@ -1,6 +1,6 @@
 ## Install Nook on Windows
 
-Download **Nook-Setup-0.2.1-x64.exe** from the assets below, run it, and follow the setup wizard. Requires Windows 10 or 11, 64-bit Intel/AMD. Nook includes its desktop runtime; Node.js is not required to install or use it.
+Download **Nook-Setup-0.3.0-x64.exe** from the assets below, run it, and follow the setup wizard. Requires Windows 10 or 11, 64-bit Intel/AMD. Nook includes its desktop runtime; Node.js is not required to install or use it.
 
 The installer adds Start menu and desktop shortcuts. **Users on 0.1.0 or 0.2.0: quit Nook and install this release once manually.** From 0.2.1 onward, Nook checks GitHub automatically and lets you download and restart from the Updates page. Your settings and encrypted provider keys stay on this PC. Uninstall through Windows Settings → Apps; saved settings are retained.
 
@@ -8,7 +8,18 @@ This release is unsigned. Windows may display an unknown-publisher or SmartScree
 
 Includes the animated notch and companion, wardrobe, multi-provider AI chat, modern settings and shortcuts, Windows media controls, dictation, screenshot context, and the local phone companion. Cloud chat requires your provider API key; local models require a running local server. Phone access is opt-in and works on trusted local Wi-Fi while Nook is running.
 
-## New in 0.2.1
+## New in 0.3.0
+
+- Minimal Nook logo across Windows executable, installer, uninstaller, tray, app screens, browser and phone icons, and recap exports.
+- Smoother pet docking and return after the whole approval queue is resolved; abandoned hook requests clear without a decision.
+- Animated wardrobe motion and transitions, plus crown, bow, and raincoat outfits.
+- Workspace & alerts page with Windows notifications, quiet hours, and per-agent muting.
+- Optional encrypted session and decision history, text/agent/project search, 7/30/90-day retention, bounded storage, and deletion controls.
+- Detailed GitHub, Vercel, and n8n views. Optional one-use, expiring service actions require confirmation on the PC.
+- 1080 × 1920 PNG recap export and an optional stable phone listener across restarts.
+- Native iOS app and self-hosted APNs relay **source**, with Keychain pairing, authenticated approvals, widgets, Siri shortcuts, and Live Activity support. Apple signing, Mac builds, push credentials, and relay deployment are not bundled or configured. Session details and actions continue to use trusted local Wi-Fi.
+
+## Included from 0.2.1
 
 This repository remains private. Users need repository access to download the installer. Save a fine-grained GitHub token in the Updates page, restricted to this repository with Contents: read-only permission. The token is encrypted on the PC, never bundled in the app, and never shared with phones. Missing access shows setup instructions instead of repeated failed checks.
 

@@ -4,6 +4,7 @@ let token = sessionStorage.getItem("nook-token") || "",
 let selectedId = "",
   lastDetail = "",
   phoneState = null;
+let serviceGeneration = 0;
 const select = (id) => document.getElementById(id),
   message = (text) => (select("message").textContent = text);
 async function request(route, options = {}) {
@@ -25,6 +26,7 @@ async function request(route, options = {}) {
   return result;
 }
 function show() {
+  if (!token) { serviceGeneration++; select('service-detail').hidden = true; select('service-detail-items').replaceChildren(); }
   select("pair").hidden = Boolean(token);
   select("dashboard").hidden = !token;
   clearTimeout(timer);
@@ -185,7 +187,7 @@ async function update() {
     );
     approval(state.pending);
     select("services").replaceChildren(
-      ...(state.services || []).map((item) => card(item.title, item.detail)),
+      ...(state.services || []).map((item) => { const node = card(item.title, item.detail); if (['github', 'vercel', 'n8n'].includes(item.id)) { const button = document.createElement('button'); button.textContent = 'View details'; button.className = 'quiet'; button.addEventListener('click', () => openService(item.id)); node.append(button); } return node; }),
     );
     select("services-title").hidden = !(state.services || []).length;
     if (selectedId) await paintDetail();
@@ -293,3 +295,17 @@ function paintFocus() {
   else if (selectedId) select("session-detail").hidden = false;
 }
 select("focus-mode").addEventListener("change", paintFocus);
+async function openService(id) {
+  const generation = ++serviceGeneration;
+  select('service-detail').hidden = false; select('service-name').textContent = id; select('service-message').textContent = 'Loading…'; select('service-detail-items').replaceChildren();
+  try {
+    const result = await request('/service?id=' + encodeURIComponent(id)); if (generation !== serviceGeneration) return;
+    select('service-message').textContent = result.items.length + ' recent items';
+    for (const item of result.items) {
+      const node = card(item.title, item.detail);
+      for (const action of item.actions || []) { const button = document.createElement('button'); button.textContent = action.label; button.addEventListener('click', async () => { button.disabled = true; try { const result = await request('/service-action', { method: 'POST', body: JSON.stringify({ id: action.id }) }); select('service-message').textContent = result.cancelled ? 'Cancelled on the PC.' : 'Completed. Refresh the service for its latest state.'; } catch (error) { select('service-message').textContent = error.message; } }); node.append(button); }
+      select('service-detail-items').append(node);
+    }
+  } catch (error) { select('service-message').textContent = error.message; }
+}
+select('service-close').addEventListener('click', () => { serviceGeneration++; select('service-detail').hidden = true; });

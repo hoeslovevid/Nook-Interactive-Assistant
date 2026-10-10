@@ -3,9 +3,19 @@ const assert = require("node:assert/strict");
 const { spawn } = require("node:child_process");
 const path = require("node:path");
 const { createRelay } = require("../lib/relay");
+const net = require('node:net');
 const { decisionOutput } = require("../lib/decisions");
 
 const hookPath = path.join(__dirname, "..", "hooks", "nook-hook.js");
+
+test('disconnected approval requests are removed without answering for the agent', async () => {
+  const pipe = `\\\\.\\pipe\\nook-cancel-test-${process.pid}`; let approved, cancelled;
+  const arrival = new Promise(resolve => { approved = resolve; }), gone = new Promise(resolve => { cancelled = resolve; });
+  const relay = createRelay(pipe, { onActivity() {}, onApproval: approved, onCancel: cancelled }); await relay.listen();
+  const socket = net.connect(pipe);
+  try { await new Promise(resolve => socket.once('connect', resolve)); socket.write(JSON.stringify({ id: 'abandoned', wait: true, agent: 'claude', payload: {} }) + '\n'); await arrival; socket.destroy(); assert.equal(await gone, 'abandoned'); assert.equal(relay.respond('abandoned', {}), false); }
+  finally { socket.destroy(); await relay.close(); }
+});
 
 function runHook(pipe, args, payload) {
   return new Promise((resolve) => {

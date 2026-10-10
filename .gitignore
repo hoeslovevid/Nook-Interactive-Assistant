@@ -2,3 +2,10 @@ node_modules/
 dist/
 *.log
 shot.png
+ios/Generated/
+ios/*.xcodeproj/
+ios/*.xcworkspace/
+ios/build/
+*.p8
+.env
+push-relay/.env

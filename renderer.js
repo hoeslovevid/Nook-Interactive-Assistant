@@ -123,6 +123,10 @@ function measureOpen() {
 }
 
 async function playSound(kind) {
+  const alerts = state?.workspace?.settings;
+  if (window.NookAlerts?.isQuiet(alerts)) return;
+  const agent = state?.pending?.agent || state?.sessions?.[0]?.agent;
+  if (kind !== 'hi' && alerts?.mutedAgents?.includes(agent)) return;
   if (state && state.prefs && state.prefs.muted) {
     return;
   }
@@ -339,7 +343,9 @@ function paintExtras() {
   extrasBox.replaceChildren();
   const pills = [...((state && state.usage) || []), ...((state && state.services) || [])];
   for (const item of pills) {
-    const pill = document.createElement("p");
+    const hasDetails = ['github', 'vercel', 'n8n'].includes(item.id);
+    const pill = document.createElement(hasDetails ? 'button' : 'p');
+    if (hasDetails) { pill.type = 'button'; pill.title = 'View service details'; pill.addEventListener('click', event => { event.stopPropagation(); window.nook.openService(item.id); }); }
     pill.className = "pill";
     pill.dataset.agent = item.id || "";
     pill.textContent = `${item.title}: ${item.detail}`;
@@ -887,6 +893,11 @@ document.querySelector("#open-diff").addEventListener("click", (event) => {
 });
 
 window.nook.onCommand((action) => {
+  if (action.startsWith('session:')) {
+    const session = state?.sessions?.find(item => item.id === action.slice(8));
+    if (session) { showDiff(session); if (session.final) diffBox.textContent = session.final; }
+    return;
+  }
   if (action === "toggle") {
     held = !held;
     expanded = held;

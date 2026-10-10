@@ -8,12 +8,15 @@
     />
     <meta name="theme-color" content="#11141b" />
     <title>Nook · Pocket</title>
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-title" content="Nook" />
     <link rel="stylesheet" href="/phone.css" />
   </head>
   <body>
     <main>
       <header>
-        <span class="brand">◈ Nook</span
+        <span class="brand"><img src="/icon.svg" width="32" height="32" alt="" />Nook</span
         ><span class="sub">Pocket companion</span>
       </header>
       <section id="pair">
@@ -34,6 +37,7 @@
           ><button>Connect to Nook</button>
         </form>
       </section>
+      <section id="service-detail" hidden><div class="heading"><h2 id="service-name">Service</h2><button type="button" id="service-close" class="quiet">Close</button></div><p id="service-message" role="status"></p><div id="service-detail-items"></div></section>
       <section id="dashboard" hidden>
         <div class="heading">
           <h1 id="status">Connecting…</h1>

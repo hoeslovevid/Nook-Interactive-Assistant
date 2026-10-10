@@ -1,3 +1,5 @@
+<img src="assets/icon.svg" width="64" height="64" alt="Nook logo" />
+
 # Nook
 
 A Windows desktop companion for coding agents, with a compact notch and multi-provider AI chat.
@@ -27,6 +29,8 @@ Versions 0.1.0 and 0.2.0 need a one-time manual upgrade using the latest install
 Install dependencies with npm install, then run npm start. Run npm test for the test suite.
 
 ## Build and publish installers
+
+The Nook logo is an arch and dot in periwinkle on slate. Editable vector sources live in `assets/logo.svg`, `assets/icon.svg`, and `assets/tray.svg`. Run `npm run brand` on Windows to regenerate the application and installer icons, high-DPI tray images, phone home-screen icon, and installer sidebar from those sources. The animated companion remains the activity character.
 
 Use Node.js 22 or newer, run `npm ci`, then `npm run dist` on Windows. The installer appears in `dist/`. `npm run pack` creates the unpacked app for testing. Run `npm run smoke:packaged` on a Windows desktop with Nook closed to verify packaged pages, native media, and agent hooks with isolated app data. Runtime files are explicitly included; tests, previews, and development dependencies are excluded. Native scripts and agent hooks are kept outside an ASAR archive so Windows can execute them. Installed agent hooks use Nook's bundled runtime.
 
@@ -72,7 +76,7 @@ In chat, **Dictate** starts the microphone only after you click. Stop to transcr
 
 For the **phone companion**, click Enable phone access. Open the displayed address on a phone on the same trusted local network and enter the six-digit pairing code. The code expires after 10 minutes; paired browser sessions expire after 24 hours. You can view sessions, recent activity, approve or deny requests, and answer agent questions. Revoke & new code invalidates all paired devices. Disable closes the listener. Windows may require private-network firewall access; guest Wi-Fi or client isolation can prevent access. No firewall or router rules are modified by Nook.
 
-The phone companion is a local browser interface, not a native iOS app: internet relaying, Lock Screen widgets, background push, and Live Activities are not included. Keep Nook running and the phone page open to receive updates. Local access uses HTTP, so use trusted Wi-Fi. API keys, chat messages, and attachments are excluded from the phone API. The service is off at every launch until you enable it.
+The included phone companion works in a local browser. Keep its page open to receive updates. Local access uses HTTP, so use trusted Wi-Fi. API keys, chat messages, and attachments are excluded from the phone API. Its listener uses port 45821 and stays off until enabled; optionally select **Start phone access with Nook** to keep the address stable across restarts. The separate [native iPhone source](ios/README.md) adds Keychain pairing, device authentication, widgets, and Live Activity support; Apple signing and the optional [push relay](push-relay/README.md) require owner configuration.
 
 ## Quick interactions and guided setup
 
@@ -89,3 +93,23 @@ Music controls now expose **Shuffle** and **Repeat** when the active player supp
 In **Companion & devices**, enable **Share session details** to let paired phones inspect the latest 30 steps, bounded code diffs, and completed answers. This intentionally shares code and command context over your trusted local network; it is off by default. Session details are held in memory, not saved as a new history database. The phone also shows connected service summaries and has a focus filter for approvals and questions.
 
 Enable **Receive follow-up drafts** separately to prepare the next instruction from a phone session. Drafts appear in the PC's **Phone draft inbox**, with **Copy draft**, **Copy & open terminal**, and **Dismiss**. Review and paste the instruction into the agent yourself; Nook does not inject keystrokes, resume an agent, or execute these drafts. The inbox holds up to eight drafts and clears when Nook quits. Disabling sharing takes effect on the phone's next refresh; revoking devices invalidates their tokens immediately.
+
+## Workspace, history, and alerts
+
+**Workspace & alerts** adds notification controls, quiet hours that can cross midnight, and per-agent muting. Windows notifications open the waiting request, completed session, or GitHub details. Quiet hours also silence the notch's sounds. Live approvals remain visible regardless of notification settings. The desktop pet docks at the notch when an approval arrives and returns to its saved spot only when the full queue is resolved; disconnected requests are removed without deciding for the agent. Disable pet travel independently.
+
+The wardrobe includes a crown, bow, and raincoat alongside the existing outfits. Head movement carries glasses and hats, scarf tails settle with spring motion, and outfit changes fade. Reduced motion keeps outfits stable.
+
+Enable **Keep completed sessions and decisions** to record an encrypted local archive. Search by text, agent, and project, inspect completed answers and diffs, or delete entries. Retention choices are 7, 30, and 90 days, with at most 300 entries and an 8 MB plaintext capacity before encryption. Recording is off by default; turning it off leaves existing history until it expires or you clear it. No chat attachments or provider keys are serialized. Shared code and command text can still contain sensitive information; enable history and phone detail sharing only for projects you intend to retain or share. The native phone can search the archive only when session detail sharing is enabled.
+
+GitHub, Vercel, and n8n pills open detailed service views. Optionally enable service actions to retry failed GitHub jobs, redeploy Vercel as a preview, or activate/pause n8n workflows. Your service token needs the relevant write permissions. Actions are offered for recent fetched items, expire after five minutes, and can be used once. Every write requires a confirmation on the PC, including requests from a paired phone. A cancelled action never sends a write request. No money or email actions are offered.
+
+Weekly recap can now be saved as a 1080 × 1920 PNG through the Save PNG button, with the same project-name privacy setting as the SVG export.
+
+## Native iPhone source and push relay
+
+The [iPhone app](ios/README.md) includes SwiftUI sessions, questions, diffs, drafts, service details, local history search, authenticated approvals, notification actions, widgets, Siri shortcuts, and a Live Activity/Dynamic Island. Pairing is stored in iPhone Keychain; widget snapshots contain only status and their timestamp. Authentication happens before Allow, and the PC rechecks the exact pending request. Notification actions open the app to complete that flow.
+
+The optional [self-hosted APNs relay](push-relay/README.md) updates an activity started from the phone and delivers generic background alerts. The PC encrypts relay and device tokens. Push payloads contain agent status and request IDs, not commands, code, questions, or provider keys. Details and actions still require the trusted local network; no internet approval tunnel is included. Revoke native devices in desktop settings, disable phone access, or rotate pairing to stop native delivery.
+
+Apple signing, provisioning, real-device testing, and relay deployment are not configured in this Windows workspace. The native source includes XcodeGen configuration and a macOS simulator-build workflow for verification on Apple tooling before distribution.

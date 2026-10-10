@@ -1,6 +1,6 @@
 {
   "name": "nook",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "private": true,
   "description": "A companion window that lives at the top of the screen.",
   "author": "Nook contributors",
@@ -10,6 +10,8 @@
   },
   "main": "main.js",
   "scripts": {
+    "brand": "electron scripts/build-brand.cjs",
+    "smoke:workspace": "electron scripts/smoke-workspace.cjs",
     "start": "electron .",
     "test": "node --test",
     "dist": "electron-builder --win --x64 --publish never",

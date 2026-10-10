@@ -6,6 +6,7 @@ const pages = {
   week: document.querySelector("#page-week"),
   companion: document.querySelector("#page-companion"),
   updates: document.querySelector('#page-updates'),
+  workspace: document.querySelector('#page-workspace'),
 };
 const navButtons = document.querySelectorAll(".nav");
 const lookForm = document.querySelector("#look-form");
@@ -14,7 +15,6 @@ const previewBody = document.querySelector("#preview-body");
 const previewBar = document.querySelector("#preview-bar");
 const previewSeed = document.querySelector("#preview-seed");
 const previewName = document.querySelector("#preview-name");
-const brandSeed = document.querySelector("#brand-seed");
 
 let look = null;
 
@@ -62,12 +62,6 @@ function paintPreview(next) {
   previewSeed.setAttribute("fill", next.seed || "#edf0f6");
   document.querySelector("#preview-pupil").setAttribute("fill", next.accent || "#b7c6ff");
   previewName.setAttribute("fill", next.paper || "#edf0f6");
-  if (brandSeed && brandSeed.tagName === "CANVAS") {
-    brandSeed.dataset.body = next.seed || "#edf0f6";
-    brandSeed.dataset.pupil = next.accent || "#b7c6ff";
-  } else if (brandSeed) {
-    brandSeed.setAttribute("fill", next.accent || "#b7c6ff");
-  }
   const companion = document.querySelector(".preview-companion");
   companion.dataset.body = next.seed; companion.dataset.pupil = next.accent;
   radiusValue.textContent = String(radius);
@@ -468,6 +462,3 @@ for (const [mood,label] of [['idle','Idle'],['curious','Curious'],['focused','Wo
   const button=document.createElement('button');button.type='button';button.className='ghost';button.textContent=label;button.setAttribute('aria-pressed',mood==='idle'?'true':'false');
   button.addEventListener('click',()=>{companionPreview.dataset.mood=mood;document.querySelectorAll('.mood-preview button').forEach(b=>b.setAttribute('aria-pressed',b===button?'true':'false'));});document.querySelector('.mood-preview').append(button);
 }
-
-brandSeed.addEventListener("pointerenter", () => { brandSeed.dataset.mood = "curious"; });
-brandSeed.addEventListener("pointerleave", () => { brandSeed.dataset.mood = "idle"; });

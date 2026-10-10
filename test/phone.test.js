@@ -58,6 +58,14 @@ test("paired phones approve only current requests; revocation invalidates creden
       Authorization: "Bearer " + token,
       "Content-Type": "application/json",
     };
+    for (const [route, type] of [["/icon.svg", "image/svg+xml"], ["/favicon.ico", "image/x-icon"], ["/apple-touch-icon.png", "image/png"]]) {
+      const asset = await fetch(base + route);
+      assert.equal(asset.status, 200, 'Branding should be available before pairing');
+      assert.equal(asset.headers.get('content-type'), type);
+      assert.equal(asset.headers.get('x-content-type-options'), 'nosniff');
+      assert.ok((await asset.arrayBuffer()).byteLength > 100);
+    }
+    assert.equal((await fetch(base + '/provider-keys.json')).status, 401);
     assert.equal((await fetch(base + "/state", { headers })).status, 200);
     assert.equal(
       (

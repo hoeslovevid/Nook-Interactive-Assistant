@@ -12,6 +12,8 @@ const {
   screen,
   shell,
   Tray,
+  Notification,
+  powerMonitor,
 } = require("electron");
 const { execFile, spawn } = require("child_process");
 const fs = require("fs");
@@ -64,6 +66,9 @@ let updateKit = null;
 let demoStep = 0;
 let demoAnswered = false;
 let featureKit = null;
+let workspaceKit = null, serviceDetails = null, pushBridge = null;
+const { createWorkspace } = require('./lib/workspace');
+const { createServiceDetails } = require('./lib/service-details');
 const { springProgress } = require("./lib/motion");
 const GUTTER_X = 22;
 const GUTTER_BOTTOM = 28;
@@ -249,6 +254,7 @@ function createWindow() {
     width: initial.width,
     height: initial.height,
     show: false,
+    icon: path.join(__dirname, "assets", "icon.png"),
     frame: false,
     transparent: true,
     backgroundColor: "#00000000",
@@ -354,8 +360,7 @@ function openApp() {
 
 function createTray() {
   const image = nativeImage
-    .createFromPath(path.join(__dirname, "assets", "tray.png"))
-    .resize({ width: 16, height: 16 });
+    .createFromPath(path.join(__dirname, "assets", "tray.png"));
   tray = new Tray(image);
   tray.setToolTip("Nook");
   refreshTray();
@@ -734,7 +739,7 @@ function readKeys() {
     return {};
   }
   const keys = {};
-  for (const provider of [...Object.keys(PROVIDERS), ...SERVICES, 'update-access']) {
+  for (const provider of [...Object.keys(PROVIDERS), ...SERVICES, 'update-access', 'phone-relay']) {
     if (typeof raw[provider] === "string") {
       try {
         keys[provider] = safeStorage.decryptString(Buffer.from(raw[provider], "base64"));
@@ -747,7 +752,7 @@ function readKeys() {
 }
 
 function knownSecret(provider) {
-  return Boolean(PROVIDERS[provider]) || SERVICES.includes(provider) || provider === 'update-access';
+  return Boolean(PROVIDERS[provider]) || SERVICES.includes(provider) || provider === 'update-access' || provider === 'phone-relay';
 }
 
 function saveKey(provider, key) {
@@ -1137,6 +1142,7 @@ async function refreshServices() {
         githubBadge = ciBadge(githubStates, next);
         githubStates = stateMap(next);
         github = next;
+        if (githubBadge) workspaceKit?.alert({ kind: 'ci', id: githubBadge + ':' + Date.now(), agent: 'github', title: githubBadge === 'red' ? 'GitHub CI failed' : githubBadge === 'green' ? 'GitHub CI passed' : 'A pull request needs review' });
         const failing = next.pulls.filter((row) => row.state === "failure").length;
         pills.push({
           id: "github",
@@ -1268,6 +1274,8 @@ function sendIsland(action) {
 }
 
 function togglePet() {
+  if (petFlight) { clearInterval(petFlight); petFlight = null; }
+  petHome = null;
   const point = screen.getCursorScreenPoint();
   const prefs = readPrefs();
   if (pet && !pet.isDestroyed() && pet.isVisible()) {
@@ -1280,6 +1288,7 @@ function togglePet() {
     pet = new BrowserWindow({
       width: 144,
       height: 144,
+      icon: path.join(__dirname, "assets", "icon.png"),
       x,
       y,
       frame: false,
@@ -1330,16 +1339,20 @@ function flyPetTo(home, done = () => {}) {
   }, 16);
 }
 function sendPetHome() {
+  if (workspaceKit?.snapshot().settings.petTravel === false) return;
   if (!pet || pet.isDestroyed() || !pet.isVisible()) return;
   const spot = pet.getBounds();
   if (!petHome) petHome = {x: spot.x, y: spot.y};
   const home = win && !win.isDestroyed() ? win.getBounds() : {x: spot.x, y: 0};
-  flyPetTo(home);
+  pet.webContents.send('nook:pet', 'travel');
+  flyPetTo({ x: home.x + Math.max(0, (home.width || 144) / 2 - 72), y: home.y + 4 }, () => { if (pending.length) pet?.hide(); });
 }
 function sendPetBack() {
+  if (pending.length) return;
   if (!pet || pet.isDestroyed() || !petHome) return;
   const home = petHome; petHome = null;
   pet.showInactive();
+  pet.webContents.send('nook:pet', 'awake');
   flyPetTo(home, () => writePrefs({petX: home.x, petY: home.y}));
 }
 
@@ -1411,6 +1424,8 @@ function currentState() {
     demo: demoOn,
     features: featureKit ? featureKit.snapshot() : {},
     updates: updateKit ? updateKit.snapshot() : null,
+    workspace: workspaceKit ? workspaceKit.snapshot() : null,
+    push: pushBridge ? pushBridge.snapshot() : null,
     models: readModels(),
     look: readLook(),
     messages: messages.slice(-12),
@@ -1424,6 +1439,7 @@ function currentState() {
 
 function broadcast() {
   const state = currentState();
+  if (!state.demo) pushBridge?.update(state);
   for (const target of [win, appWin, pet]) {
     if (target && !target.isDestroyed()) {
       target.webContents.send("nook:state", state);
@@ -1488,6 +1504,7 @@ function rememberSession(agent, payload, pid) {
   }
   if (turn.finished) {
     celebrate = Date.now();
+    workspaceKit?.record(sessions.get(key));
   }
 }
 
@@ -1539,7 +1556,9 @@ function rememberApproval(msg) {
     kind: summary.kind,
     questions: summary.questions || [],
     always: msg.agent === "claude" && summary.kind === "approval",
+    receivedAt: Date.now(),
   });
+  workspaceKit?.alert({ kind: 'approvals', id: msg.id, agent: msg.agent, title: 'An agent needs your review' });
   sendPetHome();
   broadcast();
   attention();
@@ -1613,7 +1632,24 @@ app.on("second-instance", () => {
 
 if (gotLock) {
   app.whenReady().then(async () => {
-    featureKit = installFeatures({ app, ipcMain, desktopCapturer, clipboard, getState: currentState, readVoiceKey: () => readKeys().chatgpt, decide: handleDecision, broadcast, setAttachment: (file) => { attachment = file; }, onDraft: () => navigateSettings('companion') });
+    workspaceKit = createWorkspace({ directory: app.getPath('userData'),
+      encrypt: text => { if (!safeStorage.isEncryptionAvailable()) throw new Error('Encryption unavailable'); return safeStorage.encryptString(text).toString('base64'); },
+      decrypt: text => safeStorage.decryptString(Buffer.from(text, 'base64')),
+      notify(event) {
+        if (!Notification.isSupported()) return;
+        const notice = new Notification({ title: 'Nook · ' + event.title, body: event.agent ? event.agent + ' · Click to review in Nook' : 'Click to review in Nook', icon: path.join(__dirname, 'assets', 'icon.png'), silent: readPrefs().muted });
+        notice.on('click', () => { if (event.kind === 'ci') { openServicePage('github'); return; } showNook(); attention(); if (event.sessionId) win?.webContents.send('nook:command', 'session:' + event.sessionId); });
+        notice.show();
+      },
+    });
+    serviceDetails = createServiceDetails({ getKeys: readKeys, getPrefs: readPrefs, getGithub: () => github,
+      actionsEnabled: () => !demoOn && workspaceKit.snapshot().settings.serviceActions,
+      async confirm(plan) { const answer = await dialog.showMessageBox(appWin || win, { type: 'question', title: plan.label, message: plan.label + '?', detail: plan.title + '\nThis changes your ' + plan.service + ' service.', buttons: ['Cancel', plan.label], defaultId: 0, cancelId: 0 }); return answer.response === 1; },
+    });
+    pushBridge = require('./lib/phone-push').createPushBridge({ directory: app.getPath('userData'), getSettings: () => workspaceKit.snapshot().settings, getSecret: () => readKeys()['phone-relay'],
+      encrypt: text => { if (!safeStorage.isEncryptionAvailable()) throw new Error(); return safeStorage.encryptString(text).toString('base64'); }, decrypt: text => safeStorage.decryptString(Buffer.from(text, 'base64')) });
+    powerMonitor.on('lock-screen', () => { pushBridge.lock(true); broadcast(); }); powerMonitor.on('unlock-screen', () => { pushBridge.lock(false); broadcast(); });
+    featureKit = installFeatures({ app, ipcMain, desktopCapturer, clipboard, getState: currentState, readVoiceKey: () => readKeys().chatgpt, decide: handleDecision, broadcast, setAttachment: (file) => { attachment = file; }, onDraft: () => navigateSettings('companion'), serviceDetail: readServiceDetail, serviceAction: id => serviceDetails.act(id), registerDevice: input => pushBridge.register(input), revokeDevices: () => pushBridge.revoke(), historySearch: query => workspaceKit.search(query), historyDetail: id => workspaceKit.detail(id) });
     updateKit = createUpdateController({app, updater: app.isPackaged && process.platform === 'win32' ? require('electron-updater').autoUpdater : null, onChange: broadcast, getToken: () => readKeys()['update-access'] || '',
       async confirmRestart() {
         const busy = pending.length || chatBusyProviders.size || [...sessions.values()].some(session => !session.finished);
@@ -1623,6 +1659,7 @@ if (gotLock) {
       }
     });
     relay = createRelay(PIPE, {
+      onCancel(id) { const index = pending.findIndex(item => item.id === id); if (index < 0) return; pending.splice(index, 1); sendPetBack(); broadcast(); },
       onActivity: rememberActivity,
       onApproval: rememberApproval,
       onStatus: (msg) => {
@@ -1801,6 +1838,7 @@ function handleDecision(choice) {
   }
   const verb =
     action === "always" ? "Always allowed" : action === "terminal" ? "Sent back" : action === "allow" ? "Allowed" : "Denied";
+  workspaceKit?.decision(item, action);
   sendPetBack();
   if (mode === "open") {
     animateTo("open");
@@ -2110,7 +2148,10 @@ ipcMain.handle("nook:open-url", (_event, url) => {
 
 ipcMain.handle("nook:save-recap", () => {
   const summary = summarizeHistory(readHistoryTail(), Date.now());
-  const svg = recapSvg(summary, { hideProject: readPrefs().hideProject });
+  const svg = recapSvg(summary, {
+    hideProject: readPrefs().hideProject,
+    logo: 'data:image/svg+xml;base64,' + fs.readFileSync(path.join(__dirname, 'assets', 'logo.svg')).toString('base64'),
+  });
   const dir = app.getPath("pictures");
   const day = new Date().toISOString().slice(0, 10);
   let file = path.join(dir, `Nook weekly recap ${day}.svg`);
@@ -2149,6 +2190,8 @@ ipcMain.handle("nook:models", async (_event, provider) => {
 });
 
 ipcMain.on("nook:pet-move", (_event, point) => {
+  if (petFlight) { clearInterval(petFlight); petFlight = null; }
+  petHome = null;
   const x = Number(point && point.x);
   const y = Number(point && point.y);
   if (!Number.isFinite(x) || !Number.isFinite(y)) {
@@ -2156,6 +2199,52 @@ ipcMain.on("nook:pet-move", (_event, point) => {
   }
   placePet(x, y);
   lastTouch = Date.now();
+});
+
+ipcMain.handle('nook:workspace', async (_event, { action, value } = {}) => {
+  if (!workspaceKit) return { ok: false, error: 'Workspace is not ready.' };
+  try {
+    if (action === 'search') return { ok: true, items: workspaceKit.search(value) };
+    if (action === 'detail') return { ok: true, item: workspaceKit.detail(value) };
+    if (action === 'save') { const next = workspaceKit.save(value); broadcast(); return { ok: true, ...next }; }
+    if (action === 'remove') { workspaceKit.remove(value); broadcast(); return { ok: true }; }
+    if (action === 'clear') {
+      const answer = await dialog.showMessageBox(appWin || win, { type: 'question', title: 'Clear session history?', message: 'Delete all saved sessions and decisions?', detail: 'This removes Nook’s local session archive.', buttons: ['Keep history', 'Delete history'], defaultId: 0, cancelId: 0 });
+      if (answer.response !== 1) return { ok: false, cancelled: true }; workspaceKit.clear(); broadcast(); return { ok: true };
+    }
+    if (action === 'relay-token') {
+      if (value === '') clearKey('phone-relay');
+      else if (typeof value === 'string' && /^[A-Za-z0-9_\-]{32,500}$/.test(value)) saveKey('phone-relay', value);
+      else return { ok: false, error: 'Use a relay token of 32–500 letters, digits, hyphens, or underscores.' };
+      broadcast(); return { ok: true };
+    }
+    if (action === 'revoke-devices') { pushBridge.revoke(); broadcast(); return { ok: true }; }
+    return { ok: false, error: 'Unknown workspace action.' };
+  } catch { return { ok: false, error: 'Nook could not save the workspace settings.' }; }
+});
+function readServiceDetail(service) { if (demoOn) return Promise.resolve({ ok: true, service, time: Date.now(), items: [{ id: 'demo-service', title: 'Walkthrough sample', detail: 'Sample service status · no account used', url: '', actions: [] }] }); return serviceDetails.detail(service); }
+ipcMain.handle('nook:service-detail', (_event, service) => readServiceDetail(service));
+function openServicePage(service) { if (!['github', 'vercel', 'n8n'].includes(service)) return; openApp(); const send = () => appWin?.webContents.send('nook:command', 'service:' + service); if (appWin.webContents.isLoading()) appWin.webContents.once('did-finish-load', send); else send(); }
+ipcMain.on('nook:open-service', (_event, service) => openServicePage(service));
+ipcMain.handle('nook:service-action', (_event, id) => serviceDetails.act(id));
+ipcMain.handle('nook:service-url', (_event, value) => {
+  try {
+    const url = new URL(value), host = url.hostname;
+    const approved = host === 'github.com' || host === 'vercel.com' || host.endsWith('.vercel.app') || (cleanServiceUrl(readPrefs().n8nUrl) && url.origin === cleanServiceUrl(readPrefs().n8nUrl));
+    if (!approved || !['https:', 'http:'].includes(url.protocol) || url.username || url.password || (url.protocol === 'http:' && !['localhost', '127.0.0.1'].includes(host))) return { ok: false };
+    shell.openExternal(url.href); return { ok: true };
+  } catch { return { ok: false }; }
+});
+ipcMain.handle('nook:recap-png', async () => {
+  const target = await dialog.showSaveDialog(appWin || win, { title: 'Save weekly recap', defaultPath: path.join(app.getPath('pictures'), 'Nook weekly recap.png'), filters: [{ name: 'PNG image', extensions: ['png'] }] });
+  if (target.canceled || !target.filePath) return { ok: false, cancelled: true };
+  const svg = recapSvg(summarizeHistory(readHistoryTail(), Date.now()), { hideProject: readPrefs().hideProject, logo: 'data:image/svg+xml;base64,' + fs.readFileSync(path.join(__dirname, 'assets/logo.svg')).toString('base64') });
+  const preview = new BrowserWindow({ show: false, width: 1080, height: 1920, useContentSize: true, webPreferences: { sandbox: true, nodeIntegration: false, contextIsolation: true } });
+  try {
+    await preview.loadURL('data:text/html;base64,' + Buffer.from('<html><body style="margin:0">' + svg + '</body></html>').toString('base64'));
+    await preview.webContents.executeJavaScript('Promise.all([...document.querySelectorAll("image")].map(image => new Promise(resolve => {const img=new Image();img.onload=resolve;img.onerror=resolve;img.src=image.getAttribute("href");})))');
+    fs.writeFileSync(target.filePath, (await preview.webContents.capturePage()).resize({ width: 1080, height: 1920 }).toPNG()); return { ok: true };
+  } catch { return { ok: false, error: 'Could not save the recap image.' }; } finally { preview.destroy(); }
 });
 
 ipcMain.handle("nook:toggle-pet", () => {
@@ -2189,19 +2278,20 @@ ipcMain.handle('nook:update-access', (_event, input) => {
   } catch (_) { return {ok:false,error:'Windows could not save the encrypted token.'}; }
 });
 ipcMain.handle('nook:pet-home', () => {
+  if (petFlight) { clearInterval(petFlight); petFlight = null; } petHome = null;
   pet?.hide(); showNook(); win?.webContents.send('nook:welcome'); return { ok: true };
 });
 ipcMain.handle('nook:pet-menu', (event) => {
   const target = BrowserWindow.fromWebContents(event.sender);
   if (![win, pet].includes(target) || !featureKit) return;
   const settings = featureKit.snapshot().companion;
-  const labels = { none: 'Original', cap: 'Day off', glasses: 'Bookworm', headphones: 'Headphones', scarf: 'Cozy scarf', winter: 'Winter' };
+  const labels = { none: 'Original', cap: 'Day off', glasses: 'Bookworm', headphones: 'Headphones', scarf: 'Cozy scarf', winter: 'Winter', crown: 'Little monarch', bow: 'Blush bow', raincoat: 'Rainy day' };
   const menu = Menu.buildFromTemplate([
     { label: 'Open chat', click: () => { showNook(); win.webContents.send('nook:open-chat'); } },
     { label: 'Wardrobe', submenu: [...Object.entries(labels).map(([outfit, label]) => ({ label, type: 'radio', checked: !settings.seasonal && settings.outfit === outfit, click: () => featureKit.saveSettings({outfit, seasonal: false}) })), { label: 'Seasonal', type: 'radio', checked: settings.seasonal, click: () => featureKit.saveSettings({seasonal: true}) }] },
     { label: readPrefs().muted ? 'Unmute sounds' : 'Mute sounds', click: () => { writePrefs({muted: !readPrefs().muted}); broadcast(); } },
     { type: 'separator' },
-    { label: target === pet ? 'Send home' : 'Move to desktop', click: () => { if (target === pet) pet.hide(); else togglePet(); } },
+    { label: target === pet ? 'Send home' : 'Move to desktop', click: () => { if (target === pet) { if (petFlight) { clearInterval(petFlight); petFlight = null; } petHome = null; pet.hide(); } else togglePet(); } },
     { label: 'Companion settings', click: () => navigateSettings('companion') }
   ]);
   menu.popup({ window: target });
@@ -2210,9 +2300,9 @@ let petDropBusy = false;
 ipcMain.handle('nook:pet-drop', async (_event, point) => {
   if (petDropBusy || !pet || !featureKit || !Number.isFinite(point?.x) || !Number.isFinite(point?.y)) return { ok: false };
   const spot = pet.getBounds();
-  writePrefs({petX: spot.x, petY: spot.y});
   const display = screen.getDisplayNearestPoint({x: Math.round(point.x), y: Math.round(point.y)});
   if (point.y < display.bounds.y + 65 && Math.abs(point.x - (display.bounds.x + display.bounds.width / 2)) < 220) { pet.hide(); showNook(); return { ok: true, home: true }; }
+  writePrefs({petX: spot.x, petY: spot.y});
   petDropBusy = true;
   try {
     const physical = screen.dipToScreenPoint({x: Math.round(point.x), y: Math.round(point.y)});
@@ -2228,6 +2318,8 @@ ipcMain.handle('nook:pet-drop', async (_event, point) => {
 });
 
 app.on("before-quit", () => {
+  workspaceKit?.stop();
+  pushBridge?.stop();
   updateKit?.stop();
   if (featureKit) featureKit.stop().catch(() => {});
   globalShortcut.unregisterAll();

@@ -14,8 +14,12 @@ files:
   - "lib/**"
   - "hooks/**"
   - "phone/**"
-  - "assets/tray.png"
+  - "assets/tray*.png"
   - "assets/icon.png"
+  - "assets/icon.svg"
+  - "assets/logo.svg"
+  - "assets/favicon.ico"
+  - "assets/apple-touch-icon.png"
 win:
   # Windows releases are currently unsigned; downloaded files still use SHA-512 integrity checks.
   verifyUpdateCodeSignature: false
@@ -25,6 +29,10 @@ win:
     - target: nsis
       arch: [x64]
 nsis:
+  installerIcon: build/icon.ico
+  uninstallerIcon: build/icon.ico
+  installerSidebar: build/installer-sidebar.bmp
+  uninstallerSidebar: build/installer-sidebar.bmp
   artifactName: "Nook-Setup-${version}-${arch}.${ext}"
   oneClick: false
   perMachine: false

@@ -47,20 +47,12 @@ aside {
   gap: 12px;
 }
 
-.brand svg,
-.brand canvas {
+.brand-logo {
+  flex: none;
   width: 36px;
   height: 36px;
   display: block;
   overflow: visible;
-}
-
-.brand:hover canvas {
-  transform: rotate(-8deg);
-}
-
-.brand path {
-  fill: var(--lime);
 }
 
 .brand strong,
@@ -428,7 +420,20 @@ body { background:var(--app); font-size:13px; }
 aside { width:212px; padding:32px 16px 22px; background:#13151a; gap:34px; }
 .brand { padding:0 12px; }
 .brand strong { font-size:19px; letter-spacing:-.6px; }
-.brand span { font-size:11px; margin-top:4px; }
+.brand span { font-size:11px; margin-top:4px; white-space:nowrap; letter-spacing:-.1px; }
+.workspace-options { display:flex; flex-wrap:wrap; gap:12px; margin:14px 0; align-items:center; }
+.workspace-options label { display:flex; gap:8px; align-items:center; }
+.workspace-options input[type=checkbox] { width:auto; margin:0; }
+.workspace-options input[type=search] { flex:1; min-width:220px; }
+.workspace-card { border:1px solid var(--line); border-radius:12px; padding:16px; margin:12px 0; background:var(--panel); }
+.workspace-card h3 { margin:0 0 8px; font-size:14px; font-weight:600; }
+.workspace-card p { color:var(--muted); line-height:1.65; white-space:pre-wrap; overflow-wrap:anywhere; }
+.workspace-card button { margin:8px 8px 0 0; }
+.workspace-card pre { white-space:pre-wrap; overflow-wrap:anywhere; max-height:320px; overflow:auto; color:var(--paper); font-size:12px; }
+#workspace-form .feature-toggle { display:grid; grid-template-columns:16px minmax(0,1fr); column-gap:10px; row-gap:4px; align-items:start; margin:18px 0; }
+#workspace-form .feature-toggle input { grid-column:1; grid-row:1; margin:0; }
+#workspace-form .feature-toggle small { grid-column:2; margin:0; font-size:11px; line-height:1.5; }
+#workspace-form h2:not(:first-child) { margin-top:28px; padding-top:22px; border-top:1px solid var(--line); }
 nav { gap:6px; }
 .nav { color:var(--muted); padding:12px 14px; border:1px solid transparent; border-radius:9px; font-size:13px; }
 .nav.is-selected { color:var(--paper); background:#232732; border-color:var(--line); box-shadow:inset 3px 0 var(--lime); }
