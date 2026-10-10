@@ -75,7 +75,7 @@
     );
   }
   async function finish() {
-    if (playing) await window.nook.setDemo(false);
+    await window.nook.setDemo(false);
     playing = false;
     await window.nook.saveCompanion({ onboardingDone: true });
     dialog.close();

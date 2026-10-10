@@ -12,7 +12,29 @@ Real app recordings with local sample data—no API key needed for the walkthrou
 
 ![Animated app walkthrough and companion wardrobe](assets/previews/app-tour.gif)
 
+### Task workbench
+
+![Animated task sidebar, file changes, and completion](assets/previews/workbench.gif)
+
+### Approvals and questions
+
+![Animated approval queue and question choices](assets/previews/approvals.gif)
+
+### Chat
+
+![Animated sample chat with typing indicators and streamed text](assets/previews/chat.gif)
+
+### Wardrobe and app settings
+
+![Animated companion wardrobe](assets/previews/wardrobe.gif)
+
+![Animated appearance, connections, shortcuts, and workspace settings](assets/previews/app-settings.gif)
+
 Prefer still images? See the [welcome screen](assets/previews/welcome.png), [model connections](assets/previews/models.png), and [phone session details](assets/previews/phone-details.png).
+
+The latest source UI has a compact toolbar, animated task companion, line-numbered changes, queue-aware approvals, and a quieter chat composer. See the [task workbench](assets/previews/notch-workbench.png), [approval card](assets/previews/notch-approval.png), and [chat view](assets/previews/notch-chat.png). The app includes a live workspace status strip and consistent navigation icons. These screenshots use isolated sample sessions.
+
+Run `npm run smoke:workspace` on Windows to check session selection, typed-only questions, approval queues, unsaved preferences, narrow layouts, history, phone revocation, and recap export without changing your real app data or sending real service actions.
 
 ## Install on Windows
 

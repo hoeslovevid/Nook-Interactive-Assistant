@@ -3,7 +3,7 @@ from pathlib import Path
 from PIL import Image
 root = Path(__file__).resolve().parent.parent
 destination = root / 'assets' / 'previews'
-for name, width in [('notch', 480), ('app-tour', 720)]:
+for name, width in [('notch', 620), ('app-tour', 720), ('workbench', 620), ('approvals', 620), ('chat', 620), ('wardrobe', 720), ('app-settings', 720)]:
     files = sorted((root / 'dist' / 'preview-frames' / name).glob('*.png'))
     frames = [Image.open(file).convert('RGB') for file in files]
     if not frames:

@@ -96,7 +96,7 @@ struct SessionView: View {
             if !archived && store.state?.instructionsEnabled == true { Section("Follow-up draft") { TextField("What should the agent do next?", text: $draft, axis: .vertical); Button("Send draft to PC") { let copy = draft; draft = ""; Task { await store.draft(id: id, text: copy) } }.disabled(draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty); Text("Review and paste the draft on your PC. Nothing runs automatically.").font(.caption).foregroundStyle(.secondary) } }
         }.navigationTitle(detail?.label ?? "Session").task { await load() }.refreshable { await load() }
     }
-    func load() async { do { let query = id.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""; detail = try await store.request((archived ? "/history" : "/session") + "?id=" + query); error = "" } catch { self.error = error.localizedDescription } }
+    func load() async { do { detail = try await store.request(NookQuery.route(archived ? "/history" : "/session", name: "id", value: id)); error = "" } catch { self.error = error.localizedDescription } }
 }
 struct ServicesView: View {
     @EnvironmentObject var store: NookStore
@@ -121,7 +121,7 @@ struct HistoryView: View {
     @State private var query = ""
     @State private var items: [HistoryItem] = []
     @State private var error = ""
-    var body: some View { NavigationStack { List { if !error.isEmpty { Text(error).foregroundStyle(.secondary) }; ForEach(items) { item in NavigationLink { SessionView(id: item.id, archived: true) } label: { VStack(alignment: .leading, spacing: 5) { Text(item.label); Text([item.agent, item.project].filter { !$0.isEmpty }.joined(separator: " · ")).font(.caption).foregroundStyle(.secondary) } } } }.navigationTitle("History").searchable(text: $query).task(id: query) { do { try await Task.sleep(for: .milliseconds(250)); let response: HistoryResponse = try await store.request("/history?q=" + (query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "")); items = response.items; error = "" } catch is CancellationError {} catch { self.error = error.localizedDescription } } } }
+    var body: some View { NavigationStack { List { if !error.isEmpty { Text(error).foregroundStyle(.secondary) }; ForEach(items) { item in NavigationLink { SessionView(id: item.id, archived: true) } label: { VStack(alignment: .leading, spacing: 5) { Text(item.label); Text([item.agent, item.project].filter { !$0.isEmpty }.joined(separator: " · ")).font(.caption).foregroundStyle(.secondary) } } } }.navigationTitle("History").searchable(text: $query).task(id: query) { do { try await Task.sleep(for: .milliseconds(250)); let response: HistoryResponse = try await store.request(NookQuery.route("/history", name: "q", value: query)); try Task.checkCancellation(); items = response.items; error = "" } catch is CancellationError {} catch { self.error = error.localizedDescription } } } }
 }
 struct PhoneSettingsView: View {
     @EnvironmentObject var store: NookStore

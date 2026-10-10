@@ -41,6 +41,7 @@ for(const form of connectionForms){
 }
 window.nook.onState(state=>{
   configuredKeys={...state.serviceKeys};for(const id of cloudProviders)configuredKeys[id]=Boolean(state.keys?.[id]);
+  configuredKeys.custom = Boolean(state.keys?.custom);
   for(const form of connectionForms){const id=form.dataset.provider;const summary=form.querySelector('.provider-summary');const model=form.querySelector('[data-model]');if(model)summary.textContent=model.value;
     const badge=form.querySelector('.badge');if(id==='custom'){badge.textContent=configuredKeys[id]?'Key saved':'Optional key';badge.classList.toggle('is-saved',Boolean(configuredKeys[id]));}else if(cloudProviders.includes(id)||!localProviders.includes(id)){badge.textContent=configuredKeys[id]?'Key saved':'Needs key';badge.classList.toggle('is-saved',Boolean(configuredKeys[id]));}
   }filterConnections();

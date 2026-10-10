@@ -17,3 +17,15 @@ test('cancelled service changes never send a write request; CI retries use faile
   const f = fixture({ confirm: false }); f.enable(); const detail = await f.kit.detail('github'), action = detail.items.find(item => item.id === 'run:123').actions[0];
   assert.equal((await f.kit.act(action.id)).cancelled, true); assert.equal(f.calls.filter(call => call.request.method === 'POST').length, 0);
 });
+
+test('service offers cannot use changed credentials or an old n8n host, including during confirmation', async () => {
+  for (const during of [false, true]) {
+    let address = 'https://old.example.com', key = 'old-key'; const writes = [];
+    const kit = createServiceDetails({ getKeys: () => ({ n8n: key }), getPrefs: () => ({ n8nUrl: address }), getGithub: () => ({}), actionsEnabled: () => true,
+      confirm: async () => { if (during) { address = 'https://new.example.com'; key = 'new-key'; } return true; },
+      fetcher: async (url, options) => { if (options.method === 'POST') writes.push(url); return { ok: true, status: 200, json: async () => ({ data: [{ id: 'one', name: 'Workflow', active: false }] }) }; } });
+    const id = (await kit.detail('n8n')).items[0].actions[0].id;
+    if (!during) { address = 'https://new.example.com'; key = 'new-key'; }
+    assert.equal((await kit.act(id)).ok, false); assert.deepEqual(writes, []);
+  }
+});

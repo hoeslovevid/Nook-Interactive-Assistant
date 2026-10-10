@@ -59,12 +59,13 @@ app.whenReady().then(async () => {
     await delay(200);
     await settings.webContents.executeJavaScript('showPage("companion");');
     await delay(250);
-    for (const outfit of ["cap", "glasses", "headphones"]) {
+    for (const outfit of ["cap", "glasses", "headphones", "crown", "raincoat"]) {
       await settings.webContents.executeJavaScript(
         `document.querySelector('.outfit-option[data-outfit="${outfit}"]').click()`,
       );
       await delay(150);
       await record(settings, "app-tour", 10);
+      await record(settings, "wardrobe", 12);
     }
     await settings.webContents.executeJavaScript("window.nook.setDemo(true)");
     await notch.webContents.executeJavaScript("window.nook.tourStep(1)");
@@ -84,7 +85,36 @@ app.whenReady().then(async () => {
     await settings.webContents.executeJavaScript("window.nook.tourStep(2)");
     await delay(250);
     await record(notch, "notch", 18);
+    await record(notch, 'approvals', 15);
+    await settings.webContents.executeJavaScript('window.nook.tourStep(3)');
+    await delay(250);
+    await record(notch, 'approvals', 15);
+    await notch.webContents.executeJavaScript('document.querySelector("#questions input").click()');
+    await record(notch, 'approvals', 12);
+    await settings.webContents.executeJavaScript('window.nook.tourStep(1)');
+    await delay(300);
+    const sampleSteps = [];
+    for (const [task, mood, title] of [['Read', 'reading', 'Reading the greeting'], ['Edit', 'coding', 'Improving the greeting'], ['Bash', 'running', 'Checking the result']]) {
+      sampleSteps.push({task, title, time: Date.now()});
+      await notch.webContents.executeJavaScript(`state.demoMood=${JSON.stringify(mood)}; Object.assign(state.sessions[0], {task:${JSON.stringify(task)},steps:${JSON.stringify(sampleSteps)}}); showDiff(state.sessions[0]); paint();`);
+      await delay(200); await record(notch, 'workbench', 18);
+    }
+    await notch.webContents.executeJavaScript('state.demoMood="happy"; state.sessions[0].finished=true; state.sessions[0].task="Done"; paint();');
+    await record(notch, 'workbench', 14);
+    await settings.webContents.executeJavaScript('window.nook.tourStep(4)');
+    await delay(300);
+    await notch.webContents.executeJavaScript('state.messages=[{role:"user",provider:"chatgpt",content:"Can you explain this change?"},{role:"assistant",provider:"chatgpt",content:""}]; state.chatBusyProviders=["chatgpt"]; paint();');
+    await record(notch, 'chat', 14);
+    const reply = 'The greeting now welcomes people to Nook. The change is small, and the tests pass. What would you like to improve next?';
+    for (let length = 15; length < reply.length + 15; length += 15) {
+      await notch.webContents.executeJavaScript(`state.messages[1].content=${JSON.stringify(reply.slice(0, length))}; paint();`);
+      await record(notch, 'chat', 3);
+    }
+    await notch.webContents.executeJavaScript('state.chatBusyProviders=[]; paint();'); await record(notch, 'chat', 14);
     await settings.webContents.executeJavaScript("window.nook.setDemo(false)");
+    for (const page of ['look', 'keys', 'shortcuts', 'workspace']) {
+      await settings.webContents.executeJavaScript(`showPage(${JSON.stringify(page)});`); await delay(250); await record(settings, 'app-settings', 15);
+    }
     fs.writeFileSync(
       path.join(output, "done.json"),
       JSON.stringify({ ok: true }),

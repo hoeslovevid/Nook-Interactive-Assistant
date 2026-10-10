@@ -30,8 +30,9 @@ final class NookNoRedirects: NSObject, URLSessionTaskDelegate {
     }()
     func checkedAddress(_ input: String) throws -> URL {
         guard let url = URL(string: input.trimmingCharacters(in: .whitespacesAndNewlines)), let host = url.host, url.user == nil, url.password == nil, url.query == nil, url.fragment == nil, url.path.isEmpty || url.path == "/" else { throw failure("Enter the PC address shown in Nook.") }
-        let octets = host.split(separator: ".").compactMap { Int($0) }
-        let local = host == "localhost" || host.hasSuffix(".local") || (octets.count == 4 && octets.allSatisfy { (0...255).contains($0) } && (octets[0] == 10 || (octets[0] == 192 && octets[1] == 168) || (octets[0] == 172 && (16...31).contains(octets[1])) || octets[0] == 127 || (octets[0] == 169 && octets[1] == 254)))
+        let parts = host.split(separator: ".", omittingEmptySubsequences: false)
+        let octets = parts.compactMap { Int($0) }
+        let local = host == "localhost" || host.hasSuffix(".local") || (parts.count == 4 && octets.count == 4 && octets.allSatisfy { (0...255).contains($0) } && (octets[0] == 10 || (octets[0] == 192 && octets[1] == 168) || (octets[0] == 172 && (16...31).contains(octets[1])) || octets[0] == 127 || (octets[0] == 169 && octets[1] == 254)))
         guard local && ["http", "https"].contains(url.scheme ?? "") else { throw failure("Use the local address of your PC on trusted Wi-Fi.") }
         return url
     }
@@ -44,6 +45,7 @@ final class NookNoRedirects: NSObject, URLSessionTaskDelegate {
         if !connection.token.isEmpty { request.setValue("Bearer " + connection.token, forHTTPHeaderField: "Authorization") }
         if let body { request.httpMethod = "POST"; request.httpBody = try JSONSerialization.data(withJSONObject: body) }
         let (data, response) = try await session.data(for: request)
+        if override == nil && (self.connection?.token != connection.token || self.connection?.address != connection.address) { throw failure("The connection changed. Try again.") }
         guard let http = response as? HTTPURLResponse else { throw failure("No response from the PC.") }
         if http.statusCode == 401 && route != "/pair" { disconnectLocally(); throw failure("Pairing expired or was revoked. Pair again on your PC.") }
         guard (200..<300).contains(http.statusCode) else { let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]; throw failure(json?["error"] as? String ?? "The PC could not complete this request.") }
@@ -85,7 +87,7 @@ final class NookNoRedirects: NSObject, URLSessionTaskDelegate {
     func registerDevice(activityToken: String = "") async { guard connection != nil && (!deviceToken.isEmpty || !activityToken.isEmpty) else { return }; do { let result: ResultResponse = try await request("/device", body: ["id": deviceID, "token": deviceToken, "activityToken": activityToken]); if !result.ok { message = result.error ?? "Push registration failed." } } catch { message = error.localizedDescription } }
     private func activityState(_ state: PhoneState) -> NookActivity.ContentState { NookActivity.ContentState(status: state.pending != nil ? "Needs review" : state.sessions.contains(where: { !$0.finished }) ? "Working" : "Quiet", agent: state.sessions.first?.agent ?? "Nook", waiting: state.pending != nil, requestId: state.pending?.id ?? "", updated: Int(Date().timeIntervalSince1970), locked: false) }
     func startActivity() async {
-        guard let state, ActivityAuthorizationInfo().areActivitiesEnabled else { message = "Enable Live Activities in iPhone Settings and connect to the PC first."; return }
+        guard let state, isReachable, connection != nil, ActivityAuthorizationInfo().areActivitiesEnabled else { message = "Enable Live Activities in iPhone Settings and connect to the PC first."; return }
         if !Activity<NookActivity>.activities.isEmpty { return }
         do { let activity = try Activity.request(attributes: NookActivity(name: "Nook"), content: ActivityContent(state: activityState(state), staleDate: Date().addingTimeInterval(120)), pushType: .token)
             activityTask = Task { for await token in activity.pushTokenUpdates { await registerDevice(activityToken: token.map { String(format: "%02x", $0) }.joined()) } }
@@ -93,6 +95,13 @@ final class NookNoRedirects: NSObject, URLSessionTaskDelegate {
     }
     func stopActivities() async { activityTask?.cancel(); for activity in Activity<NookActivity>.activities { await activity.end(nil, dismissalPolicy: .immediate) }; let _: ResultResponse? = try? await request("/device", body: ["id": deviceID, "activityEnded": true]) }
     func disconnect() async { await stopActivities(); let _: ResultResponse? = try? await request("/device", body: ["id": deviceID, "remove": true]); let _: ResultResponse? = try? await request("/logout", body: [:]); disconnectLocally() }
-    private func disconnectLocally() { stopPolling(); ConnectionKeychain.clear(); connection = nil; state = nil; isReachable = false; UserDefaults(suiteName: NookShared.group)?.removeObject(forKey: "snapshot"); WidgetCenter.shared.reloadAllTimelines() }
+    private func disconnectLocally() {
+        stopPolling(); activityTask?.cancel(); activityTask = nil
+        let activities = Activity<NookActivity>.activities
+        Task { for activity in activities { await activity.end(nil, dismissalPolicy: .immediate) } }
+        ConnectionKeychain.clear(); connection = nil; state = nil; isReachable = false; reviewRequestID = nil
+        widgetSignature = ""; widgetUpdated = .distantPast; activitySignature = ""; activityUpdated = .distantPast
+        UserDefaults(suiteName: NookShared.group)?.removeObject(forKey: "snapshot"); WidgetCenter.shared.reloadAllTimelines()
+    }
     func open(_ url: URL) { guard url.scheme == "nook" else { return }; reviewRequestID = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?.first(where: { $0.name == "id" })?.value; Task { await refresh() } }
 }

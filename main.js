@@ -19,8 +19,8 @@ const { execFile, spawn } = require("child_process");
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
-const { present, decisionOutput, describeTurn } = require("./lib/decisions");
-const { buildModelsRequest, buildChatRequest, readChatReply, PROVIDERS, cleanModel, cleanLocalUrl, cleanRemoteUrl } = require("./lib/chat");
+const { present, decisionOutput, describeTurn, validAnswers } = require("./lib/decisions");
+const { buildModelsRequest, PROVIDERS, cleanModel, cleanLocalUrl, cleanRemoteUrl } = require("./lib/chat");
 const { textDiff } = require("./lib/diff");
 const {
   mergeClaudeSettings,
@@ -51,11 +51,11 @@ const { usageFromText, fromCodexAccount } = require("./lib/usage");
 const { summarizeHistory, recapSvg, weekKey, mondayDue } = require("./lib/history");
 const { QUERY, parseGithub, ciBadge, stateMap } = require("./lib/github");
 const { pickTerminal } = require("./lib/terminal");
-const { stripReasoning } = require("./lib/markdown");
+
 const { finalFromTranscript } = require("./lib/transcript");
 const { LANGUAGES, translate } = require("./lib/i18n");
 const { pluginSource, ampSource, hermesManifest } = require("./lib/plugins");
-const { takeSseEvents, deltaText } = require("./lib/stream");
+const { completeChat } = require("./lib/chat-transport");
 
 const { installFeatures } = require("./lib/features");
 const { demoState, STEPS: TOUR_STEPS } = require('./lib/demo');
@@ -75,7 +75,7 @@ const GUTTER_BOTTOM = 28;
 const SIZES = {
   asleep: { width: 140, height: 4, gutterX: 0, gutterBottom: 0 },
   peek: { width: 300, height: 48, gutterX: GUTTER_X, gutterBottom: GUTTER_BOTTOM },
-  open: { width: 440, height: 520, gutterX: GUTTER_X, gutterBottom: GUTTER_BOTTOM },
+  open: { width: 620, height: 520, gutterX: GUTTER_X, gutterBottom: GUTTER_BOTTOM },
 };
 const PIPE = "\\\\.\\pipe\\nook-companion";
 
@@ -180,6 +180,8 @@ function chosenDisplay() {
 function targetBounds(nextMode) {
   const display = chosenDisplay();
   const size = windowSize(nextMode);
+  size.width = Math.min(size.width, display.bounds.width);
+  size.height = Math.min(size.height, display.workArea.y + display.workArea.height - display.bounds.y);
   return {
     x: Math.round(display.bounds.x + (display.bounds.width - size.width) / 2),
     y: display.bounds.y,
@@ -1398,8 +1400,10 @@ function currentState() {
           kind: first.kind,
           questions: first.questions || [],
           always: Boolean(first.always),
+          receivedAt: first.receivedAt,
         }
       : null,
+    pendingCount: pending.length,
     activity: activity.slice(0, 8),
     displays: screen.getAllDisplays().map((item) => ({
       id: String(item.id),
@@ -1430,6 +1434,7 @@ function currentState() {
     look: readLook(),
     messages: messages.slice(-12),
     chatBusy: chatBusyProviders.size > 0,
+    chatBusyProviders: [...chatBusyProviders],
   };
   if (!demoOn) return result;
   const sample = demoState(result, demoStep, demoAnswered);
@@ -1564,64 +1569,6 @@ function rememberApproval(msg) {
   attention();
   if (mode === "open") {
     animateTo("open");
-  }
-}
-
-async function completeChat(provider, key, history, options, onDelta) {
-  const request = buildChatRequest(provider, history, { ...options, stream: true });
-  const headers = { ...request.headers };
-  if ((request.auth === "bearer" || request.auth === "optional") && key) {
-    headers.Authorization = `Bearer ${key}`;
-  }
-  if (request.auth === "anthropic") {
-    headers["x-api-key"] = key;
-    headers["anthropic-version"] = "2023-06-01";
-  }
-  let response;
-  try {
-    response = await fetch(request.url, {
-      method: "POST",
-      headers,
-      body: JSON.stringify(request.body),
-    });
-  } catch (_error) {
-    throw new Error(`Could not reach ${request.label}.`);
-  }
-  if (!response.ok) {
-    throw new Error(`${request.label} returned ${response.status}.`);
-  }
-  const reader = response.body && response.body.getReader ? response.body.getReader() : null;
-  if (!reader) {
-    return readChatReply(await response.json());
-  }
-  const decoder = new TextDecoder();
-  let buf = "";
-  let full = "";
-  while (true) {
-    const chunk = await reader.read();
-    if (chunk.done) {
-      break;
-    }
-    buf += decoder.decode(chunk.value, { stream: true });
-    const taken = takeSseEvents(buf);
-    buf = taken.rest;
-    for (const event of taken.events) {
-      const bit = deltaText(event, request.auth);
-      if (bit) {
-        full += bit;
-        if (onDelta) {
-          onDelta(full);
-        }
-      }
-    }
-  }
-  if (stripReasoning(full)) {
-    return stripReasoning(full);
-  }
-  try {
-    return readChatReply(JSON.parse(buf));
-  } catch (_error) {
-    throw new Error(`${request.label} returned an empty reply.`);
   }
 }
 
@@ -1812,6 +1759,7 @@ function handleDecision(choice) {
   }
   const action = choice.action || (choice.allow ? "allow" : "deny");
   if (!["allow", "deny", "always", "terminal"].includes(action) || action === "always" && !item.always) return false;
+  if (item.kind === 'question' && action !== 'terminal' && (action !== 'allow' || !validAnswers(item.questions, choice.answers))) return false;
   if (!choice.id.startsWith("demo-")) {
   if (action === "terminal") {
     relay.respond(item.id, null);
@@ -1888,29 +1836,17 @@ ipcMain.handle("nook:save-model", (_event, patch) => {
   return next;
 });
 
-ipcMain.handle("nook:attach-path", (_event, filePath) => {
-  const file = typeof filePath === "string" ? filePath : "";
-  if (!file || !path.isAbsolute(file) || !fs.existsSync(file)) {
-    return { ok: false, error: "Drop a file from Explorer." };
-  }
-  let stat;
+function attachPath(filePath) {
   try {
-    stat = fs.statSync(file);
-  } catch (_error) {
-    return { ok: false, error: "That file could not be read." };
-  }
-  if (!stat.isFile()) {
-    return { ok: false, error: "Drop a file, not a folder." };
-  }
-  const text = fs.readFileSync(file, "utf8").slice(0, 60000);
-  if (!text.trim()) {
-    return { ok: false, error: "That file is empty." };
-  }
-  attachment = { name: path.basename(file).slice(0, 120), text };
-  broadcast();
-  return { ok: true, name: attachment.name };
+    attachment = require('./lib/attachments').readAttachment(filePath); broadcast();
+    return { ok: true, name: attachment.name };
+  } catch (error) { return { ok: false, error: error.code ? 'That file could not be read.' : error.message }; }
+}
+ipcMain.handle('nook:attach-path', (_event, filePath) => attachPath(filePath));
+ipcMain.handle('nook:pick-file', async () => {
+  const result = await dialog.showOpenDialog(win, { title: 'Add context to chat', properties: ['openFile'] });
+  return result.canceled ? { ok: false, cancelled: true } : attachPath(result.filePaths[0]);
 });
-
 ipcMain.handle("nook:attach-file", (_event, file) => {
   const name = file && typeof file.name === "string" ? file.name.slice(0, 120) : "file";
   const text = file && typeof file.text === "string" ? file.text.slice(0, 60000) : "";
@@ -1961,7 +1897,7 @@ ipcMain.handle("nook:chat", async (_event, input) => {
   }
   const spec = PROVIDERS[provider];
   const key = readKeys()[provider];
-  if (spec.auth === "bearer" && !key) {
+  if (["bearer", "anthropic"].includes(spec.auth) && !key) {
     return { ok: false, error: `Save a ${spec.label} API key first.` };
   }
   if (chatBusyProviders.has(provider)) return { ok: false, error: "This model is still responding." };
@@ -2174,7 +2110,7 @@ ipcMain.handle("nook:models", async (_event, provider) => {
   const base = provider === "ollama" ? models.ollamaUrl : provider === "lmstudio" ? models.lmstudioUrl : provider === "custom" ? models.customUrl : spec.url;
   const { url, headers } = buildModelsRequest(provider, { url: base }, readKeys()[provider]);
   try {
-    const response = await fetch(url, { headers, signal: AbortSignal.timeout(8000) });
+    const response = await fetch(url, { headers, signal: AbortSignal.timeout(8000), redirect: 'error' });
     if (!response.ok) {
       return [];
     }
@@ -2200,6 +2136,7 @@ ipcMain.on("nook:pet-move", (_event, point) => {
   placePet(x, y);
   lastTouch = Date.now();
 });
+ipcMain.on('nook:show-notch', () => { showNook(); win?.webContents.send('nook:command', 'home'); });
 
 ipcMain.handle('nook:workspace', async (_event, { action, value } = {}) => {
   if (!workspaceKit) return { ok: false, error: 'Workspace is not ready.' };

@@ -1,5 +1,15 @@
 import Foundation
 
+enum NookQuery {
+    static func route(_ path: String, name: String, value: String) -> String {
+        var components = URLComponents()
+        components.path = path
+        components.queryItems = [URLQueryItem(name: name, value: value)]
+        // The desktop uses form-style query decoding, where an unescaped plus is a space.
+        return components.string!.replacingOccurrences(of: "+", with: "%2B")
+    }
+}
+
 struct Connection: Codable { var address: String; var token: String }
 struct PhoneState: Decodable {
     var status: String

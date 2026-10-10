@@ -29,7 +29,7 @@ require('../main');
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 let sequence = 0;
 function activity(payload) { return new Promise((resolve, reject) => { const socket = net.connect(pipe); socket.on('error', reject); socket.on('connect', () => socket.write(JSON.stringify({ id: 'sample-' + ++sequence, agent: 'claude', payload }) + '\n')); socket.on('data', () => { socket.destroy(); resolve(); }); }); }
-function approval(id) { return new Promise((resolve, reject) => { const socket = net.connect(pipe); socket.on('error', reject); socket.on('connect', () => { socket.write(JSON.stringify({ id, agent: 'claude', wait: true, payload: { hook_event_name: 'PermissionRequest', session_id: 'sample', tool_name: 'Bash', tool_input: { command: 'echo sample' } } }) + '\n'); resolve(socket); }); }); }
+function approval(id, input = {}) { return new Promise((resolve, reject) => { const socket = net.connect(pipe); socket.on('error', reject); socket.on('connect', () => { socket.write(JSON.stringify({ id, agent: 'claude', wait: true, payload: { hook_event_name: 'PermissionRequest', session_id: 'sample', tool_name: 'Bash', tool_input: { command: 'echo sample' }, ...input } }) + '\n'); resolve(socket); }); }); }
 app.whenReady().then(async () => {
   const waiting = [];
   try {
@@ -37,9 +37,23 @@ app.whenReady().then(async () => {
     const settings = BrowserWindow.getAllWindows().find(window => window.webContents.getURL().endsWith('settings.html'));
     const notch = BrowserWindow.getAllWindows().find(window => window.webContents.getURL().endsWith('index.html'));
     assert.ok(settings && notch); const run = text => settings.webContents.executeJavaScript(text);
+    const notchRun = text => notch.webContents.executeJavaScript(text);
     await run('window.NookTour.finish()');
+    assert.equal(await notchRun('Boolean(state?.demo)'), false);
     await run('window.nook.workspace("save", {archive:true,notifications:false,serviceActions:true})');
+    await run('document.querySelector("#workspace-form [name=quietStart]").value="21:15"; document.querySelector("#workspace-form [name=quietStart]").dispatchEvent(new Event("input", {bubbles:true})); document.activeElement.blur(); window.nook.saveKey("custom", "sample-private-custom-key")'); await delay(100);
+    assert.equal(await run('document.querySelector("#workspace-form [name=quietStart]").value'), '21:15');
+    assert.equal(await run('document.querySelector("[data-provider=custom] .badge").textContent'), 'Key saved');
+    await run('document.querySelector("#workspace-form").requestSubmit()'); await delay(100);
+    await activity({ hook_event_name: 'PostToolUse', session_id: 'sample', tool_name: 'Read', tool_input: { file_path: 'C:\\sample\\hello.js' }, cwd: 'C:\\sample' });
     await activity({ hook_event_name: 'PostToolUse', session_id: 'sample', tool_name: 'Edit', tool_input: { file_path: 'C:\\sample\\hello.js', old_string: 'const greeting=1;', new_string: 'const greeting=2;' }, cwd: 'C:\\sample' });
+    await delay(150); await notchRun('document.querySelector("#sessions button").click()'); await delay(500);
+    assert.equal(await notchRun('document.querySelector("#card-diff").hidden'), false);
+    assert.equal(await notchRun('document.querySelectorAll("#diff .added").length'), 1);
+    assert.ok(await notchRun('document.querySelector("#task-steps").innerText.includes("Read")'));
+    fs.writeFileSync(path.join(output, 'notch-diff.png'), (await notch.webContents.capturePage()).toPNG());
+    await notchRun('document.querySelector("#notch-home").click()'); await delay(500);
+    fs.writeFileSync(path.join(output, 'notch-home.png'), (await notch.webContents.capturePage()).toPNG());
     await activity({ hook_event_name: 'Stop', session_id: 'sample', last_assistant_message: 'Completed the sample greeting.', cwd: 'C:\\sample' });
     await delay(120);
     const search = await run('window.nook.workspace("search", {query:"sample greeting"})'); assert.equal(search.items.length, 1);
@@ -64,19 +78,40 @@ app.whenReady().then(async () => {
     await run('window.nook.togglePet()'); await delay(250);
     const pet = BrowserWindow.getAllWindows().find(window => window.webContents.getURL().endsWith('pet.html')); assert.ok(pet); const home = pet.getBounds();
     waiting.push(await approval('queue-one')); waiting.push(await approval('queue-two')); await delay(700); assert.equal(pet.isVisible(), false);
+    fs.writeFileSync(path.join(output, 'notch-approval.png'), (await notch.webContents.capturePage()).toPNG());
+    await notchRun('document.querySelector("#tuck").click(); document.querySelector("#provider").dispatchEvent(new KeyboardEvent("keydown", {key:"a",bubbles:true}))');
     await run('window.nook.decide("queue-one", "deny", {})'); await delay(150); assert.equal(pet.isVisible(), false);
+    assert.equal(await notchRun('document.querySelector("#card-approval").hidden'), false);
     await run('window.nook.decide("queue-two", "deny", {})'); await delay(700); assert.ok(pet.isVisible()); assert.ok(Math.abs(pet.getBounds().x - home.x) < 2); assert.ok(Math.abs(pet.getBounds().y - home.y) < 2);
     const abandoned = await approval('queue-disconnected'); waiting.push(abandoned); await delay(500); abandoned.destroy(); await delay(700); assert.ok(pet.isVisible());
     const state = await (await fetch(base + '/state', { headers })).json(); assert.equal(state.pending, null);
+    const question = await approval('typed-only', { tool_name: 'AskUserQuestion', tool_input: { questions: [{ question: 'What should change?', options: [] }] } }); waiting.push(question); await delay(250);
+    await notchRun('document.querySelector("#allow").click()'); await delay(80);
+    assert.equal((await (await fetch(base + '/state', { headers })).json()).pending.id, 'typed-only');
+    await notchRun('document.querySelector(".typed-answer").value="Improve the UI"');
+    assert.equal(await notchRun('collectAnswers()["What should change?"]'), 'Improve the UI');
+    const answer = new Promise(resolve => question.once('data', chunk => resolve(JSON.parse(chunk)))); await notchRun('document.querySelector("#allow").click()');
+    assert.ok(JSON.stringify(await answer).includes('Improve the UI'));
+    await run('window.nook.setDemo(true); window.nook.tourStep(4)'); await delay(500);
+    fs.writeFileSync(path.join(output, 'notch-chat.png'), (await notch.webContents.capturePage()).toPNG());
+    await run('window.NookTour.finish()');
     await run('window.nook.saveCompanion({outfit:"raincoat",seasonal:false})'); await delay(200);
     assert.equal(await pet.webContents.executeJavaScript('document.querySelector("canvas").dataset.outfit'), 'raincoat');
     await run('window.nook.saveRecapPng()'); assert.deepEqual(nativeImage.createFromPath(path.join(output, 'recap.png')).getSize(), { width: 1080, height: 1920 });
     await run('showPage("workspace"); document.querySelector("main").scrollTop=0'); await delay(100);
     fs.writeFileSync(path.join(output, 'workspace.png'), (await settings.webContents.capturePage()).toPNG());
     await run('showPage("companion")'); await delay(100); fs.writeFileSync(path.join(output, 'wardrobe.png'), (await settings.webContents.capturePage()).toPNG());
+    await run('showPage("look")'); await delay(150); fs.writeFileSync(path.join(output, 'appearance.png'), (await settings.webContents.capturePage()).toPNG());
+    await run('showPage("keys")'); await delay(150); fs.writeFileSync(path.join(output, 'models.png'), (await settings.webContents.capturePage()).toPNG());
+    settings.setSize(760, 620); await delay(200);
+    await run('document.querySelector("[data-provider=custom] details").open=true'); await delay(120);
+    assert.ok(await run('document.querySelector("main").scrollWidth <= document.querySelector("main").clientWidth + 1'), 'Settings fit a narrow window');
+    await notchRun('document.querySelector("#notch-home").click()'); await delay(200); const normal = notch.getBounds(); notch.setSize(460, normal.height); await delay(150);
+    assert.ok(await notchRun('document.querySelector(".island").scrollWidth <= document.querySelector(".island").clientWidth + 1'), 'Notch fits a narrow display');
+    notch.setBounds(normal);
     await run('window.nook.phone("stop")'); assert.equal(push.snapshot().devices, 0);
     assert.deepEqual(errors, []);
-    fs.writeFileSync(path.join(output, 'result.json'), JSON.stringify({ ok: true, errors, archiveSearch: true, serviceConfirmation: true, queueTravel: true, disconnectedRequest: true, nativeDeviceRevocation: true, pngExport: true }, null, 2));
+    fs.writeFileSync(path.join(output, 'result.json'), JSON.stringify({ ok: true, errors, archiveSearch: true, serviceConfirmation: true, queueTravel: true, disconnectedRequest: true, nativeDeviceRevocation: true, pngExport: true, sessionDiff: true, typedOnlyAnswers: true, nextQueuedApproval: true, narrowLayout: true, unsavedPreferences: true, customKeyStatus: true }, null, 2));
   } catch (error) { fs.writeFileSync(path.join(output, 'result.json'), JSON.stringify({ ok: false, error: error.stack, errors }, null, 2)); }
   finally { for (const socket of waiting) socket.destroy(); app.quit(); }
 });

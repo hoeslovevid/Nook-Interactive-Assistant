@@ -38,3 +38,16 @@ test('wardrobe motion settles and reduced motion does not oscillate', () => {
 test('multiple completed turns of one agent session remain independently searchable', () => {
   const f = fixture(); try { f.kit.save({ archive: true }); f.kit.record({ id: 'one', agent: 'claude', finished: true, final: 'First answer', steps: [{ time: 10 }] }); f.kit.record({ id: 'one', agent: 'claude', finished: true, final: 'Second answer', steps: [{ time: 20 }] }); assert.equal(f.kit.search().length, 2); assert.equal(f.kit.detail('one:10').final, 'First answer'); assert.equal(f.kit.detail('one:20').final, 'Second answer'); } finally { f.close(); }
 });
+
+test('invalid decrypted archive entries cannot crash startup or overwrite the saved archive', () => {
+  const f = fixture();
+  try {
+    f.kit.stop(); const file = path.join(f.directory, 'session-archive.json');
+    for (const value of [[null], {}, [{ id: 'one', time: Date.now(), steps: [] }]]) {
+      const saved = JSON.stringify({ encrypted: f.encrypt(JSON.stringify(value)) }); fs.writeFileSync(file, saved);
+      const kit = createWorkspace({ directory: f.directory, encrypt: f.encrypt, decrypt: f.decrypt });
+      try { assert.match(kit.snapshot().error, /archive/); assert.deepEqual(kit.search(), []); kit.save({ archive: true }); assert.equal(fs.readFileSync(file, 'utf8'), saved); }
+      finally { kit.stop(); }
+    }
+  } finally { f.close(); }
+});

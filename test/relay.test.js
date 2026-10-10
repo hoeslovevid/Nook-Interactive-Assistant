@@ -66,3 +66,18 @@ test("the hook reports activity and waits for an approval", async () => {
     await relay.close();
   }
 });
+
+test('relay preserves split UTF-8 and rejects duplicate approvals and malformed payloads', async () => {
+  const pipe = `\\\\.\\pipe\\nook-input-test-${process.pid}`;
+  const seen = [], sockets = [];
+  const relay = createRelay(pipe, { onActivity(msg) { seen.push(msg.payload.text); }, onApproval(msg) { seen.push(msg.id); } }); await relay.listen();
+  const connect = async () => { const socket = net.connect(pipe); sockets.push(socket); socket.on('error', () => {}); await new Promise(resolve => socket.once('connect', resolve)); return socket; };
+  const wait = () => new Promise(resolve => setTimeout(resolve, 25));
+  try {
+    const unicode = await connect(), bytes = Buffer.from(JSON.stringify({ id: 'unicode', agent: 'claude', payload: { text: '🌟' } }) + '\n'), offset = bytes.indexOf(Buffer.from('🌟')) + 1;
+    unicode.write(bytes.subarray(0, offset)); await wait(); unicode.write(bytes.subarray(offset)); await wait(); assert.equal(seen[0], '🌟');
+    const original = await connect(); const approval = JSON.stringify({ id: 'same-id', agent: 'claude', wait: true, payload: {} }) + '\n'; original.write(approval); await wait();
+    const duplicate = await connect(); duplicate.write(approval); await wait(); assert.equal(seen.filter(item => item === 'same-id').length, 1); assert.equal(relay.respond('same-id', { allowed: false }), true);
+    const malformed = await connect(); malformed.write(JSON.stringify({ id: 'invalid', agent: 'claude', payload: 'wrong type' }) + '\n'); await wait(); assert.equal(seen.length, 2);
+  } finally { for (const socket of sockets) socket.destroy(); await relay.close(); }
+});

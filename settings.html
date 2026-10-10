@@ -9,6 +9,7 @@
     <title>Nook</title>
     <link rel="icon" href="assets/favicon.ico" sizes="any" />
     <link rel="stylesheet" href="settings.css" />
+    <link rel="stylesheet" href="app-modern.css" />
   </head>
   <body>
     <aside>
@@ -41,6 +42,8 @@
       </nav><div class="sidebar-footer"><span class="connection-dot"></span> Made for your flow<span class="version">Nook · Desktop</span></div>
     </aside>
     <main>
+      <div class="app-ribbon"><div class="workspace-location"><span class="workspace-orbit"></span><span>Personal workspace</span><span class="ribbon-divider">/</span><strong id="app-page-name">Appearance</strong></div><button type="button" id="app-open-notch" class="ribbon-action" data-icon="home">Open notch</button></div>
+      <div class="workspace-glance" aria-label="Workspace status"><div><span class="glance-dot"></span><strong id="app-agent-count">No active agents</strong><small id="app-requests">Ready when you are</small></div><span id="app-context" class="context-chip">Local workspace</span></div>
       <section id="page-look">
         <header>
           <div class="eyebrow">MAKE IT YOURS</div><h1>Appearance</h1>
@@ -364,6 +367,7 @@
       </section>
     </main>
     <script src="lib/motion.js"></script>
+    <script src="lib/ui-icons.js"></script>
     <script src="lib/shortcuts.js"></script>
     <script src="lib/companion.js"></script>
     <script src="lib/seed.js"></script>
@@ -373,5 +377,6 @@
     <script src="tour.js"></script>
     <script src="updates-ui.js"></script>
     <script src="workspace-ui.js"></script>
+    <script src="app-modern.js"></script>
   </body>
 </html>

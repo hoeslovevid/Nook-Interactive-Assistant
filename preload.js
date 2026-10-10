@@ -49,6 +49,8 @@ contextBridge.exposeInMainWorld("nook", {
   attachPath(filePath) {
     return ipcRenderer.invoke("nook:attach-path", filePath);
   },
+  pickFile() { return ipcRenderer.invoke('nook:pick-file'); },
+  showNotch() { ipcRenderer.send('nook:show-notch'); },
   clearFile() {
     return ipcRenderer.invoke("nook:clear-file");
   },

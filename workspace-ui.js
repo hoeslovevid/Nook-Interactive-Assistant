@@ -2,20 +2,23 @@
   const $ = id => document.getElementById(id), form = $('workspace-form');
   const agents = ['claude', 'cursor', 'codex', 'gemini', 'copilot', 'muse', 'opencode', 'amp', 'hermes', 'antigravity', 'github'];
   for (const agent of agents) { const option = new Option(agent, agent); $('workspace-muted').append(option); }
-  let current = null, historyTimer, historyRequest = 0, serviceRequest = 0;
+  let current = null, historyTimer, historyRequest = 0, serviceRequest = 0, dirty = false;
+  form.addEventListener('input', () => { dirty = true; });
+  form.addEventListener('change', () => { dirty = true; });
+  function fillSettings(settings) {
+    for (const [name, value] of Object.entries(settings)) {
+      const field = form.elements.namedItem(name); if (!field) continue;
+      if (field.type === 'checkbox') field.checked = value;
+      else if (name === 'mutedAgents') for (const option of field.options) option.selected = value.includes(option.value);
+      else field.value = value;
+    }
+  }
   function paint(state) {
     const workspace = state.workspace; if (!workspace) return; current = workspace;
     for (const agent of new Set([...workspace.settings.mutedAgents, ...(state.sessions || []).map(session => session.agent)])) {
       if (typeof agent === 'string' && ![...$('workspace-muted').options].some(option => option.value === agent)) $('workspace-muted').append(new Option(agent, agent));
     }
-    if (!form.contains(document.activeElement)) {
-      for (const [name, value] of Object.entries(workspace.settings)) {
-        const field = form.elements.namedItem(name); if (!field) continue;
-        if (field.type === 'checkbox') field.checked = value;
-        else if (name === 'mutedAgents') for (const option of field.options) option.selected = value.includes(option.value);
-        else field.value = value;
-      }
-    }
+    if (!dirty && !form.contains(document.activeElement)) fillSettings(workspace.settings);
     $('history-count').textContent = workspace.error || workspace.count + ' saved entries · ' + (workspace.settings.archive ? 'Recording is on' : 'Recording is off');
     $('relay-status').textContent = state.push?.error || (state.push?.configured ? 'Relay configured · ' : 'Relay setup needed · ') + (state.push?.devices || 0) + ' native phones';
   }
@@ -25,7 +28,8 @@
     event.preventDefault(); const values = Object.fromEntries(new FormData(form));
     for (const field of form.querySelectorAll('input[type="checkbox"]')) values[field.name] = field.checked;
     values.retention = Number(values.retention); values.mutedAgents = [...$('workspace-muted').selectedOptions].map(option => option.value);
-    try { const result = await window.nook.workspace('save', values); message('workspace-status', result.ok ? 'Preferences saved.' : result.error); } catch { message('workspace-status', 'Could not save preferences.'); }
+    const submit = form.querySelector('[type=submit]'); submit.disabled = true;
+    try { const result = await window.nook.workspace('save', values); if (result.ok) { dirty = false; fillSettings(result.settings); } message('workspace-status', result.ok ? 'Preferences saved.' : result.error); } catch { message('workspace-status', 'Could not save preferences.'); } finally { submit.disabled = false; }
   });
   $('relay-access-form').addEventListener('submit', async event => { event.preventDefault(); const token = $('relay-token').value.trim(); if (token.length < 32) return message('relay-status', 'Use the relay token generated during relay setup (at least 32 characters).'); const result = await window.nook.workspace('relay-token', token); $('relay-token').value = ''; message('relay-status', result.ok ? 'Relay token saved and encrypted on this PC.' : result.error); });
   $('relay-token-clear').addEventListener('click', async () => { await window.nook.workspace('relay-token', ''); });

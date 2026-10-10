@@ -68,6 +68,10 @@ function updateCompanion() {
   seed.dataset.mood = window.NookMotion.companionMood({task:activeSession && activeSession.task,pending:waiting(),drop:island.classList.contains("is-drop"),receiving,thinking:sending,celebrating,dancing:Boolean(state?.features?.music?.playing),working,hover:hovering||welcome,sleeping:!chatting&&!welcome&&!working});
   document.body.classList.toggle("is-thinking", sending);
   if (state?.demoMood) seed.dataset.mood = state.demoMood;
+  for (const canvas of document.querySelectorAll('.focus-pet,.task-pet')) {
+    canvas.dataset.mood = seed.dataset.mood;
+    if (state) { window.NookCompanion.agentColor(canvas, state, selectedSession); window.NookCompanion.apply(canvas, state.features?.companion || {}); }
+  }
 }
 function celebrateCompanion() {
   celebrating = true; updateCompanion(); window.clearTimeout(celebrationTimer);
@@ -178,6 +182,8 @@ function layoutCards() {
   cardDiff.hidden = showingApproval || card !== "diff";
   cardChat.hidden = showingApproval || card !== "chat";
   cardSession.hidden = showingApproval || card === "diff" || card === "chat";
+  document.querySelector('#notch-home').setAttribute('aria-pressed', String(nextCard !== 'chat'));
+  document.querySelector('#notch-chat').setAttribute('aria-pressed', String(nextCard === 'chat'));
 }
 
 function pulse(element, className) {
@@ -243,6 +249,7 @@ function paintQuestions(pendingItem) {
   }
   for (const item of pendingItem.questions || []) {
     const group = document.createElement("fieldset");
+    group.dataset.question = item.question;
     const legend = document.createElement("legend");
     legend.textContent = item.header || item.question;
     group.appendChild(legend);
@@ -267,6 +274,7 @@ function paintQuestions(pendingItem) {
     typed.className = "typed-answer";
     typed.placeholder = "or type an answer";
     typed.maxLength = 240;
+    typed.setAttribute('aria-label', item.question + ': your answer');
     group.appendChild(typed);
     questionsBox.appendChild(group);
   }
@@ -281,7 +289,7 @@ function collectAnswers() {
     }
     const typed = group.querySelector(".typed-answer");
     const picked = [...group.querySelectorAll("input:checked")].map((box) => box.value);
-    answers[input.name] = typed && typed.value.trim() ? typed.value.trim() : picked.join(", ");
+    answers[group.dataset.question] = typed && typed.value.trim() ? typed.value.trim() : picked.join(", ");
   }
   return answers;
 }
@@ -298,19 +306,15 @@ function paintSessions() {
     button.textContent = `${session.label}${fileName ? `: ${fileName}` : ""}${counts}`;
     button.addEventListener("click", (event) => {
       event.stopPropagation();
-      selectedSession = session.id;
-      for (const pill of sessionsBox.children) pill.classList.toggle("is-selected", pill === button);
-      diffBox.hidden = false;
-      diffBox.textContent = session.diff || session.detail || "No diff yet.";
-      document.querySelector("#open-diff").hidden = !session.file;
-      expanded = true;
-      renderShell();
+      showDiff(session);
     });
     sessionsBox.appendChild(button);
   }
   if (selectedSession && !((state && state.sessions) || []).some((session) => session.id === selectedSession)) {
-    diffBox.hidden = true;
+    selectedSession = ''; if (card === 'diff') showCard('session');
   }
+  const selected = state?.sessions?.find(session => session.id === selectedSession);
+  if (selected && card === 'diff') paintDiff(selected);
 }
 
 function paintProviders(models) {
@@ -450,10 +454,35 @@ function paintTicker() {
   }
 }
 
-function showDiff(session) {
-  selectedSession = session.id;
-  diffBox.textContent = session.diff || session.detail || "No diff yet.";
+let diffSignature = '', diffAnswer = false;
+function paintDiff(session, final = diffAnswer) {
+  diffAnswer = final;
+  const text = final ? session.final : session.diff || session.detail || 'No changes to preview yet.';
+  const signature = JSON.stringify([session.id, text, session.task, session.finished, session.steps]);
+  if (signature === diffSignature) return;
+  diffSignature = signature;
+  document.querySelector('#diff-agent').textContent = session.label || session.agent;
+  document.querySelector('#diff-task').textContent = session.finished ? 'Completed' : session.task || 'Working';
+  const file = session.file || '';
+  document.querySelector('#diff-name').textContent = final ? 'Completed answer' : file.split(/[/\\]/).pop() || 'Activity';
+  document.querySelector('#diff-path').textContent = file; document.querySelector('#diff-path').title = file;
+  document.querySelector('#diff-counts').textContent = session.diff && !final ? `+${session.added || 0}  −${session.removed || 0}` : '';
+  const steps = document.querySelector('#task-steps'); steps.replaceChildren();
+  for (const step of window.NookWorkbench.timeline(session)) { const row = document.createElement('li'); row.className = step.current ? 'is-current' : step.done ? 'is-done' : ''; row.textContent = step.label; steps.append(row); }
+  diffBox.replaceChildren(); diffBox.hidden = false;
+  if (session.diff && !final) {
+    for (const row of window.NookWorkbench.diffRows(text)) {
+      const line = document.createElement('span'); line.className = 'diff-line ' + row.type;
+      const gutter = document.createElement('span'); gutter.className = 'diff-gutter'; gutter.setAttribute('aria-hidden', 'true'); gutter.textContent = row.next ?? row.old ?? '';
+      const sign = document.createElement('span'); sign.className = 'diff-sign'; sign.textContent = row.type === 'added' ? '+' : row.type === 'removed' ? '−' : ' ';
+      const copy = document.createElement('span'); copy.className = 'diff-code'; copy.textContent = row.text;
+      line.append(gutter, sign, copy); diffBox.append(line);
+    }
+  } else { const copy = document.createElement('span'); copy.className = 'activity-preview'; copy.textContent = text; diffBox.append(copy); }
   document.querySelector("#open-diff").hidden = !session.file;
+}
+function showDiff(session) {
+  selectedSession = session.id; diffAnswer = false; paintDiff(session);
   showCard("diff");
   expanded = true;
   held = true;
@@ -543,6 +572,9 @@ function paint() {
     peekLine.textContent = (step && (step.file || step.title)) || (session && session.final) || "";
   }
   approvalTitle.textContent = pending ? pending.title : "";
+  document.querySelector('#approval-agent').textContent = pending ? (state?.sessions?.find(session => session.agent === pending.agent)?.label || pending.agent || 'Agent') + ' needs your review' : '';
+  document.querySelector('#approval-queue').textContent = state?.pendingCount > 1 ? state.pendingCount + ' waiting' : '';
+  document.querySelector('#approval-error').hidden = true;
   approvalDetail.textContent = pending ? pending.detail : "";
   const questioning = Boolean(pending && pending.kind === "question");
   document.querySelector("#allow").textContent = questioning
@@ -554,6 +586,11 @@ function paint() {
   paintSessions();
   paintHeader();
   paintTicker();
+  const active = state?.sessions?.find(session => !session.finished) || state?.sessions?.[0];
+  document.querySelector('#focus-label').textContent = active ? (active.label || active.agent) : 'YOUR WORKSPACE';
+  const muted = Boolean(state?.prefs?.muted); const soundButton = document.querySelector('#notch-sound');
+  soundButton.setAttribute('aria-pressed', String(muted)); soundButton.setAttribute('aria-label', muted ? 'Enable sounds' : 'Mute sounds'); soundButton.title = muted ? 'Enable sounds' : 'Mute sounds';
+  soundButton.replaceChildren(window.NookIcons.icon(muted ? 'muted' : 'sound'));
 
   const keys = (state && state.keys) || {};
   const models = (state && state.models) || {};
@@ -561,7 +598,7 @@ function paint() {
   const label = providerSelect.options[providerSelect.selectedIndex]
     ? providerSelect.options[providerSelect.selectedIndex].textContent
     : "Chat";
-  const local = provider === "ollama" || provider === "lmstudio";
+  const local = provider === "ollama" || provider === "lmstudio" || provider === 'custom';
   chatInput.placeholder = `Ask ${label}`;
   const attached = state && state.attachment;
   fileChip.hidden = !attached;
@@ -570,6 +607,8 @@ function paint() {
     chatError ||
     (local ? `${label} uses the server on this PC.` : keys[provider] ? `${label} key saved` : `Add the ${label} key in the Nook app.`);
   if (state?.demo) keyStatus.textContent = 'Sample chat · replies stay on this PC · no API charges';
+  document.querySelector('#chat-error-panel').hidden = !chatError;
+  document.querySelector('#chat-error-copy').textContent = chatError;
 
   const stick = transcript.scrollHeight - transcript.scrollTop - transcript.clientHeight < 24;
   transcript.replaceChildren();
@@ -584,6 +623,10 @@ function paint() {
     const who = document.createElement("strong");
     who.textContent = message.role === "user" ? "You" : label;
     bubble.appendChild(who);
+    if (message.role === 'assistant' && !message.content && (sending || state?.chatBusyProviders?.includes(provider))) {
+      const dots = document.createElement('span'); dots.className = 'thinking-dots'; dots.setAttribute('aria-label', 'Model is responding');
+      for (let index = 0; index < 3; index++) dots.append(document.createElement('i')); bubble.append(dots);
+    }
     const blocks = window.NookMarkdown
       ? window.NookMarkdown.markdownBlocks(message.content)
       : [{ type: "text", text: message.content }];
@@ -775,6 +818,12 @@ providerSelect.addEventListener("change", () => {
 function decidePending(action) {
   if (state && state.pending) {
     const answers = state.pending.kind === "question" ? collectAnswers() : undefined;
+    if (state.pending.kind === 'question' && action !== 'terminal') {
+      if (action !== 'allow') return;
+      if (!state.pending.questions.length || state.pending.questions.some(question => !answers[question.question]?.trim())) {
+        const error = document.querySelector('#approval-error'); error.textContent = 'Answer every question before sending.'; error.hidden = false; return;
+      }
+    }
     window.nook.decide(state.pending.id, action, answers);
   }
 }
@@ -792,7 +841,7 @@ document.querySelector("#terminal").addEventListener("click", () => {
 });
 
 window.addEventListener("keydown", (event) => {
-  if (event.target.matches("input, textarea") && event.key !== "Enter") {
+  if (event.target.matches("input, textarea, select, [contenteditable=true]") && event.key !== "Enter") {
     return;
   }
   if (event.key === "Escape") {
@@ -804,16 +853,16 @@ window.addEventListener("keydown", (event) => {
     renderShell();
     return;
   }
-  if (event.target.matches("input, textarea")) {
+  if (event.target.matches("input, textarea, select, [contenteditable=true]")) {
     if (event.ctrlKey && event.key === "Enter") {
       chatForm.requestSubmit();
     }
     return;
   }
-  if (event.key === "a" || event.key === "A") {
+  if ((event.key === "a" || event.key === "A") && !event.ctrlKey && !event.metaKey && !event.altKey) {
     decidePending("allow");
   }
-  if (event.key === "d" || event.key === "D") {
+  if ((event.key === "d" || event.key === "D") && !event.ctrlKey && !event.metaKey && !event.altKey) {
     decidePending("deny");
   }
   if (event.ctrlKey && event.key === "e") {
@@ -859,14 +908,14 @@ chatForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   const text = chatInput.value.trim(); if (!text || sending) return;
   const sendButton = chatForm.querySelector('button[type="submit"]');
-  sending = true; sendButton.disabled = true; sendButton.textContent = "Thinking…";
+  sending = true; providerSelect.disabled = true; sendButton.disabled = true; sendButton.textContent = '…';
   chatInput.value = ""; chatError = ""; renderShell();
   try {
     const result = await window.nook.sendChat(provider, text);
     if (!result.ok) { chatError = result.error || "Could not send this message."; chatInput.value = text; }
     else celebrateCompanion();
   } catch (_) { chatError = "Could not connect. Please try again."; chatInput.value = text; }
-  finally { sending = false; sendButton.disabled = false; sendButton.textContent = "Send"; paint(); }
+  finally { sending = false; providerSelect.disabled = false; sendButton.disabled = false; sendButton.textContent = '↑'; paint(); }
 
 });
 
@@ -893,9 +942,10 @@ document.querySelector("#open-diff").addEventListener("click", (event) => {
 });
 
 window.nook.onCommand((action) => {
+  if (action === 'home') { showCard('session'); held = true; welcome = false; expanded = true; renderShell(); return; }
   if (action.startsWith('session:')) {
     const session = state?.sessions?.find(item => item.id === action.slice(8));
-    if (session) { showDiff(session); if (session.final) diffBox.textContent = session.final; }
+    if (session) { showDiff(session); if (session.final) paintDiff(session, true); }
     return;
   }
   if (action === "toggle") {
@@ -904,7 +954,8 @@ window.nook.onCommand((action) => {
     renderShell();
   }
   if (action === "next" || action === "prev") {
-    moveGithub(action === "next" ? 1 : -1);
+    const sessions = state?.sessions || [];
+    if (sessions.length) { const index = sessions.findIndex(session => session.id === selectedSession); showDiff(sessions[(Math.max(0, index) + (action === 'next' ? 1 : -1) + sessions.length) % sessions.length]); }
     expanded = true;
     held = true;
     renderShell();
@@ -940,6 +991,7 @@ function showWelcome() {
 reducedMotion.addEventListener("change", () => renderShell());
 window.nook.onWelcome(showWelcome);
 window.nook.onState((next) => {
+  if (next.pending?.id !== state?.pending?.id) { tucked = false; attention = false; }
   const wasDemo = Boolean(state?.demo);
   if (next.demo && !wasDemo) beforeTour = { provider, pinned, held, expanded, welcome, tucked, card, selectedSession };
   state = next;
@@ -958,3 +1010,20 @@ window.nook.onAttention(() => {
   renderShell();
 });
 showWelcome();
+document.querySelector('#notch-home').addEventListener('click', () => { showCard('session'); held = true; welcome = false; expanded = true; renderShell(); });
+document.querySelector('#notch-chat').addEventListener('click', () => { showCard('chat'); held = true; welcome = false; expanded = true; renderShell(); chatInput.focus(); });
+document.querySelector('#notch-settings').addEventListener('click', () => window.nook.openApp());
+document.querySelector('#notch-sound').addEventListener('click', () => window.nook.savePrefs({ muted: !state?.prefs?.muted }));
+document.querySelector('#chat-retry').addEventListener('click', () => chatInput.focus());
+document.querySelector('#notch-attach').addEventListener('click', async () => {
+  const button = document.querySelector('#notch-attach'); button.disabled = true;
+  held = true; expanded = true; welcome = false; renderShell();
+  try { const result = await window.nook.pickFile(); if (result.cancelled) return; showCard('chat'); chatError = result.ok ? '' : result.error; paint(); chatInput.focus(); }
+  catch { chatError = 'Could not open that file.'; showCard('chat'); paint(); }
+  finally { button.disabled = false; }
+});
+setInterval(() => {
+  if (document.hidden || cardApproval.hidden) return;
+  const elapsed = Math.max(0, Math.floor((Date.now() - (state?.pending?.receivedAt || Date.now())) / 1000));
+  document.querySelector('#approval-age').textContent = Math.floor(elapsed / 60) + ':' + String(elapsed % 60).padStart(2, '0');
+}, 1000);
