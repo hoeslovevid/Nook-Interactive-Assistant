@@ -31,8 +31,20 @@ function paintMusic(next) {
     ["music-toggle", "canToggle"],
     ["music-next", "canNext"],
     ["music-previous", "canPrevious"],
+    ["music-shuffle", "canShuffle"],
+    ["music-repeat", "canRepeat"],
   ])
-    featureNode(id).disabled = musicState[cap] === false;
+    featureNode(id).disabled = !musicState[cap];
+  featureNode("music-shuffle").setAttribute(
+    "aria-pressed",
+    String(Boolean(musicState.shuffle)),
+  );
+  featureNode("music-repeat").textContent =
+    musicState.repeat === "Track"
+      ? "Repeat one"
+      : musicState.repeat === "List"
+        ? "Repeat all"
+        : "Repeat";
   const slider = featureNode("music-position");
   slider.disabled = !musicState.canSeek;
   slider.max = String(Math.max(1, musicState.duration || 1));
@@ -59,6 +71,8 @@ for (const [id, action] of [
   ["music-toggle", "toggle"],
   ["music-next", "next"],
   ["music-previous", "previous"],
+  ["music-shuffle", "shuffle"],
+  ["music-repeat", "repeat"],
 ])
   featureNode(id).addEventListener("click", () => mediaAction(action));
 featureNode("music-position").addEventListener("change", (event) =>

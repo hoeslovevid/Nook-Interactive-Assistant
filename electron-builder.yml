@@ -17,6 +17,8 @@ files:
   - "assets/tray.png"
   - "assets/icon.png"
 win:
+  # Windows releases are currently unsigned; downloaded files still use SHA-512 integrity checks.
+  verifyUpdateCodeSignature: false
   icon: build/icon.ico
   executableName: Nook
   target:
@@ -33,4 +35,8 @@ nsis:
   shortcutName: Nook
   uninstallDisplayName: Nook
   deleteAppDataOnUninstall: false
-publish: null
+publish:
+  provider: github
+  owner: hoeslovevid
+  repo: Nook-Interactive-Assistant
+  releaseType: release

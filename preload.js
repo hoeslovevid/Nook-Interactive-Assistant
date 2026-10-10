@@ -99,6 +99,12 @@ contextBridge.exposeInMainWorld("nook", {
   movePet(x, y) {
     ipcRenderer.send("nook:pet-move", { x, y });
   },
+  petMenu() { return ipcRenderer.invoke('nook:pet-menu'); },
+  petHome() { return ipcRenderer.invoke('nook:pet-home'); },
+  dropPet(x, y) { return ipcRenderer.invoke('nook:pet-drop', { x, y }); },
+  tourStep(step) { return ipcRenderer.invoke('nook:tour-step', step); },
+  phoneDraft(id, action) { return ipcRenderer.invoke('nook:phone-draft', { id, action }); },
+  update(action, value) { return ipcRenderer.invoke('nook:update', { action, value }); },
   openTerminal(sessionId) {
     return ipcRenderer.invoke("nook:open-terminal", sessionId);
   },

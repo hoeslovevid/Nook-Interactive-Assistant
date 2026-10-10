@@ -1,6 +1,9 @@
 let token = sessionStorage.getItem("nook-token") || "",
   timer,
   pendingId = "";
+let selectedId = "",
+  lastDetail = "",
+  phoneState = null;
 const select = (id) => document.getElementById(id),
   message = (text) => (select("message").textContent = text);
 async function request(route, options = {}) {
@@ -152,14 +155,28 @@ async function update() {
     select("status").textContent = state.status;
     select("connection").textContent =
       "Connected to your PC · " + new Date(state.updated).toLocaleTimeString();
+    phoneState = state;
     select("sessions").replaceChildren(
-      ...state.sessions.map((session) =>
-        card(
+      ...state.sessions.map((session) => {
+        const node = card(
           session.label || session.agent,
           (session.finished ? "Finished" : "Working") +
             (session.file ? " · " + session.file : ""),
-        ),
-      ),
+        );
+        const button = document.createElement("button");
+        button.className = "quiet";
+        button.textContent = state.detailsEnabled
+          ? "View session"
+          : "Prepare instruction";
+        button.hidden = !state.detailsEnabled && !state.instructionsEnabled;
+        button.addEventListener("click", () => {
+          selectedId = session.id;
+          lastDetail = "";
+          paintDetail();
+        });
+        node.append(button);
+        return node;
+      }),
     );
     select("activity").replaceChildren(
       ...state.activity.map((item) =>
@@ -167,6 +184,12 @@ async function update() {
       ),
     );
     approval(state.pending);
+    select("services").replaceChildren(
+      ...(state.services || []).map((item) => card(item.title, item.detail)),
+    );
+    select("services-title").hidden = !(state.services || []).length;
+    if (selectedId) await paintDetail();
+    paintFocus();
   } catch (error) {
     select("connection").textContent = "PC unreachable. Retrying…";
     message(error.message);
@@ -179,3 +202,94 @@ document.addEventListener("visibilitychange", () => {
   else clearTimeout(timer);
 });
 show();
+async function paintDetail() {
+  const session = phoneState?.sessions.find((item) => item.id === selectedId);
+  const enabled = phoneState?.detailsEnabled || phoneState?.instructionsEnabled;
+  select("session-detail").hidden = !session || !enabled;
+  if (!session || !enabled) {
+    selectedId = "";
+    return;
+  }
+  select("session-title").textContent = session.label || session.agent;
+  select("instruction-form").hidden = !phoneState.instructionsEnabled;
+  select("session-sharing").textContent = phoneState.detailsEnabled
+    ? "Shared from your PC · latest 30 steps"
+    : "Session details are off. Enable sharing in Companion & devices.";
+  if (!phoneState.detailsEnabled) {
+    select("session-steps").replaceChildren();
+    select("session-final").replaceChildren();
+    return;
+  }
+  const id = selectedId;
+  try {
+    const detail = await request("/session?id=" + encodeURIComponent(id));
+    if (selectedId !== id) return;
+    const signature = JSON.stringify(detail);
+    if (signature === lastDetail) return;
+    lastDetail = signature;
+    select("session-steps").replaceChildren(
+      ...detail.steps.map((step) => {
+        const row = card(
+          step.task || step.title || "Step",
+          new Date(step.time).toLocaleTimeString() +
+            (step.file ? " · " + step.file : ""),
+        );
+        const text = document.createElement("p");
+        text.textContent = step.detail;
+        row.append(text);
+        if (step.diff) {
+          const expand = document.createElement("details");
+          const title = document.createElement("summary");
+          title.textContent = `View diff · +${step.added} −${step.removed}`;
+          const code = document.createElement("pre");
+          code.textContent = step.diff;
+          expand.append(title, code);
+          row.append(expand);
+        }
+        return row;
+      }),
+    );
+    select("session-final").replaceChildren();
+    if (detail.final)
+      select("session-final").append(card("Completed answer", detail.final));
+  } catch (error) {
+    select("session-sharing").textContent = error.message;
+  }
+}
+select("session-close").addEventListener("click", () => {
+  selectedId = "";
+  select("session-detail").hidden = true;
+});
+select("instruction-form").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const button = event.target.querySelector("button");
+  button.disabled = true;
+  try {
+    await request("/instruction", {
+      method: "POST",
+      body: JSON.stringify({
+        id: selectedId,
+        text: select("instruction").value,
+      }),
+    });
+    select("instruction").value = "";
+    message("Draft sent. Review it in Nook on your PC.");
+  } catch (error) {
+    message(error.message);
+  } finally {
+    button.disabled = false;
+  }
+});
+function paintFocus() {
+  const focus = select("focus-mode").checked;
+  select('focus-empty').hidden = !focus || Boolean(phoneState?.pending);
+  for (const id of ["sessions", "activity", "services"])
+    select(id).hidden = focus;
+  for (const heading of select("dashboard").querySelectorAll(":scope > h2"))
+    heading.hidden =
+      focus ||
+      (heading.id === "services-title" && !(phoneState?.services || []).length);
+  if (focus) select("session-detail").hidden = true;
+  else if (selectedId) select("session-detail").hidden = false;
+}
+select("focus-mode").addEventListener("change", paintFocus);

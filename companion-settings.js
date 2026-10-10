@@ -37,6 +37,9 @@ for (const outfit of window.NookCompanion.OUTFITS) {
   featureSelect("wardrobe").append(button);
 }
 function paintCompanionSettings() {
+  featureSelect("phone-details").checked = companionConfig.phoneDetails;
+  featureSelect("phone-instructions").checked =
+    companionConfig.phoneInstructions;
   featureSelect("seasonal-outfit").checked = companionConfig.seasonal;
   featureSelect("music-enabled").checked = companionConfig.music;
   featureSelect("voice-service").value = companionConfig.voice;
@@ -117,7 +120,66 @@ window.nook.onState((state) => {
   companionConfig = window.NookCompanion.normalize(state.features?.companion);
   paintCompanionSettings();
   paintPhone(state.features?.phone || {});
+  paintDrafts(state.features?.drafts || []);
 });
+for (const [id, key] of [
+  ["phone-details", "phoneDetails"],
+  ["phone-instructions", "phoneInstructions"],
+])
+  featureSelect(id).addEventListener("change", (event) =>
+    saveCompanion({ [key]: event.target.checked }),
+  );
+let draftsSignature = "";
+function paintDrafts(drafts) {
+  const signature = JSON.stringify(drafts);
+  if (signature === draftsSignature) return;
+  draftsSignature = signature;
+  const box = featureSelect("phone-drafts");
+  box.replaceChildren();
+  if (!drafts.length) {
+    box.textContent =
+      "No drafts waiting. Send one from a paired phone session.";
+    return;
+  }
+  for (const draft of drafts) {
+    const card = document.createElement("article");
+    card.className = "draft-card";
+    const title = document.createElement("strong");
+    title.textContent = draft.label || draft.agent;
+    const copy = document.createElement("p");
+    copy.textContent = draft.text;
+    const actions = document.createElement("div");
+    actions.className = "settings-actions";
+    for (const [action, label] of [
+      ["copy", "Copy draft"],
+      ["terminal", "Copy & open terminal"],
+      ["dismiss", "Dismiss"],
+    ]) {
+      const button = document.createElement("button");
+      button.className = "ghost";
+      button.textContent = label;
+      button.addEventListener("click", async () => {
+        const result = await window.nook.phoneDraft(
+          draft.id,
+          action === "terminal" ? "copy" : action,
+        );
+        if (!result.ok) {
+          featureSelect("phone-note").textContent = result.error;
+          return;
+        }
+        if (action === "terminal")
+          await window.nook.openTerminal(draft.sessionId);
+        featureSelect("phone-note").textContent =
+          action === "dismiss"
+            ? "Draft dismissed."
+            : "Draft copied. Review and paste it into the session when ready.";
+      });
+      actions.append(button);
+    }
+    card.append(title, copy, actions);
+    box.append(card);
+  }
+}
 setInterval(async () => {
   if (document.hidden || featureSelect("page-companion").hidden) return;
   try {

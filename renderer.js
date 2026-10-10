@@ -58,13 +58,16 @@ let sending = false;
 let receiving = false;
 let celebrating = false;
 let celebrationTimer = 0;
+let beforeTour = null;
 const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 const dropCue = document.querySelector("#drop-cue");
 function updateCompanion() {
   const working = ((state && state.sessions) || []).some(s => !s.finished);
   const activeSession = ((state && state.sessions) || []).find(s => !s.finished);
+  if (state) window.NookCompanion.agentColor(seed, state, selectedSession);
   seed.dataset.mood = window.NookMotion.companionMood({task:activeSession && activeSession.task,pending:waiting(),drop:island.classList.contains("is-drop"),receiving,thinking:sending,celebrating,dancing:Boolean(state?.features?.music?.playing),working,hover:hovering||welcome,sleeping:!chatting&&!welcome&&!working});
   document.body.classList.toggle("is-thinking", sending);
+  if (state?.demoMood) seed.dataset.mood = state.demoMood;
 }
 function celebrateCompanion() {
   celebrating = true; updateCompanion(); window.clearTimeout(celebrationTimer);
@@ -111,7 +114,11 @@ function renderShell() {
 function measureOpen() {
   const top = document.querySelector(".top");
   const details = document.querySelector(".details");
-  const height = Math.ceil((top ? top.offsetHeight : 40) + (details ? details.scrollHeight : 120) + 12);
+  const style = details ? getComputedStyle(details) : null;
+  const content = details ? [...details.children].filter(node => !node.hidden).reduce((total, node) => total + node.offsetHeight, 0) : 120;
+  const padding = style ? parseFloat(style.paddingTop) + parseFloat(style.paddingBottom) : 0;
+  const gap = top ? parseFloat(getComputedStyle(top).marginBottom) || 0 : 0;
+  const height = Math.ceil((top ? top.offsetHeight : 40) + content + padding + gap + 12);
   return Math.max(180, Math.min(560, height));
 }
 
@@ -556,6 +563,7 @@ function paint() {
   keyStatus.textContent =
     chatError ||
     (local ? `${label} uses the server on this PC.` : keys[provider] ? `${label} key saved` : `Add the ${label} key in the Nook app.`);
+  if (state?.demo) keyStatus.textContent = 'Sample chat · replies stay on this PC · no API charges';
 
   const stick = transcript.scrollHeight - transcript.scrollTop - transcript.clientHeight < 24;
   transcript.replaceChildren();
@@ -921,9 +929,17 @@ function showWelcome() {
 reducedMotion.addEventListener("change", () => renderShell());
 window.nook.onWelcome(showWelcome);
 window.nook.onState((next) => {
+  const wasDemo = Boolean(state?.demo);
+  if (next.demo && !wasDemo) beforeTour = { provider, pinned, held, expanded, welcome, tucked, card, selectedSession };
   state = next;
+  if (next.demo) { pinned = true; held = true; welcome = false; tucked = false; if (next.demoStep === 4) provider = 'chatgpt'; showCard(next.demoStep === 4 ? 'chat' : 'session'); }
+  else if (wasDemo && beforeTour) {
+    provider = beforeTour.provider; pinned = beforeTour.pinned; held = beforeTour.held; expanded = beforeTour.expanded; welcome = beforeTour.welcome; tucked = beforeTour.tucked; selectedSession = beforeTour.selectedSession;
+    showCard(beforeTour.card); beforeTour = null;
+  }
   paint();
 });
+seed.addEventListener('contextmenu', event => { event.preventDefault(); window.nook.petMenu(); });
 window.nook.onAttention(() => {
   attention = true;
   welcome = false;

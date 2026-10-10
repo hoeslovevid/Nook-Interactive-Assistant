@@ -1,6 +1,7 @@
 const {
   app,
   desktopCapturer,
+  dialog,
   clipboard,
   BrowserWindow,
   globalShortcut,
@@ -55,6 +56,13 @@ const { pluginSource, ampSource, hermesManifest } = require("./lib/plugins");
 const { takeSseEvents, deltaText } = require("./lib/stream");
 
 const { installFeatures } = require("./lib/features");
+const { demoState, STEPS: TOUR_STEPS } = require('./lib/demo');
+const { timelineEntry } = require('./lib/session-detail');
+const { windowAtPoint } = require('./lib/native');
+const { createUpdateController } = require('./lib/updates');
+let updateKit = null;
+let demoStep = 0;
+let demoAnswered = false;
 let featureKit = null;
 const { springProgress } = require("./lib/motion");
 const GUTTER_X = 22;
@@ -87,7 +95,7 @@ let pet = null;
 let petFollow = false;
 let petTimer = null;
 let demoOn = false;
-let demoSnapshot = null;
+let demoChat = [];
 let servicePills = [];
 let usagePills = [];
 let github = null;
@@ -362,6 +370,7 @@ function refreshTray() {
     Menu.buildFromTemplate([
       { label: "Open Nook", click: openApp },
       { label: "Show the notch", click: showNook },
+      { label: 'Check for updates', click: () => { navigateSettings('updates'); updateKit?.check(); } },
       {
         label: "Weekly recap",
         click: () => {
@@ -861,8 +870,8 @@ function readPrefs() {
     hideProject: Boolean(saved.hideProject),
     mainTool: ["vscode", "cursor", "codex", "antigravity"].includes(saved.mainTool) ? saved.mainTool : "",
     pills: Array.isArray(saved.pills) ? saved.pills.filter((name) => PILL_CHOICES.includes(name)).slice(0, 4) : [],
-    petX: Number.isFinite(Number(saved.petX)) ? Number(saved.petX) : null,
-    petY: Number.isFinite(Number(saved.petY)) ? Number(saved.petY) : null,
+    petX: saved.petX != null && Number.isFinite(Number(saved.petX)) ? Number(saved.petX) : null,
+    petY: saved.petY != null && Number.isFinite(Number(saved.petY)) ? Number(saved.petY) : null,
     recapWeek: typeof saved.recapWeek === "string" ? saved.recapWeek : "",
     displayMode: saved.displayMode === "main" || saved.displayMode === "screen" ? saved.displayMode : "follow",
     displayId: typeof saved.displayId === "string" || typeof saved.displayId === "number" ? String(saved.displayId) : "",
@@ -961,9 +970,6 @@ function historyPath() {
 }
 
 function appendHistory(entry) {
-  if (demoOn) {
-    return;
-  }
   try {
     fs.mkdirSync(path.dirname(historyPath()), { recursive: true });
     fs.appendFileSync(historyPath(), `${JSON.stringify(entry)}\n`, "utf8");
@@ -1296,7 +1302,7 @@ function togglePet() {
     pet.loadFile(path.join(__dirname, "pet.html"));
     pet.setAlwaysOnTop(true, "screen-saver");
   }
-  pet.setPosition(x, y);
+  placePet(x, y);
   pet.showInactive();
 }
 
@@ -1304,120 +1310,49 @@ function placePet(x, y) {
   if (!pet || pet.isDestroyed()) {
     return;
   }
-  pet.setPosition(Math.round(x), Math.round(y));
-  writePrefs({ petX: Math.round(x), petY: Math.round(y) });
+  const area = screen.getDisplayNearestPoint({x: Math.round(x), y: Math.round(y)}).workArea;
+  pet.setPosition(Math.max(area.x, Math.min(area.x + area.width - 144, Math.round(x))), Math.max(area.y, Math.min(area.y + area.height - 144, Math.round(y))));
 }
 
+let petFlight = null;
+function flyPetTo(home, done = () => {}) {
+  if (petFlight) { clearInterval(petFlight); petFlight = null; }
+  if (!pet || pet.isDestroyed()) return;
+  const start = pet.getBounds();
+  if (motionReduced) { pet.setPosition(Math.round(home.x), Math.round(home.y)); done(); return; }
+  const began = Date.now();
+  petFlight = setInterval(() => {
+    if (!pet || pet.isDestroyed()) { clearInterval(petFlight); petFlight = null; return; }
+    const elapsed = Math.min(1, (Date.now() - began) / 420);
+    const progress = springProgress(elapsed);
+    pet.setPosition(Math.round(start.x + (home.x - start.x) * progress), Math.round(start.y + (home.y - start.y) * progress));
+    if (elapsed === 1) { clearInterval(petFlight); petFlight = null; done(); }
+  }, 16);
+}
 function sendPetHome() {
-  if (!pet || pet.isDestroyed() || !pet.isVisible()) {
-    return;
-  }
+  if (!pet || pet.isDestroyed() || !pet.isVisible()) return;
   const spot = pet.getBounds();
-  petHome = { x: spot.x, y: spot.y };
-  const home = win && !win.isDestroyed() ? win.getBounds() : { x: spot.x, y: 0 };
-  let step = 0;
-  const start = pet.getBounds();
-  const timer = setInterval(() => {
-    step += 1;
-    if (!pet || pet.isDestroyed()) {
-      clearInterval(timer);
-      return;
-    }
-    const t = Math.min(1, step / 12);
-    pet.setPosition(
-      Math.round(start.x + (home.x - start.x) * t),
-      Math.round(start.y + (home.y - start.y) * t),
-    );
-    if (t === 1) {
-      clearInterval(timer);
-    }
-  }, 24);
+  if (!petHome) petHome = {x: spot.x, y: spot.y};
+  const home = win && !win.isDestroyed() ? win.getBounds() : {x: spot.x, y: 0};
+  flyPetTo(home);
 }
-
 function sendPetBack() {
-  if (!pet || pet.isDestroyed() || !petHome) {
-    return;
-  }
-  const home = petHome;
-  petHome = null;
-  const start = pet.getBounds();
+  if (!pet || pet.isDestroyed() || !petHome) return;
+  const home = petHome; petHome = null;
   pet.showInactive();
-  let step = 0;
-  const timer = setInterval(() => {
-    step += 1;
-    if (!pet || pet.isDestroyed()) {
-      clearInterval(timer);
-      return;
-    }
-    const t = Math.min(1, step / 12);
-    pet.setPosition(
-      Math.round(start.x + (home.x - start.x) * t),
-      Math.round(start.y + (home.y - start.y) * t),
-    );
-    if (t === 1) {
-      clearInterval(timer);
-      writePrefs({ petX: home.x, petY: home.y });
-    }
-  }, 24);
+  flyPetTo(home, () => writePrefs({petX: home.x, petY: home.y}));
 }
 
 function startDemo() {
-  if (demoOn) {
-    return;
-  }
-  demoSnapshot = {
-    pending: pending.splice(0, pending.length),
-    activity: activity.splice(0, activity.length),
-    sessions: [...sessions.entries()],
-  };
-  sessions.clear();
   demoOn = true;
-  rememberActivity({
-    id: "demo-turn",
-    agent: "claude",
-    payload: {
-      hook_event_name: "PostToolUse",
-      session_id: "demo",
-      tool_name: "Edit",
-      tool_input: {
-        file_path: "src/app.js",
-        old_string: "const ready = false;",
-        new_string: "const ready = true;\n",
-      },
-    },
-  });
-  rememberApproval({
-    id: "demo-ask",
-    agent: "claude",
-    payload: {
-      hook_event_name: "PermissionRequest",
-      session_id: "demo",
-      tool_name: "AskUserQuestion",
-      tool_input: {
-        questions: [
-          {
-            question: "Which check should run?",
-            options: [{ label: "Unit" }, { label: "End to end" }],
-          },
-        ],
-      },
-    },
-  });
+  demoStep = 0;
+  demoChat = [];
+  demoAnswered = false;
+  broadcast();
+  showNook();
 }
-
 function stopDemo() {
-  if (!demoOn || !demoSnapshot) {
-    return;
-  }
-  pending.splice(0, pending.length, ...demoSnapshot.pending);
-  activity.splice(0, activity.length, ...demoSnapshot.activity);
-  sessions.clear();
-  for (const [key, value] of demoSnapshot.sessions) {
-    sessions.set(key, value);
-  }
   demoOn = false;
-  demoSnapshot = null;
-  celebrate = 0;
   broadcast();
 }
 
@@ -1438,7 +1373,7 @@ function currentState() {
   if (!first && !latest && hooks.claude && hooks.cursor) {
     hint = "Sessions will check in here.";
   }
-  return {
+  const result = {
     status,
     hint,
     pending: first
@@ -1475,11 +1410,16 @@ function currentState() {
     prefs: readPrefs(),
     demo: demoOn,
     features: featureKit ? featureKit.snapshot() : {},
+    updates: updateKit ? updateKit.snapshot() : null,
     models: readModels(),
     look: readLook(),
     messages: messages.slice(-12),
     chatBusy: chatBusyProviders.size > 0,
   };
+  if (!demoOn) return result;
+  const sample = demoState(result, demoStep, demoAnswered);
+  if (demoChat.length) sample.messages = demoChat;
+  return sample;
 }
 
 function broadcast() {
@@ -1540,6 +1480,7 @@ function rememberSession(agent, payload, pid) {
     pid: Number(pid) || (previous && previous.pid) || 0,
     ...turn,
     final,
+    steps: [...(previous?.steps || []), timelineEntry(turn, turn.finished ? final : '')].slice(-30),
   });
   while (sessions.size > 6) {
     const oldest = sessions.keys().next().value;
@@ -1585,6 +1526,7 @@ function rememberActivity(msg) {
 }
 
 function rememberApproval(msg) {
+  if (demoOn) stopDemo();
   lastTouch = Date.now();
   const summary = present(msg.agent, msg.payload || {}, true);
   rememberSession(msg.agent, msg.payload || {}, msg.pid);
@@ -1671,7 +1613,15 @@ app.on("second-instance", () => {
 
 if (gotLock) {
   app.whenReady().then(async () => {
-    featureKit = installFeatures({ app, ipcMain, desktopCapturer, clipboard, getState: currentState, readVoiceKey: () => readKeys().chatgpt, decide: handleDecision, broadcast, setAttachment: (file) => { attachment = file; } });
+    featureKit = installFeatures({ app, ipcMain, desktopCapturer, clipboard, getState: currentState, readVoiceKey: () => readKeys().chatgpt, decide: handleDecision, broadcast, setAttachment: (file) => { attachment = file; }, onDraft: () => navigateSettings('companion') });
+    updateKit = createUpdateController({app, updater: app.isPackaged && process.platform === 'win32' ? require('electron-updater').autoUpdater : null, onChange: broadcast,
+      async confirmRestart() {
+        const busy = pending.length || chatBusyProviders.size || [...sessions.values()].some(session => !session.finished);
+        if (!busy) return true;
+        const result = await dialog.showMessageBox({type:'question', title:'Restart Nook to update?', message:'Some agents are still working or waiting for you.', detail:'Restarting disconnects Nook briefly. Your agents stay in their terminals. Finish any waiting approval first, or restart when you are ready.', buttons:['Restart and install','Keep working'], defaultId:1, cancelId:1});
+        return result.response === 0;
+      }
+    });
     relay = createRelay(PIPE, {
       onActivity: rememberActivity,
       onApproval: rememberApproval,
@@ -1811,6 +1761,11 @@ ipcMain.handle("nook:clear-key", (_event, provider) => {
 });
 
 function handleDecision(choice) {
+  if (demoOn && choice?.id === `demo-request-${demoStep}`) {
+    demoAnswered = true;
+    broadcast();
+    return true;
+  }
   if (!choice || typeof choice.id !== "string" || (!relay && !choice.id.startsWith("demo-"))) {
     return false;
   }
@@ -1958,6 +1913,13 @@ ipcMain.handle("nook:chat", async (_event, input) => {
   }
   if (!text) {
     return { ok: false, error: "Write a message first." };
+  }
+  if (demoOn) {
+    const answer = 'This is a sample reply. Connect a model to start a real conversation. You can ask about code, files, or a screenshot.';
+    demoChat.push({ role: 'user', provider, content: text.slice(0, 4000) }, { role: 'assistant', provider, content: answer });
+    demoChat = demoChat.slice(-12);
+    broadcast();
+    return { ok: true, reply: answer };
   }
   const spec = PROVIDERS[provider];
   const key = readKeys()[provider];
@@ -2201,7 +2163,63 @@ ipcMain.handle("nook:toggle-pet", () => {
   return { ok: true };
 });
 
+function navigateSettings(page) {
+  openApp();
+  const send = () => appWin?.webContents.send('nook:command', 'page-' + page);
+  if (appWin?.webContents.isLoading()) appWin.webContents.once('did-finish-load', send);
+  else send();
+}
+ipcMain.handle('nook:tour-step', (_event, step) => {
+  if (!demoOn || !Number.isInteger(step) || step < 0 || step >= TOUR_STEPS.length) return { ok: false };
+  demoStep = step; demoAnswered = false; broadcast(); showNook(); return { ok: true };
+});
+ipcMain.handle('nook:update', (_event, input) => {
+  if (!updateKit) return {ok:false,message:'Updates are not ready yet.'};
+  if (input?.action === 'automatic') return updateKit.setAutomatic(input.value);
+  if (['check','download','install'].includes(input?.action)) return updateKit[input.action]();
+  return updateKit.snapshot();
+});
+ipcMain.handle('nook:pet-home', () => {
+  pet?.hide(); showNook(); win?.webContents.send('nook:welcome'); return { ok: true };
+});
+ipcMain.handle('nook:pet-menu', (event) => {
+  const target = BrowserWindow.fromWebContents(event.sender);
+  if (![win, pet].includes(target) || !featureKit) return;
+  const settings = featureKit.snapshot().companion;
+  const labels = { none: 'Original', cap: 'Day off', glasses: 'Bookworm', headphones: 'Headphones', scarf: 'Cozy scarf', winter: 'Winter' };
+  const menu = Menu.buildFromTemplate([
+    { label: 'Open chat', click: () => { showNook(); win.webContents.send('nook:open-chat'); } },
+    { label: 'Wardrobe', submenu: [...Object.entries(labels).map(([outfit, label]) => ({ label, type: 'radio', checked: !settings.seasonal && settings.outfit === outfit, click: () => featureKit.saveSettings({outfit, seasonal: false}) })), { label: 'Seasonal', type: 'radio', checked: settings.seasonal, click: () => featureKit.saveSettings({seasonal: true}) }] },
+    { label: readPrefs().muted ? 'Unmute sounds' : 'Mute sounds', click: () => { writePrefs({muted: !readPrefs().muted}); broadcast(); } },
+    { type: 'separator' },
+    { label: target === pet ? 'Send home' : 'Move to desktop', click: () => { if (target === pet) pet.hide(); else togglePet(); } },
+    { label: 'Companion settings', click: () => navigateSettings('companion') }
+  ]);
+  menu.popup({ window: target });
+});
+let petDropBusy = false;
+ipcMain.handle('nook:pet-drop', async (_event, point) => {
+  if (petDropBusy || !pet || !featureKit || !Number.isFinite(point?.x) || !Number.isFinite(point?.y)) return { ok: false };
+  const spot = pet.getBounds();
+  writePrefs({petX: spot.x, petY: spot.y});
+  const display = screen.getDisplayNearestPoint({x: Math.round(point.x), y: Math.round(point.y)});
+  if (point.y < display.bounds.y + 65 && Math.abs(point.x - (display.bounds.x + display.bounds.width / 2)) < 220) { pet.hide(); showNook(); return { ok: true, home: true }; }
+  petDropBusy = true;
+  try {
+    const physical = screen.dipToScreenPoint({x: Math.round(point.x), y: Math.round(point.y)});
+    const hit = await windowAtPoint(physical.x, physical.y, process.pid);
+    if (!hit.ok || !hit.handle) return { ok: true, moved: true };
+    const sources = await desktopCapturer.getSources({types: ['window'], thumbnailSize: {width: 0, height: 0}});
+    const source = sources.find(source => source.id.split(':')[1] === hit.handle && !/^Nook(?:$| ·)/.test(source.name));
+    if (!source) return { ok: true, moved: true };
+    const result = await featureKit.captureWindow(source.id);
+    if (result.ok) { showNook(); win.webContents.send('nook:open-chat'); }
+    return result;
+  } finally { petDropBusy = false; }
+});
+
 app.on("before-quit", () => {
+  updateKit?.stop();
   if (featureKit) featureKit.stop().catch(() => {});
   globalShortcut.unregisterAll();
   if (petTimer) {

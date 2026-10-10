@@ -5,6 +5,7 @@ const pages = {
   shortcuts: document.querySelector("#page-shortcuts"),
   week: document.querySelector("#page-week"),
   companion: document.querySelector("#page-companion"),
+  updates: document.querySelector('#page-updates'),
 };
 const navButtons = document.querySelectorAll(".nav");
 const lookForm = document.querySelector("#look-form");
@@ -415,7 +416,8 @@ document.querySelector("#open-sounds").addEventListener("click", () => {
 
 document.querySelector("#toggle-demo").addEventListener("click", async () => {
   const playing = document.querySelector("#toggle-demo").textContent.startsWith("Stop");
-  await window.nook.setDemo(!playing);
+  if (playing) await window.NookTour.finish();
+  else await window.NookTour.start();
 });
 
 document.querySelector("#send-out").addEventListener("click", () => {

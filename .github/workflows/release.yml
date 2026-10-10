@@ -30,6 +30,7 @@ jobs:
       - run: npm run dist
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
+      - run: node scripts/verify-release.cjs
       - name: Create checksum
         shell: pwsh
         run: |
@@ -42,6 +43,8 @@ jobs:
           name: Nook-Windows-installer
           path: |
             dist/Nook-Setup-*.exe
+            dist/Nook-Setup-*.exe.blockmap
+            dist/latest.yml
             dist/SHA256SUMS.txt
           if-no-files-found: error
       - name: Publish release
@@ -52,9 +55,13 @@ jobs:
         run: |
           gh release view $env:GITHUB_REF_NAME *> $null
           if ($LASTEXITCODE -ne 0) {
-            gh release create $env:GITHUB_REF_NAME --verify-tag --title "Nook $env:GITHUB_REF_NAME" --notes-file .github/RELEASE_NOTES.md
+            gh release create $env:GITHUB_REF_NAME --draft --verify-tag --title "Nook $env:GITHUB_REF_NAME" --notes-file .github/RELEASE_NOTES.md
             if ($LASTEXITCODE -ne 0) { throw "Unable to create release" }
           }
-          $assets = @(Get-ChildItem dist/Nook-Setup-*.exe | ForEach-Object { $_.FullName }) + @("dist/SHA256SUMS.txt")
+          $assets = @(Get-ChildItem dist/Nook-Setup-*.exe,dist/Nook-Setup-*.exe.blockmap | ForEach-Object { $_.FullName }) + @("dist/SHA256SUMS.txt")
           gh release upload $env:GITHUB_REF_NAME @assets --clobber
           if ($LASTEXITCODE -ne 0) { throw "Unable to upload release assets" }
+          gh release upload $env:GITHUB_REF_NAME dist/latest.yml --clobber
+          if ($LASTEXITCODE -ne 0) { throw "Unable to upload update metadata" }
+          gh release edit $env:GITHUB_REF_NAME --draft=false --latest
+          if ($LASTEXITCODE -ne 0) { throw "Unable to publish release" }

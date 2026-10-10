@@ -569,3 +569,28 @@ main,.details,.transcript { scrollbar-gutter:stable; }
 .phone-setup #phone-copy { margin-top:12px; }
 #page-companion .settings-group { margin-top:16px; }
 @media(prefers-reduced-motion:reduce) { *,*::before,*::after { animation:none!important;transition:none!important; } }
+[hidden] { display: none !important; }
+.tour-dialog { width: min(460px, calc(100vw - 48px)); max-height: calc(100vh - 48px); padding: 30px; border: 1px solid #4a536a; border-radius: 28px; background: linear-gradient(155deg, #2b3143, #171c29); color: #edf0f6; box-shadow: 0 28px 90px #0009; }
+.tour-dialog::backdrop { background: #090d18b3; backdrop-filter: blur(8px); }
+.tour-dialog h2 { font-size: 26px; letter-spacing: -.6px; margin: 12px 0; }
+#tour-copy { color: #bac4d8; line-height: 1.7; min-height: 82px; }
+.tour-hero { display: flex; align-items: center; gap: 18px; }
+.tour-hero canvas { width: 86px; height: 86px; }
+.tour-dots { display: flex; gap: 7px; margin: 22px 0; }
+.tour-dots span { width: 7px; height: 7px; border-radius: 20px; background: #556079; transition: width .2s, background .2s; }
+.tour-dots .is-current { width: 28px; background: #b7c6ff; }
+.draft-card { padding: 18px; margin: 12px 0; border: 1px solid #3a4258; border-radius: 18px; background: #ffffff04; }
+.draft-card p { white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.6; }
+@media (prefers-reduced-motion: no-preference) {
+  .tour-dialog[open] { animation: tour-in .28s cubic-bezier(.2,.8,.2,1); }
+  main > section.is-entering { animation: page-arrive .26s cubic-bezier(.2,.8,.2,1); }
+  .draft-card { animation: page-arrive .25s ease-out; }
+}
+@keyframes tour-in { from { opacity: 0; transform: translateY(12px) scale(.96); } to { opacity: 1; transform: none; } }
+@keyframes page-arrive { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+.update-card { padding: 26px; background: linear-gradient(135deg,#242c41,#171c28); }
+.update-card h2 { margin-top: 18px; line-height: 1.6; }
+#update-progress { width: 100%; height: 8px; margin: 16px 0; accent-color: #b7c6ff; border: 0; border-radius: 12px; overflow: hidden; }
+#update-progress::-webkit-progress-bar { background: #343d54; }
+#update-progress::-webkit-progress-value { background: linear-gradient(90deg,#9aa7ef,#c8d5ff); }
+#update-badge { margin-left: auto; font-size: 10px; border-radius: 6px; padding: 3px 6px; background: #b7c6ff; color: #192032; }

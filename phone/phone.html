@@ -40,11 +40,44 @@
           <button id="logout" class="quiet">Disconnect</button>
         </div>
         <p id="connection">Updating…</p>
+        <label class="focus-toggle"
+          ><input id="focus-mode" type="checkbox" /> Focus on requests that need
+          me</label
+        >
         <section id="approval" hidden></section>
+        <p id="focus-empty" hidden>Nothing needs your attention right now.</p>
         <h2>Sessions</h2>
         <div id="sessions"></div>
+        <section id="session-detail" hidden>
+          <div class="heading">
+            <h2 id="session-title">Session</h2>
+            <button type="button" id="session-close" class="quiet">
+              Close
+            </button>
+          </div>
+          <p id="session-sharing" class="sub"></p>
+          <div id="session-steps"></div>
+          <div id="session-final"></div>
+          <form id="instruction-form" hidden>
+            <label for="instruction">Prepare the next instruction</label
+            ><textarea
+              id="instruction"
+              maxlength="4000"
+              rows="4"
+              placeholder="What should happen next?"
+              required
+            ></textarea>
+            <p class="sub">
+              Arrives as a draft on your PC. Review it there before sending to
+              the agent.
+            </p>
+            <button>Send draft to PC</button>
+          </form>
+        </section>
         <h2>Recent activity</h2>
         <div id="activity"></div>
+        <h2 id="services-title">Services</h2>
+        <div id="services"></div>
       </section>
       <p id="message" role="status"></p>
     </main>

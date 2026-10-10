@@ -148,3 +148,100 @@ input:focus-visible {
     transform: scale(0.97);
   }
 }
+textarea {
+  box-sizing: border-box;
+  width: 100%;
+  resize: vertical;
+  font: inherit;
+  color: #eef1f8;
+  border: 1px solid #414b63;
+  border-radius: 14px;
+  background: #1b2130;
+  padding: 14px;
+  margin-top: 10px;
+}
+.focus-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: #c4cce0;
+  margin: 16px 0;
+}
+.focus-toggle input {
+  width: auto;
+  margin: 0;
+}
+#session-detail {
+  padding: 18px;
+  border: 1px solid #46516e;
+  border-radius: 24px;
+  margin: 18px 0;
+  background: linear-gradient(145deg, #252d40, #171d2a);
+}
+#session-detail .card {
+  padding: 14px;
+  background: #ffffff05;
+}
+#session-detail p {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 13px;
+  line-height: 1.6;
+}
+#session-final small {
+  white-space: pre-wrap;
+  font-size: 13px;
+}
+#session-steps pre {
+  max-height: 280px;
+  overflow: auto;
+  white-space: pre;
+  font:
+    12px/1.65 Consolas,
+    monospace;
+  color: #c9d5f2;
+}
+summary {
+  cursor: pointer;
+  color: #b7c6ff;
+  font-size: 12px;
+  padding: 8px 0;
+}
+#sessions .card {
+  position: relative;
+}
+#sessions .card button {
+  margin-top: 10px;
+}
+@media (prefers-reduced-motion: no-preference) {
+  #session-detail {
+    animation: detail-arrive 0.25s ease-out;
+  }
+}
+@keyframes detail-arrive {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  border-radius: 12px;
+  background: #687796;
+}
+textarea:focus-visible,
+summary:focus-visible {
+  outline: 2px solid #b7c6ff;
+  outline-offset: 3px;
+}
