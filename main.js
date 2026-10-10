@@ -15,7 +15,7 @@ const fs = require("fs");
 const os = require("os");
 const path = require("path");
 const { present, decisionOutput, describeTurn } = require("./lib/decisions");
-const { buildChatRequest, readChatReply, PROVIDERS, cleanModel, cleanLocalUrl, cleanRemoteUrl } = require("./lib/chat");
+const { buildModelsRequest, buildChatRequest, readChatReply, PROVIDERS, cleanModel, cleanLocalUrl, cleanRemoteUrl } = require("./lib/chat");
 const { textDiff } = require("./lib/diff");
 const {
   mergeClaudeSettings,
@@ -52,6 +52,7 @@ const { LANGUAGES, translate } = require("./lib/i18n");
 const { pluginSource, ampSource, hermesManifest } = require("./lib/plugins");
 const { takeSseEvents, deltaText } = require("./lib/stream");
 
+const { springProgress } = require("./lib/motion");
 const GUTTER_X = 22;
 const GUTTER_BOTTOM = 28;
 const SIZES = {
@@ -66,6 +67,7 @@ let appWin = null;
 let tray = null;
 let mode = "asleep";
 let anim = null;
+let motionReduced = false;
 let boundsNow = null;
 let relay = null;
 const activity = [];
@@ -191,13 +193,13 @@ function animateTo(nextMode) {
   if (anim) {
     clearInterval(anim);
   }
+  clipIsland("open");
+  if (motionReduced) { anim = null; applyBounds(to); clipIsland(nextMode); return; }
   const started = Date.now();
-  const duration = 340;
+  const duration = nextMode === "asleep" ? 280 : 460;
   anim = setInterval(() => {
     const t = Math.min(1, (Date.now() - started) / duration);
-    const c1 = 1.12;
-    const c3 = c1 + 1;
-    const eased = 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2);
+    const eased = nextMode === "asleep" ? 1 - Math.pow(1 - t, 3) : springProgress(t);
     applyBounds({
       x: from.x + (to.x - from.x) * eased,
       y: from.y,
@@ -327,6 +329,7 @@ function openApp() {
   appWin.webContents.on("did-finish-load", () => {
     broadcast();
     applyLook(appWin);
+  applyLook(pet);
     applyColors(appWin);
     if (openWeek) {
       appWin.webContents.send("nook:show-week");
@@ -1282,6 +1285,7 @@ function togglePet() {
         sandbox: true,
       },
     });
+    pet.webContents.on("did-finish-load", () => { applyLook(pet); pet.webContents.send("nook:state", currentState()); });
     pet.loadFile(path.join(__dirname, "pet.html"));
     pet.setAlwaysOnTop(true, "screen-saver");
   }
@@ -1471,7 +1475,7 @@ function currentState() {
 
 function broadcast() {
   const state = currentState();
-  for (const target of [win, appWin]) {
+  for (const target of [win, appWin, pet]) {
     if (target && !target.isDestroyed()) {
       target.webContents.send("nook:state", state);
     }
@@ -1746,7 +1750,9 @@ if (gotLock) {
   });
 }
 
-ipcMain.on("nook:set-open", (_event, open, height) => {
+ipcMain.on("nook:set-open", (_event, open, height, reducedMotion) => {
+  motionReduced = Boolean(reducedMotion);
+  if (motionReduced && anim) { clearInterval(anim); anim = null; applyBounds(targetBounds(mode)); clipIsland(mode); }
   const next = open === "peek" || open === "open" || open === "asleep" ? open : open ? "open" : "asleep";
   const requested = Number(height);
   let resized = false;
@@ -2137,17 +2143,12 @@ ipcMain.handle("nook:save-recap", () => {
 
 ipcMain.handle("nook:models", async (_event, provider) => {
   const spec = PROVIDERS[provider];
-  if (!spec || spec.auth === "anthropic") {
+  if (!spec) {
     return [];
   }
   const models = readModels();
   const base = provider === "ollama" ? models.ollamaUrl : provider === "lmstudio" ? models.lmstudioUrl : provider === "custom" ? models.customUrl : spec.url;
-  const url = String(base).replace(/\/chat\/completions\/?$/, "/models");
-  const headers = {};
-  const key = readKeys()[provider];
-  if (key) {
-    headers.Authorization = `Bearer ${key}`;
-  }
+  const { url, headers } = buildModelsRequest(provider, { url: base }, readKeys()[provider]);
   try {
     const response = await fetch(url, { headers, signal: AbortSignal.timeout(8000) });
     if (!response.ok) {
@@ -2158,7 +2159,7 @@ ipcMain.handle("nook:models", async (_event, provider) => {
     return list
       .map((item) => (item && (item.id || item.name)) || "")
       .filter((name) => typeof name === "string" && name)
-      .slice(0, 40);
+      .slice(0, 500);
   } catch (_error) {
     return [];
   }

@@ -26,7 +26,7 @@ const extrasBox = document.querySelector("#extras");
 const diffBox = document.querySelector("#diff");
 const fileChip = document.querySelector("#file-chip");
 
-const PROVIDER_NAMES = ["chatgpt", "gemini", "claude", "openrouter", "ollama", "lmstudio", "custom"];
+const PROVIDER_NAMES = ["chatgpt", "gemini", "claude", "openrouter", "deepseek", "mistral", "groq", "xai", "ollama", "lmstudio", "custom"];
 
 let hovering = false;
 let pinned = false;
@@ -53,6 +53,22 @@ let tucked = false;
 let pillIndex = 0;
 let leaveTimer = 0;
 let holdUntil = 0;
+let lastShellMode = "";
+let sending = false;
+let receiving = false;
+let celebrating = false;
+let celebrationTimer = 0;
+const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+const dropCue = document.querySelector("#drop-cue");
+function updateCompanion() {
+  const working = ((state && state.sessions) || []).some(s => !s.finished);
+  seed.dataset.mood = window.NookMotion.companionMood({pending:waiting(),drop:island.classList.contains("is-drop"),receiving,thinking:sending,celebrating,working,hover:hovering||welcome,sleeping:!chatting&&!welcome&&!working});
+  document.body.classList.toggle("is-thinking", sending);
+}
+function celebrateCompanion() {
+  celebrating = true; updateCompanion(); window.clearTimeout(celebrationTimer);
+  celebrationTimer = window.setTimeout(() => { celebrating = false; seed.classList.remove("is-happy", "is-hop"); updateCompanion(); }, 1200);
+}
 
 function waiting() {
   return Boolean(state && state.pending && !tucked);
@@ -79,18 +95,16 @@ function renderShell() {
   pinButton.classList.toggle("is-on", pinned);
   const strings = (state && state.strings) || {};
   pinButton.setAttribute("aria-label", pinned ? strings.unpin || "Unpin" : strings.pin || "Pin open");
-  if (next === "open") {
-    window.clearTimeout(settleTimer);
-    settleTimer = window.setTimeout(() => {
-      document.body.classList.add("is-settled");
-    }, 240);
-  } else {
+  if (next !== lastShellMode) {
     window.clearTimeout(settleTimer);
     document.body.classList.remove("is-settled");
+    if (next === "open") settleTimer = window.setTimeout(() => document.body.classList.add("is-settled"), reducedMotion.matches ? 0 : 130);
+    lastShellMode = next;
   }
+  updateCompanion();
   seed.classList.toggle("is-hover", hovering);
   const height = next === "open" ? measureOpen() : 0;
-  window.nook.setOpen(next, height);
+  window.nook.setOpen(next, height, reducedMotion.matches);
 }
 
 function measureOpen() {
@@ -142,6 +156,12 @@ function showCard(next) {
 
 function layoutCards() {
   const showingApproval = Boolean(state && state.pending && !tucked);
+  const nextCard = showingApproval ? "approval" : card;
+  if (island.dataset.card !== nextCard) {
+    island.dataset.card = nextCard;
+    const entering = {approval:cardApproval,chat:cardChat,diff:cardDiff,session:cardSession}[nextCard];
+    pulse(entering, "card-enter");
+  }
   cardApproval.hidden = !showingApproval;
   cardDiff.hidden = showingApproval || card !== "diff";
   cardChat.hidden = showingApproval || card !== "chat";
@@ -259,7 +279,7 @@ function paintSessions() {
   for (const session of (state && state.sessions) || []) {
     const button = document.createElement("button");
     button.type = "button";
-    button.className = "pill";
+    button.className = session.id === selectedSession ? "pill is-selected" : "pill";
     button.dataset.agent = session.agent || "";
     const fileName = session.file ? session.file.split(/[/\\]/).pop() : "";
     const counts = session.added || session.removed ? ` +${session.added} −${session.removed}` : "";
@@ -267,6 +287,7 @@ function paintSessions() {
     button.addEventListener("click", (event) => {
       event.stopPropagation();
       selectedSession = session.id;
+      for (const pill of sessionsBox.children) pill.classList.toggle("is-selected", pill === button);
       diffBox.hidden = false;
       diffBox.textContent = session.diff || session.detail || "No diff yet.";
       document.querySelector("#open-diff").hidden = !session.file;
@@ -293,7 +314,8 @@ function paintProviders(models) {
     openrouter: "OpenRouter",
     ollama: "Ollama",
     lmstudio: "LM Studio",
-    custom: "Local server",
+    deepseek: "DeepSeek", mistral: "Mistral", groq: "Groq", xai: "Grok",
+    custom: "Custom endpoint",
   };
   for (const name of PROVIDER_NAMES) {
     const option = document.createElement("option");
@@ -479,6 +501,7 @@ function paint() {
     seenCelebrate = state.celebrate;
     seed.classList.remove("is-squish");
     pulse(seed, "is-happy");
+    celebrateCompanion();
     playSound("finish");
   }
   if (attention && !wasAttention) {
@@ -541,6 +564,8 @@ function paint() {
     }
     const bubble = document.createElement("div");
     bubble.className = "bubble";
+    bubble.dataset.role = message.role;
+    transcript.appendChild(bubble);
     const who = document.createElement("strong");
     who.textContent = message.role === "user" ? "You" : label;
     bubble.appendChild(who);
@@ -567,6 +592,12 @@ function paint() {
         bubble.appendChild(line);
       }
     }
+  }
+  if (!transcript.children.length) {
+    const empty = document.createElement("div"); empty.className = "chat-empty";
+    const title = document.createElement("strong"); title.textContent = "A little space to think.";
+    const copy = document.createElement("p"); copy.textContent = "Ask a question, work through an idea, or drop a file for context.";
+    empty.append(title, copy); transcript.appendChild(empty);
   }
   if (stick) {
     transcript.scrollTop = transcript.scrollHeight;
@@ -642,40 +673,27 @@ island.addEventListener("click", (event) => {
   renderShell();
 });
 
-island.addEventListener("dragover", (event) => {
-  event.preventDefault();
-  island.classList.add("is-drop");
-  expanded = true;
-  renderShell();
-});
-
-island.addEventListener("dragleave", () => {
-  island.classList.remove("is-drop");
-});
-
-island.addEventListener("drop", async (event) => {
-  event.preventDefault();
-  island.classList.remove("is-drop");
+let dragDepth = 0;
+function setDrop(active) { island.classList.toggle("is-drop", active); dropCue.hidden = !active; updateCompanion(); }
+island.addEventListener("dragenter", event => { if (!Array.from(event.dataTransfer.types).includes("Files")) return; event.preventDefault(); dragDepth++; setDrop(true); expanded = true; renderShell(); });
+island.addEventListener("dragover", event => { if (!Array.from(event.dataTransfer.types).includes("Files")) return; event.preventDefault(); event.dataTransfer.dropEffect = "copy"; setDrop(true); });
+island.addEventListener("dragleave", () => { dragDepth = Math.max(0, dragDepth - 1); if (!dragDepth) setDrop(false); });
+island.addEventListener("drop", async event => {
+  event.preventDefault(); dragDepth = 0; setDrop(false);
   const file = event.dataTransfer.files && event.dataTransfer.files[0];
-  const filePath = file && file.path;
-  if (!filePath) {
-    keyStatus.textContent = "Drop a file from Explorer.";
-    return;
-  }
-  const attached = await window.nook.attachPath(filePath);
-  if (!attached || !attached.ok) {
-    keyStatus.textContent = (attached && attached.error) || "Drop a file from Explorer.";
-    return;
-  }
-  seed.classList.add("is-hold");
-  peekLine.textContent = attached.name;
-  expanded = true;
-  renderShell();
-  window.setTimeout(() => {
-    showCard("chat");
-    renderShell();
-  }, 700);
+  showCard("chat"); expanded = true;
+  receiving = true; renderShell();
+  try {
+    const filePath = file && window.nook.filePath(file);
+    if (!filePath) throw new Error("Drop a file from Explorer.");
+    const attached = await window.nook.attachPath(filePath);
+    if (!attached || !attached.ok) throw new Error((attached && attached.error) || "Could not attach this file.");
+    fileChip.textContent = attached.name; fileChip.hidden = false; pulse(fileChip, "is-attached");
+    chatError = ""; keyStatus.textContent = "Ready to ask about " + attached.name;
+    window.setTimeout(() => { receiving = false; celebrateCompanion(); renderShell(); chatInput.focus(); }, reducedMotion.matches ? 0 : 450);
+  } catch (error) { receiving = false; chatError = error.message; keyStatus.textContent = chatError; renderShell(); }
 });
+window.addEventListener("dragend", () => { dragDepth = 0; setDrop(false); });
 
 island.addEventListener("mousemove", (event) => {
   const rect = island.getBoundingClientRect();
@@ -687,6 +705,7 @@ seed.addEventListener("click", (event) => {
   event.stopPropagation();
   seed.classList.remove("is-hop");
   pulse(seed, "is-squish");
+  window.setTimeout(() => seed.classList.remove("is-squish"), 450);
 });
 
 seed.addEventListener("mouseenter", () => {
@@ -730,6 +749,8 @@ document.querySelector("#diff-back").addEventListener("click", (event) => {
   showCard("session");
 });
 
+document.querySelector("#chat-settings").addEventListener("click", () => window.nook.openApp());
+document.querySelector("#chat-back").addEventListener("click", () => { showCard("session"); renderShell(); });
 providerSelect.addEventListener("change", () => {
   provider = providerSelect.value;
   chatError = "";
@@ -821,14 +842,17 @@ chatInput.addEventListener("blur", () => {
 
 chatForm.addEventListener("submit", async (event) => {
   event.preventDefault();
-  const text = chatInput.value;
-  chatInput.value = "";
-  chatError = "";
-  const result = await window.nook.sendChat(provider, text);
-  if (!result.ok && result.error) {
-    chatError = result.error;
-    paint();
-  }
+  const text = chatInput.value.trim(); if (!text || sending) return;
+  const sendButton = chatForm.querySelector('button[type="submit"]');
+  sending = true; sendButton.disabled = true; sendButton.textContent = "Thinking…";
+  chatInput.value = ""; chatError = ""; renderShell();
+  try {
+    const result = await window.nook.sendChat(provider, text);
+    if (!result.ok) { chatError = result.error || "Could not send this message."; chatInput.value = text; }
+    else celebrateCompanion();
+  } catch (_) { chatError = "Could not connect. Please try again."; chatInput.value = text; }
+  finally { sending = false; sendButton.disabled = false; sendButton.textContent = "Send"; paint(); }
+
 });
 
 document.querySelector("#tuck").addEventListener("click", (event) => {
@@ -893,6 +917,7 @@ function showWelcome() {
   }, 2200);
 }
 
+reducedMotion.addEventListener("change", () => renderShell());
 window.nook.onWelcome(showWelcome);
 window.nook.onState((next) => {
   state = next;

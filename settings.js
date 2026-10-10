@@ -53,18 +53,20 @@ function paintPreview(next) {
     "d",
     `M${left} 0 H${right} V${bottom} Q${right} ${bottom + curve} ${right - curve} ${bottom + curve} H${left + curve} Q${left} ${bottom + curve} ${left} ${bottom} Z`,
   );
-  document.querySelector("#fill-top").setAttribute("stop-color", next.islandTop || "#22252c");
-  document.querySelector("#fill-bottom").setAttribute("stop-color", next.islandBottom || "#14161a");
-  previewBar.setAttribute("fill", next.accent || "#dff25a");
-  previewSeed.setAttribute("fill", next.seed || "#f4f0e6");
-  document.querySelector("#preview-pupil").setAttribute("fill", next.accent || "#dff25a");
-  previewName.setAttribute("fill", next.paper || "#f4f0e6");
+  document.querySelector("#fill-top").setAttribute("stop-color", next.islandTop || "#20242e");
+  document.querySelector("#fill-bottom").setAttribute("stop-color", next.islandBottom || "#13161c");
+  previewBar.setAttribute("fill", next.accent || "#b7c6ff");
+  previewSeed.setAttribute("fill", next.seed || "#edf0f6");
+  document.querySelector("#preview-pupil").setAttribute("fill", next.accent || "#b7c6ff");
+  previewName.setAttribute("fill", next.paper || "#edf0f6");
   if (brandSeed && brandSeed.tagName === "CANVAS") {
-    brandSeed.dataset.body = next.seed || "#f4f0e6";
-    brandSeed.dataset.pupil = next.accent || "#dff25a";
+    brandSeed.dataset.body = next.seed || "#edf0f6";
+    brandSeed.dataset.pupil = next.accent || "#b7c6ff";
   } else if (brandSeed) {
-    brandSeed.setAttribute("fill", next.accent || "#dff25a");
+    brandSeed.setAttribute("fill", next.accent || "#b7c6ff");
   }
+  const companion = document.querySelector(".preview-companion");
+  companion.dataset.body = next.seed; companion.dataset.pupil = next.accent;
   radiusValue.textContent = String(radius);
 }
 
@@ -82,6 +84,10 @@ function fillLookForm(next) {
 }
 
 const SERVICE_CARDS = [
+  ["deepseek", "DeepSeek", "Chat with DeepSeek using your API key."],
+  ["mistral", "Mistral", "Chat with Mistral using your API key."],
+  ["groq", "Groq", "Fast inference for open models."],
+  ["xai", "Grok", "Chat with Grok through the xAI API."],
   ["openrouter", "OpenRouter", "A key for any model OpenRouter serves. Answers stream in."],
   ["github", "GitHub", "A token that can read your pull requests, reviews, and contribution grid."],
   ["vercel", "Vercel", "A token that can read the latest deployment."],
@@ -131,6 +137,49 @@ for (const [id, title, blurb] of SERVICE_CARDS) {
   keysPage.appendChild(form);
 }
 
+
+const connectionSearch = document.createElement("input"); connectionSearch.type = "search"; connectionSearch.className = "connection-search"; connectionSearch.placeholder = "Find a provider or integration…"; connectionSearch.setAttribute("aria-label", "Find a provider or integration"); keysPage.querySelector("header").append(connectionSearch);
+connectionSearch.addEventListener("input", () => {
+  const query = connectionSearch.value.trim().toLowerCase();
+  for (const form of keysPage.querySelectorAll(".key-card")) form.hidden = !form.querySelector("h2").textContent.toLowerCase().includes(query);
+});
+const modelIntro = document.createElement("p"); modelIntro.className = "connection-intro"; modelIntro.textContent = "Cloud & local models"; keysPage.querySelector("header").after(modelIntro);
+const serviceIntro = document.createElement("p"); serviceIntro.className = "connection-intro"; serviceIntro.textContent = "Workspace integrations"; keysPage.append(serviceIntro);
+for (const [id] of SERVICE_CARDS.filter(card => !["openrouter", "deepseek", "mistral", "groq", "xai"].includes(card[0]))) keysPage.append(keysPage.querySelector('[data-provider="' + id + '"]'));
+const defaults = { chatgpt: "gpt-4.1-mini", gemini: "gemini-3.8-flash", openrouter: "openai/gpt-4.1-mini", deepseek: "deepseek-chat", mistral: "mistral-small-latest", groq: "llama-3.3-70b-versatile", xai: "grok-4.3" };
+for (const field of document.querySelectorAll("#look-form [data-model]")) field.closest("label").remove();
+for (const form of document.querySelectorAll(".key-card")) {
+  const id = form.dataset.provider;
+  if (defaults[id]) {
+    const label = document.createElement("label"); label.className = "model-field"; label.textContent = "Model";
+    const input = document.createElement("input"); input.dataset.model = id; input.maxLength = 80; input.value = defaults[id];
+    label.append(input); form.querySelector(".key-row").before(label);
+  }
+  if (id === "custom") {
+    form.classList.remove("local-card");
+    const row = document.createElement("div"); row.className = "key-row";
+    const input = document.createElement("input"); input.type = "password"; input.autocomplete = "off"; input.maxLength = 300; input.placeholder = "Optional API key"; input.setAttribute("aria-label", "Custom endpoint API key");
+    const save = document.createElement("button"); save.type = "submit"; save.className = "solid"; save.textContent = "Save";
+    const remove = document.createElement("button"); remove.type = "button"; remove.className = "ghost remove"; remove.textContent = "Remove";
+    row.append(input, save, remove);
+    const note = document.createElement("p"); note.id = "custom-note"; note.className = "note";
+    form.append(row, note); form.querySelector("h2").textContent = "Custom endpoint";
+  }
+  const field = form.querySelector("[data-model]"); if (!field) continue;
+  const button = document.createElement("button"); button.type = "button"; button.className = "discover ghost"; button.textContent = "Find available models";
+  const feedback = document.createElement("p"); feedback.className = "note"; feedback.setAttribute("role", "status");
+  const list = document.createElement("datalist"); list.id = "models-" + id; field.setAttribute("list", list.id);
+  form.append(button, feedback, list);
+  button.addEventListener("click", async () => {
+    button.disabled = true; feedback.textContent = "Looking for models…";
+    try {
+      const models = await window.nook.listModels(id);
+      list.replaceChildren(...models.map(id => { const option = document.createElement("option"); option.value = id; return option; }));
+      feedback.textContent = models.length ? models.length + " models available. Choose in the Model field." : "No models found. Check your connection or enter a model ID manually.";
+    } catch (_) { feedback.textContent = "Could not load models. Enter a model ID manually."; }
+    finally { button.disabled = false; }
+  });
+}
 const colorBox = document.querySelector("#agent-colors");
 for (const name of ["claude", "cursor", "codex", "copilot", "muse", "opencode", "amp", "hermes"]) {
   const label = document.createElement("label");
@@ -138,13 +187,13 @@ for (const name of ["claude", "cursor", "codex", "copilot", "muse", "opencode", 
   const input = document.createElement("input");
   input.type = "color";
   input.dataset.color = name;
-  input.value = "#dff25a";
+  input.value = "#b7c6ff";
   label.appendChild(input);
   colorBox.appendChild(label);
 }
 
 function paintKeys(keys, serviceKeys) {
-  for (const provider of ["chatgpt", "gemini", "claude", ...SERVICE_CARDS.map((card) => card[0])]) {
+  for (const provider of ["chatgpt", "gemini", "claude", "custom", ...SERVICE_CARDS.map((card) => card[0])]) {
     const badge = document.querySelector(`#${provider}-badge`);
     if (!badge) {
       continue;
@@ -187,11 +236,11 @@ lookForm.addEventListener("input", (event) => {
 
 document.querySelector("#reset-look").addEventListener("click", () => {
   window.nook.saveLook({
-    accent: "#dff25a",
-    paper: "#f4f0e6",
-    islandTop: "#22252c",
-    islandBottom: "#14161a",
-    seed: "#f4f0e6",
+    accent: "#b7c6ff",
+    paper: "#edf0f6",
+    islandTop: "#20242e",
+    islandBottom: "#13161c",
+    seed: "#edf0f6",
     radius: 22,
   });
 });
@@ -433,3 +482,12 @@ window.nook.onState((state) => {
 });
 
 showPage("look");
+
+const companionPreview = document.querySelector('.preview-companion');
+for (const [mood,label] of [['idle','Idle'],['curious','Curious'],['focused','Working'],['thinking','Thinking'],['expectant','Approval'],['happy','Complete'],['receiving','File drop'],['sleepy','Sleepy']]) {
+  const button=document.createElement('button');button.type='button';button.className='ghost';button.textContent=label;button.setAttribute('aria-pressed',mood==='idle'?'true':'false');
+  button.addEventListener('click',()=>{companionPreview.dataset.mood=mood;document.querySelectorAll('.mood-preview button').forEach(b=>b.setAttribute('aria-pressed',b===button?'true':'false'));});document.querySelector('.mood-preview').append(button);
+}
+
+brandSeed.addEventListener("pointerenter", () => { brandSeed.dataset.mood = "curious"; });
+brandSeed.addEventListener("pointerleave", () => { brandSeed.dataset.mood = "idle"; });

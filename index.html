@@ -21,6 +21,7 @@
           <button type="button" id="pin" class="pin-mark" aria-label="Pin open"></button>
         </div>
       </header>
+      <div id="drop-cue" class="drop-cue" hidden><span>Drop it here</span><small>Nook will keep it handy</small></div>
       <section class="details">
         <div id="card-approval" class="approval" hidden>
           <p class="approval-title" id="approval-title"></p>
@@ -42,6 +43,7 @@
         </div>
 
         <div id="card-chat" hidden>
+          <div class="chat-heading"><button type="button" id="chat-back" class="text-button" aria-label="Back to activity">← Activity</button><span>Chat</span><button type="button" id="chat-settings" class="text-button">Models</button></div>
           <label class="model-row">
             Model
             <select id="provider"></select>
@@ -76,6 +78,7 @@
       </section>
     </div>
     <script src="lib/markdown.js"></script>
+    <script src="lib/motion.js"></script>
     <script src="lib/seed.js"></script>
     <script src="renderer.js"></script>
   </body>

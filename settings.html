@@ -15,15 +15,15 @@
         <canvas class="brand-seed" id="brand-seed" width="64" height="64" aria-hidden="true"></canvas>
         <div>
           <strong>Nook</strong>
-          <span>Companion</span>
+          <span>Workspace companion</span>
         </div>
       </div>
       <nav>
         <button type="button" class="nav is-selected" id="nav-look" data-page="look">
-          Look
+          Appearance
         </button>
         <button type="button" class="nav" id="nav-keys" data-page="keys">
-          API keys
+          Models & connections
         </button>
         <button type="button" class="nav" id="nav-agents" data-page="agents">
           Agents
@@ -34,20 +34,21 @@
         <button type="button" class="nav" id="nav-week" data-page="week">
           Week
         </button>
-      </nav>
+      </nav><div class="sidebar-footer"><span class="connection-dot"></span> Made for your flow<span class="version">Nook · Desktop</span></div>
     </aside>
     <main>
       <section id="page-look">
         <header>
-          <h1>Look</h1>
+          <div class="eyebrow">MAKE IT YOURS</div><h1>Appearance</h1>
           <p>Changes show on the notch as you make them.</p>
         </header>
         <div class="stage" aria-hidden="true">
+          <canvas class="preview-companion" width="192" height="192" aria-label="Companion preview"></canvas>
           <svg class="preview" viewBox="0 0 280 120">
             <defs>
               <linearGradient id="island-fill" x1="0" y1="0" x2="0" y2="1">
-                <stop id="fill-top" offset="0%" stop-color="#22252c" />
-                <stop id="fill-bottom" offset="70%" stop-color="#14161a" />
+                <stop id="fill-top" offset="0%" stop-color="#20242e" />
+                <stop id="fill-bottom" offset="70%" stop-color="#13161c" />
               </linearGradient>
             </defs>
             <rect width="280" height="120" fill="#0b0c0e" />
@@ -58,11 +59,12 @@
               id="preview-seed"
               d="M118 22c6 4 12 10 12 18a12 12 0 1 1-24 0c0-8 6-14 12-18z"
             />
-            <ellipse class="preview-eye" cx="118" cy="40" rx="4" ry="4.6" fill="#14161a" />
-            <circle id="preview-pupil" cx="119" cy="40" r="1.5" fill="#dff25a" />
+            <ellipse class="preview-eye" cx="118" cy="40" rx="4" ry="4.6" fill="#13161c" />
+            <circle id="preview-pupil" cx="119" cy="40" r="1.5" fill="#b7c6ff" />
             <text id="preview-name" x="142" y="46" font-size="14" font-family="Segoe UI, sans-serif">Nook</text>
           </svg>
         </div>
+        <div class="mood-preview" aria-label="Preview companion expressions"></div>
         <form id="look-form">
           <label>
             ChatGPT model
@@ -74,23 +76,23 @@
           </label>
           <label>
             Accent
-            <input id="accent" name="accent" type="color" value="#dff25a" />
+            <input id="accent" name="accent" type="color" value="#b7c6ff" />
           </label>
           <label>
             Island top
-            <input id="islandTop" name="islandTop" type="color" value="#22252c" />
+            <input id="islandTop" name="islandTop" type="color" value="#20242e" />
           </label>
           <label>
             Island bottom
-            <input id="islandBottom" name="islandBottom" type="color" value="#14161a" />
+            <input id="islandBottom" name="islandBottom" type="color" value="#13161c" />
           </label>
           <label>
             Text
-            <input id="paper" name="paper" type="color" value="#f4f0e6" />
+            <input id="paper" name="paper" type="color" value="#edf0f6" />
           </label>
           <label>
             Character
-            <input id="seed" name="seed" type="color" value="#f4f0e6" />
+            <input id="seed" name="seed" type="color" value="#edf0f6" />
           </label>
           <label class="radius">
             Corner roundness
@@ -103,8 +105,8 @@
       </section>
       <section id="page-keys" hidden>
         <header>
-          <h1>API keys</h1>
-          <p>Keys stay on this PC, encrypted by Windows. Nook never shows them again after you save.</p>
+          <div class="eyebrow">YOUR AI WORKSPACE</div><h1>Models & connections</h1>
+          <p>Connect your favorite cloud or local models. Keys stay encrypted on this PC.</p>
         </header>
         <form class="key-card" data-provider="chatgpt">
           <div class="key-heading">

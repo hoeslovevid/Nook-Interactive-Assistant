@@ -1,10 +1,10 @@
 :root {
-  --ink: #14161a;
-  --paper: #f4f0e6;
-  --lime: #dff25a;
-  --island-top: #22252c;
-  --island-bottom: #14161a;
-  --seed: #f4f0e6;
+  --ink: #13161c;
+  --paper: #edf0f6;
+  --lime: #b7c6ff;
+  --island-top: #20242e;
+  --island-bottom: #13161c;
+  --seed: #edf0f6;
   --radius: 22px;
   --muted: #a39e94;
   --line: rgba(255, 255, 255, 0.1);
@@ -225,7 +225,7 @@ body.is-peek .peek-line {
 }
 
 .day.is-3 {
-  background: #dff25a;
+  background: #b7c6ff;
 }
 
 .option-note {
@@ -714,3 +714,65 @@ input:focus-visible {
     transition: none !important;
   }
 }
+
+/* A restrained island with clear chat and activity hierarchy. */
+:root { --muted:#9ba3b2; --line:rgba(255,255,255,.09); }
+.island { box-shadow:0 16px 44px rgba(0,0,0,.38),inset 0 -1px 0 rgba(255,255,255,.03); }
+.island::before { height:1px; background:color-mix(in srgb,var(--lime) 45%,transparent); box-shadow:none; }
+.island::after { height:60px; background:linear-gradient(rgba(255,255,255,.025),transparent); }
+.top { gap:10px; }
+body.is-open .top { height:54px; border-bottom:1px solid var(--line); margin-bottom:14px; }
+.details { padding:4px 20px 20px; }
+.status { font-size:24px; font-weight:550; letter-spacing:-.8px; }
+.hint { line-height:1.6; color:var(--muted); }
+.pill { border-radius:8px; padding:7px 11px; font-size:11px; }
+.activity { border-top:1px solid var(--line); margin-top:16px; padding-top:12px; }
+.choice { border-radius:8px; font-size:12px; padding:8px 12px; }
+.approval { padding:16px; border-radius:12px; background:rgba(255,255,255,.025); }
+.model-row { display:flex; align-items:center; justify-content:space-between; gap:10px; font-size:11px; color:var(--muted); margin-bottom:14px; }
+.model-row select { max-width:290px; min-width:0; padding:7px 10px; border:1px solid var(--line); border-radius:8px; background:rgba(255,255,255,.04); color:var(--paper); font-size:11px; }
+#chat-form { padding:8px; gap:8px; border:1px solid var(--line); border-radius:12px; background:rgba(255,255,255,.035); }
+#chat-input { min-width:0; border:0; background:transparent; padding:7px; font-size:13px; }
+.transcript { line-height:1.65; }
+button:focus-visible,input:focus-visible,select:focus-visible { outline:2px solid var(--lime); outline-offset:2px; }
+@media(prefers-reduced-motion:reduce) { *,*::before,*::after { animation:none!important; transition:none!important; } }
+
+.transcript { max-height:280px; min-height:180px; padding-right:4px; }
+.bubble { padding:12px 0; margin:0; border-bottom:1px solid var(--line); font-size:13px; line-height:1.65; }
+.bubble strong { font-size:10px; margin-bottom:7px; font-weight:500; }
+
+.bubble[data-role="user"] { margin:8px 0; padding:12px; border:1px solid var(--line); border-radius:10px; background:rgba(255,255,255,.04); }
+[hidden] { display:none!important; }
+
+.chat-heading { display:flex; align-items:center; justify-content:space-between; padding-bottom:16px; font-size:12px; }
+.chat-heading .text-button { margin:0; font-size:11px; color:var(--muted); }
+.chat-empty { padding:38px 16px; text-align:center; color:var(--muted); }
+.chat-empty strong { color:var(--paper); font-size:17px; font-weight:500; letter-spacing:-.4px; }
+.chat-empty p { font-size:12px; line-height:1.7; max-width:260px; margin:10px auto; }
+
+/* Motion stays tied to gestures and real work. */
+.island { transition:border-radius 460ms cubic-bezier(.22,1,.36,1),border-color 200ms,box-shadow 200ms; }
+body.is-peek .island { border-radius:0 0 24px 24px; }
+body.is-open .seed { width:36px; height:36px; }
+body.is-open .top { height:58px; }
+body.is-open.is-settled .details { transition:opacity 220ms ease,transform 380ms cubic-bezier(.22,1,.36,1); }
+.card-enter { animation:card-arrive 320ms cubic-bezier(.22,1,.36,1) both; }
+@keyframes card-arrive { from { opacity:0; transform:translateY(9px) scale(.985) } to { opacity:1; transform:translateY(0) scale(1) } }
+.choice,.pill,.text-button,.pin-mark,.meter { transition:background 150ms,color 150ms,transform 160ms cubic-bezier(.22,1,.36,1),border-color 150ms; }
+.choice:active,.pill:active,.meter:active { transform:scale(.95); }
+.pin-mark:active { transform:scale(.85); }
+.pill.is-selected { background:color-mix(in srgb,var(--lime) 12%,transparent); border-color:color-mix(in srgb,var(--lime) 35%,transparent); }
+#sessions .pill { position:relative; }
+#sessions .pill::before { content:''; display:inline-block; width:5px; height:5px; border-radius:50%; margin-right:6px; background:var(--lime); }
+body.is-thinking #chat-form { border-color:color-mix(in srgb,var(--lime) 45%,transparent); }
+body.is-thinking .seed { filter:drop-shadow(0 0 7px color-mix(in srgb,var(--lime) 20%,transparent)); }
+.drop-cue { padding:22px; margin:0 16px 14px; border:1px dashed var(--lime); border-radius:14px; text-align:center; background:color-mix(in srgb,var(--lime) 6%,transparent); animation:card-arrive 250ms ease both; }
+.drop-cue span { display:block; font-size:16px; font-weight:500; }
+.drop-cue small { display:block; margin-top:7px; color:var(--muted); }
+.island.is-drop .details { opacity:.3; pointer-events:none; }
+.island.is-drop { border-color:var(--lime); box-shadow:0 0 0 1px color-mix(in srgb,var(--lime) 30%,transparent),0 16px 44px rgba(0,0,0,.4); }
+.file-chip { cursor:pointer; }
+.file-chip.is-attached { animation:attachment-arrive 450ms cubic-bezier(.22,1,.36,1) both; }
+@keyframes attachment-arrive { from { opacity:0; transform:translateY(-8px) scale(.9) } to { opacity:1; transform:translateY(0) scale(1) } }
+button:disabled { opacity:.65; cursor:wait; }
+@media(prefers-reduced-motion:reduce) { *,*::before,*::after { animation:none!important; transition:none!important; } }

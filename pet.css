@@ -1,32 +1,4 @@
-html,
-body {
-  margin: 0;
-  background: transparent;
-  overflow: hidden;
-}
-
-.seed {
-  width: 72px;
-  height: 72px;
-  margin: 8px;
-  filter: drop-shadow(0 10px 16px rgba(0, 0, 0, 0.35));
-  animation: bob 1.6s ease-in-out infinite;
-}
-
-.seed path {
-  fill: #f4f0e6;
-}
-
-body.is-asleep .seed {
-  animation: none;
-}
-
-@keyframes bob {
-  0%,
-  100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-6px);
-  }
-}
+:root { --seed:#edf0f6; --lime:#b7c6ff; --ink:#13161c; }
+html,body { margin:0; background:transparent; overflow:hidden; }
+.seed { display:block; width:72px; height:72px; margin:8px; cursor:grab; touch-action:none; filter:drop-shadow(0 6px 8px rgba(0,0,0,.22)); }
+.seed:active { cursor:grabbing; }

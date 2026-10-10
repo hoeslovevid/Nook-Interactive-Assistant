@@ -1,8 +1,8 @@
-const { contextBridge, ipcRenderer } = require("electron");
+const { contextBridge, ipcRenderer, webUtils } = require("electron");
 
 contextBridge.exposeInMainWorld("nook", {
-  setOpen(open, height) {
-    ipcRenderer.send("nook:set-open", open, height);
+  setOpen(open, height, reducedMotion) {
+    ipcRenderer.send("nook:set-open", open, height, reducedMotion);
   },
   quit() {
     ipcRenderer.send("nook:quit");
@@ -39,6 +39,9 @@ contextBridge.exposeInMainWorld("nook", {
   },
   saveModel(patch) {
     return ipcRenderer.invoke("nook:save-model", patch);
+  },
+  filePath(file) {
+    return webUtils.getPathForFile(file);
   },
   attachFile(file) {
     return ipcRenderer.invoke("nook:attach-file", file);
