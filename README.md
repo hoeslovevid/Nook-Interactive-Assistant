@@ -46,8 +46,6 @@ Ollama and LM Studio connect to a running server on this PC without a key. Custo
 
 Appearance offers live color and corner controls. Reset look applies the new slate and periwinkle palette. Existing saved colors are preserved. Keyboard focus and reduced-motion settings are supported.
 
-The interface takes inspiration from [Coucou](https://github.com/Louis-CFM/coucou), with Nook's own character and styling.
-
 ## Companion & motion
 
 Nook has eight expressive poses, shared across the notch, settings preview, and desktop companion. Preview every pose in Appearance. It reacts to active sessions, approvals, chat requests, completions, and dropped files.
