@@ -734,7 +734,7 @@ function readKeys() {
     return {};
   }
   const keys = {};
-  for (const provider of [...Object.keys(PROVIDERS), ...SERVICES]) {
+  for (const provider of [...Object.keys(PROVIDERS), ...SERVICES, 'update-access']) {
     if (typeof raw[provider] === "string") {
       try {
         keys[provider] = safeStorage.decryptString(Buffer.from(raw[provider], "base64"));
@@ -747,7 +747,7 @@ function readKeys() {
 }
 
 function knownSecret(provider) {
-  return Boolean(PROVIDERS[provider]) || SERVICES.includes(provider);
+  return Boolean(PROVIDERS[provider]) || SERVICES.includes(provider) || provider === 'update-access';
 }
 
 function saveKey(provider, key) {
@@ -1614,7 +1614,7 @@ app.on("second-instance", () => {
 if (gotLock) {
   app.whenReady().then(async () => {
     featureKit = installFeatures({ app, ipcMain, desktopCapturer, clipboard, getState: currentState, readVoiceKey: () => readKeys().chatgpt, decide: handleDecision, broadcast, setAttachment: (file) => { attachment = file; }, onDraft: () => navigateSettings('companion') });
-    updateKit = createUpdateController({app, updater: app.isPackaged && process.platform === 'win32' ? require('electron-updater').autoUpdater : null, onChange: broadcast,
+    updateKit = createUpdateController({app, updater: app.isPackaged && process.platform === 'win32' ? require('electron-updater').autoUpdater : null, onChange: broadcast, getToken: () => readKeys()['update-access'] || '',
       async confirmRestart() {
         const busy = pending.length || chatBusyProviders.size || [...sessions.values()].some(session => !session.finished);
         if (!busy) return true;
@@ -2178,6 +2178,15 @@ ipcMain.handle('nook:update', (_event, input) => {
   if (input?.action === 'automatic') return updateKit.setAutomatic(input.value);
   if (['check','download','install'].includes(input?.action)) return updateKit[input.action]();
   return updateKit.snapshot();
+});
+ipcMain.handle('nook:update-access', (_event, input) => {
+  if (['checking','downloading'].includes(updateKit?.snapshot().phase)) return {ok:false,error:'Wait for the current update operation to finish.'};
+  try {
+    if (input?.action === 'clear') clearKey('update-access');
+    else if (input?.action === 'save' && typeof input.token === 'string' && /^[A-Za-z0-9_]{20,500}$/.test(input.token.trim())) saveKey('update-access',input.token.trim());
+    else return {ok:false,error:'Enter a valid GitHub access token.'};
+    const state = updateKit?.refreshAccess(); broadcast(); return {ok:true,...state};
+  } catch (_) { return {ok:false,error:'Windows could not save the encrypted token.'}; }
 });
 ipcMain.handle('nook:pet-home', () => {
   pet?.hide(); showNook(); win?.webContents.send('nook:welcome'); return { ok: true };

@@ -8,6 +8,9 @@ const { createUpdateController } = require("../lib/updates");
 function fixture(options = {}) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "nook-update-test-"));
   const updater = new EventEmitter();
+  updater.setFeedURL = (options) => {
+    updater.feed = options;
+  };
   let installs = 0,
     checks = 0,
     downloads = 0;
@@ -33,6 +36,7 @@ function fixture(options = {}) {
     updater,
     platform: "win32",
     schedule: false,
+    getToken: () => "test_update_token_never_in_snapshots",
     ...options,
   });
   return {
@@ -102,5 +106,25 @@ test("source builds never contact the update server; automatic preference persis
     assert.equal(g.controller.snapshot().automatic, false);
   } finally {
     g.close();
+  }
+});
+test("private updates require a saved token, keep it out of UI state, and reset on removal", async () => {
+  let token = "";
+  const f = fixture({ getToken: () => token });
+  try {
+    assert.equal((await f.controller.check()).phase, "access-required");
+    assert.equal(f.counts().checks, 0);
+    token = "test_private_update_token";
+    f.controller.refreshAccess();
+    await f.controller.check();
+    assert.equal(f.updater.feed.token, token);
+    assert.equal(f.updater.feed.repo, "Nook-Interactive-Assistant");
+    assert.ok(!JSON.stringify(f.controller.snapshot()).includes(token));
+    token = "";
+    f.controller.refreshAccess();
+    assert.equal(f.controller.snapshot().phase, "access-required");
+    assert.equal(f.controller.snapshot().accessSaved, false);
+  } finally {
+    f.close();
   }
 });

@@ -40,3 +40,4 @@ publish:
   owner: hoeslovevid
   repo: Nook-Interactive-Assistant
   releaseType: release
+  private: true

@@ -105,6 +105,7 @@ contextBridge.exposeInMainWorld("nook", {
   tourStep(step) { return ipcRenderer.invoke('nook:tour-step', step); },
   phoneDraft(id, action) { return ipcRenderer.invoke('nook:phone-draft', { id, action }); },
   update(action, value) { return ipcRenderer.invoke('nook:update', { action, value }); },
+  updateAccess(action, token) { return ipcRenderer.invoke('nook:update-access', {action,token}); },
   openTerminal(sessionId) {
     return ipcRenderer.invoke("nook:open-terminal", sessionId);
   },
