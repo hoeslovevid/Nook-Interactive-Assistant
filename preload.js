@@ -1,4 +1,5 @@
 const { contextBridge, ipcRenderer, webUtils } = require("electron");
+let latestStateRevision = 0;
 
 contextBridge.exposeInMainWorld("nook", {
   setOpen(open, height, reducedMotion) {
@@ -14,7 +15,8 @@ contextBridge.exposeInMainWorld("nook", {
   },
   onState(callback) {
     ipcRenderer.on("nook:state", (_event, state) => {
-      callback(state);
+      if(Number.isFinite(state?.revision)) {if(state.revision<latestStateRevision)return;latestStateRevision=state.revision;}
+      try { callback(state); } catch (error) { console.error('Nook view update failed:',error.message); }
     });
   },
   onAttention(callback) {
@@ -38,6 +40,12 @@ contextBridge.exposeInMainWorld("nook", {
   sendChat(provider, text) {
     return ipcRenderer.invoke("nook:chat", { provider, text });
   },
+  chatControl(action, value) { return ipcRenderer.invoke('nook:chat-control', {action,...value}); },
+  experience(action, value) { return ipcRenderer.invoke('nook:experience', {action,value}); },
+  performance() { return ipcRenderer.invoke('nook:performance'); },
+  everyday(action, value) { return ipcRenderer.invoke('nook:everyday',{action,value}); },
+  speechOutput(action, value) { return ipcRenderer.invoke('nook:speech-output',{action,value}); },
+  paletteCommand(command) { ipcRenderer.send('nook:palette-command',command); },
   handoff(action, value) { return ipcRenderer.invoke('nook:handoff', { action, ...value }); },
   openChatUrl(url) { return ipcRenderer.invoke('nook:chat-url', url); },
   saveModel(patch) {

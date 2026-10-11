@@ -1,0 +1,24 @@
+(() => {
+  const $=id=>document.getElementById(id);const modelActions=document.createElement('div');modelActions.className='chat-model-actions';$('chat-choose-model').before(modelActions);modelActions.append($('chat-choose-model'),$('chat-handoff'),$('handoff-undo'));let latest={},editing=null,layoutSignature='';
+  const makeButton=(label,action)=>{const b=document.createElement('button');b.type='button';b.className='text-button';b.textContent=label;b.onclick=event=>{event.stopPropagation();action();};return b;};
+  async function readAloud(text){const result=await window.nook.speechOutput('speak',text);if(!result.ok)featureMessage(result.error||'Could not read this reply.');}
+  function decorate(bubble,message){
+    const busy=Boolean(state?.chatBusyProviders?.includes(provider)||sending);
+    if(message.status==='stopped'||message.error){const note=document.createElement('span');note.className='message-meta'+(message.error?' is-error':'');note.textContent=message.error?message.error+(message.content?' · Partial reply kept.':''):message.content?'Stopped · partial reply kept':'Generation stopped';bubble.append(note);}
+    const actions=document.createElement('div');actions.className='message-actions';
+    if(message.role==='user'&&message.id){const edit=makeButton('Edit & resend',()=>{editing=message.id;$('chat-edit-text').value=message.prompt||message.content;$('chat-edit-panel').hidden=false;renderShell();$('chat-edit-text').focus();});edit.disabled=busy;actions.append(edit);}
+    if(message.role==='assistant'&&message.content){actions.append(makeButton('Copy reply',()=>navigator.clipboard.writeText(message.content)));const read=makeButton('Read aloud',()=>readAloud(message.content));read.disabled=busy;actions.append(read);}
+    if(actions.children.length)bubble.append(actions);
+  }
+  function paint(state){latest=state||latest;const busy=Boolean(latest.chatBusyProviders?.includes(provider)||sending),prefs=window.NookExperience.normalize(latest.experience?.settings),key=provider+':'+latest.models?.[provider];$('chat-stop').hidden=!busy;$('chat-regenerate').disabled=busy||!(latest.messages||[]).some(m=>m.provider===provider&&m.role==='user');$('chat-favorite-model').setAttribute('aria-pressed',String(prefs.favorites.includes(key)));$('chat-favorite-model').textContent=prefs.favorites.includes(key)?'★ Favorite model':'☆ Favorite model';if(!modelPanel.hidden)paintChatModelOptions();$('chat-stop-speech').hidden=latest.speech?.phase!=='speaking';
+    if(latest.speech?.phase==='speaking')window.NookSeed.react(seed,'speaking',Infinity);else if(seed._nookReaction?.mood==='speaking'){seed._nookReaction=null;seed._nookWake?.();}
+    const signature=JSON.stringify([prefs.order,prefs.hidden,prefs.layout]);if(signature!==layoutSignature){layoutSignature=signature;island.dataset.layout=prefs.layout;const nodes={sessions:sessionsBox.parentElement,services:extrasBox,music:$('music-card'),github:$('github-list')};for(const id of prefs.order){const node=nodes[id];node.dataset.layoutHidden=String(prefs.hidden.includes(id));$('card-session').insertBefore(node,$('ticker'));}renderShell();}
+  }
+  $('chat-stop').onclick=()=>window.nook.chatControl('stop',{provider});$('chat-regenerate').onclick=()=>runChatAction('regenerate');
+  $('chat-favorite-model').onclick=()=>{const prefs=window.NookExperience.normalize(latest.experience?.settings),key=provider+':'+latest.models?.[provider];window.nook.experience('save',{favorites:prefs.favorites.includes(key)?prefs.favorites.filter(x=>x!==key):[key,...prefs.favorites]});};
+  $('chat-speak').onclick=()=>{const reply=(latest.messages||[]).findLast(m=>m.provider===provider&&m.role==='assistant'&&m.content);if(reply)readAloud(reply.content);};$('chat-stop-speech').onclick=()=>window.nook.speechOutput('stop');
+  $('chat-edit-cancel').onclick=()=>{$('chat-edit-panel').hidden=true;editing=null;renderShell();};$('chat-edit-confirm').onclick=async()=>{const text=$('chat-edit-text').value.trim();if(!text||!editing||sending)return;const id=editing;editing=null;$('chat-edit-panel').hidden=true;await runChatAction('edit',text,id);};
+  window.nook.onState(paint);providerSelect.addEventListener('change',()=>{$('chat-edit-panel').hidden=true;editing=null;paint(latest);});
+  window.NookChatControls={decorate,paint,selectProvider(id){if(PROVIDER_NAMES.includes(id)){provider=id;providerSelect.value=id;paint(latest);showCard('chat');}}};
+  window.addEventListener('keydown',event=>{if(!event.altKey||event.ctrlKey||event.metaKey||event.target.matches('input,textarea,select'))return;if(event.key==='ArrowRight'||event.key==='ArrowLeft'){const choices=[...document.querySelectorAll('#sessions button,#extras button')].filter(b=>!b.closest('[data-layout-hidden=true]'));const current=choices.indexOf(document.activeElement);choices[(current+(event.key==='ArrowRight'?1:-1)+choices.length)%choices.length]?.focus();event.preventDefault();}});
+})();

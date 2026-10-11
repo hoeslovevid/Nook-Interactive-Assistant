@@ -76,6 +76,34 @@ const { LANGUAGES, translate } = require("./lib/i18n");
 const { pluginSource, ampSource, hermesManifest } = require("./lib/plugins");
 const { recentMessages } = require('./lib/chat-memory');
 const { completeChat } = require("./lib/chat-transport");
+const { createChatSession } = require('./lib/chat-session');
+const { createExperienceStore } = require('./lib/experience-store');
+const { aggregateMetrics, backgroundDelay } = require('./lib/performance');
+const { createSpeechOutput } = require('./lib/speech-output');
+const { isQuiet } = require('./lib/alert-policy');
+const { createEverydayStore } = require('./lib/everyday-store');
+const { command: voiceCommand } = require('./lib/everyday');
+const attachmentTray = require('./lib/attachment-tray').createAttachmentTray();
+let everydayKit, chatWin, focusTimer, fullscreenWatcher, fullscreenDisplay = '', fullscreenOverride = false;
+let comparison = {busy:false,results:[]}, comparisonAbort;
+let experienceKit, speechKit, suspended = false, startupMs = null;
+const startupAt = Date.now(), settingsCache = new Map();
+let backgroundTimer;
+function readCachedSettings(file) {
+  const cached=settingsCache.get(file);if(cached&&Date.now()-cached.time<1000)return cached.value;
+  const value=readJson(file);settingsCache.set(file,{time:Date.now(),value});return value;
+}
+function runtimeMode() {
+  const battery=Boolean(powerMonitor.isOnBatteryPower?.());
+  return {battery,suspended,economy:experienceKit?.snapshot().settings.batterySaver!==false&&battery};
+}
+function refreshBackground(refresh = true) {
+  clearTimeout(backgroundTimer);
+  const runtime=runtimeMode();
+  if(refresh&&!runtime.suspended){refreshUsage();readCodexPlan();refreshServices().catch(()=>{});}
+  backgroundTimer=setTimeout(refreshBackground,backgroundDelay({battery:runtime.economy,suspended:runtime.suspended,idle:powerMonitor.getSystemIdleTime()>120}));backgroundTimer.unref?.();
+}
+
 
 const { installFeatures } = require("./lib/features");
 const { demoState, STEPS: TOUR_STEPS } = require('./lib/demo');
@@ -108,10 +136,21 @@ let motionReduced = false;
 let boundsNow = null;
 let relay = null;
 const activity = [];
+let stateRevision = 0;
 const sessions = new Map();
 const pending = [];
 const messages = [];
 const chatBusyProviders = new Set();
+const chatSession = createChatSession({messages,complete:completeChat,getSettings(provider){
+  if(!Object.hasOwn(PROVIDERS,provider))throw new Error('Unknown chat provider.');
+  const spec=PROVIDERS[provider],key=readKeys()[provider];if(['bearer','anthropic'].includes(spec.auth)&&!key)throw new Error('Save a '+spec.label+' API key first.');
+  const models=readModels();return {key,model:models[provider],url:provider==='ollama'?models.ollamaUrl:provider==='lmstudio'?models.lmstudioUrl:models.customUrl,greeting:displayName};
+},onChange(){chatBusyProviders.clear();for(const id of chatSession.busyProviders())chatBusyProviders.add(id);if(!chatBusyProviders.size)everydayKit?.checkpoint(messages);broadcast();},onSent(provider,model){handoffUndo.delete(provider);experienceKit?.recent(provider,model);},onDone(reply){
+  celebrate++;
+  everydayKit?.notice({kind:'chat',id:reply.id,title:PROVIDERS[reply.provider].label+' replied',agent:reply.provider});
+  const prefs=experienceKit?.snapshot().settings,alerts=workspaceKit?.snapshot().settings;
+  if(prefs?.spokenReplies&&!readPrefs().muted&&!isQuiet(alerts)&&!alerts?.mutedAgents?.includes(reply.provider))speechKit?.speak({text:reply.content,voice:prefs.speechVoice,rate:prefs.speechRate});
+}});
 const lookCssKeys = new Map();
 const lookRequests = new Map();
 let hookMessage = "";
@@ -173,7 +212,7 @@ function windowSize(nextMode) {
   const content = { ...(SIZES[nextMode] || SIZES.asleep) };
   if (nextMode === "open") {
     content.height = cardHeight;
-    content.width = readLook().notchWidth;
+    content.width = everydayKit?.snapshot().layouts[String(chosenDisplay().id)]?.width || readLook().notchWidth;
   }
   return {
     width: content.width + content.gutterX * 2,
@@ -205,7 +244,7 @@ function targetBounds(nextMode) {
   size.width = Math.min(size.width, display.bounds.width);
   size.height = Math.min(size.height, display.workArea.y + display.workArea.height - display.bounds.y);
   return {
-    x: Math.round(display.bounds.x + (display.bounds.width - size.width) / 2),
+    x: Math.round(Math.max(display.bounds.x,Math.min(display.bounds.x+display.bounds.width-size.width,display.bounds.x + (display.bounds.width - size.width) / 2 + (everydayKit?.snapshot().layouts[String(display.id)]?.offset || 0)))),
     y: display.bounds.y,
     width: size.width,
     height: size.height,
@@ -216,6 +255,7 @@ function applyBounds(bounds) {
   if (!win || win.isDestroyed()) {
     return;
   }
+  const moved=Boolean(boundsNow&&(boundsNow.x!==bounds.x||boundsNow.y!==bounds.y));
   win.setBounds({
     x: Math.round(bounds.x),
     y: Math.round(bounds.y),
@@ -223,6 +263,7 @@ function applyBounds(bounds) {
     height: Math.round(bounds.height),
   });
   boundsNow = { ...bounds };
+  if(moved&&everydayKit)updateNotchVisibility();
 }
 
 function animateTo(nextMode) {
@@ -315,6 +356,7 @@ function createWindow() {
     }
     win.showInactive();
     clipIsland("asleep");
+    updateNotchVisibility();
   });
   win.webContents.on("did-finish-load", () => {
     broadcast();
@@ -322,6 +364,7 @@ function createWindow() {
     applyColors(win);
   });
 
+  win.once('ready-to-show',()=>{startupMs=Date.now()-startupAt;});
   win.loadFile(path.join(__dirname, "index.html"));
 }
 
@@ -329,6 +372,7 @@ function showNook() {
   if (!win || win.isDestroyed()) {
     return;
   }
+  fullscreenOverride = true;
   win.webContents.send("nook:welcome");
   win.showInactive();
 }
@@ -358,14 +402,16 @@ function openApp() {
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
-      backgroundThrottling: false,
+      backgroundThrottling: true,
     },
   });
+  appWin.on('show',broadcast);
   appWin.on("closed", () => {
     appWin = null;
   });
   appWin.webContents.on("did-finish-load", async () => {
     const target = appWin;
+    target.webContents.send("nook:state",currentState());
     broadcast();
     // Reveal the app after applying its saved theme to avoid a dark launch flash.
     await applyLook(target).catch(() => {});
@@ -718,13 +764,14 @@ function appearancePath() {
 }
 
 function readLook() {
-  return normalizeLook(readJson(appearancePath()));
+  return normalizeLook(readCachedSettings(appearancePath()));
 }
 
 function writeLook(look) {
   const next = normalizeLook(look);
   fs.mkdirSync(path.dirname(appearancePath()), { recursive: true });
   fs.writeFileSync(appearancePath(), `${JSON.stringify(next, null, 2)}\n`, "utf8");
+  settingsCache.delete(appearancePath());
   return next;
 }
 
@@ -735,6 +782,7 @@ async function applyLook(target) {
   const request = (lookRequests.get(target.id) || 0) + 1;
   lookRequests.set(target.id, request);
   const currentLook = readLook();
+  if (target === win && process.platform === 'win32' && typeof target.setBackgroundMaterial === 'function') { try { target.setBackgroundMaterial(currentLook.surface === 'frosted' ? 'acrylic' : 'none'); } catch {} }
   if (target === appWin) target.setBackgroundColor(appBackground(currentLook));
   const key = await target.webContents.insertCSS(lookToCss(currentLook));
   if (target.isDestroyed()) return;
@@ -751,6 +799,7 @@ function applyLookEverywhere() {
   applyLook(win);
   applyLook(appWin);
   applyLook(pet);
+  applyLook(chatWin);
   applyColors(win);
   applyColors(appWin);
 }
@@ -803,7 +852,7 @@ function modelsPath() {
 }
 
 function readModels() {
-  const saved = readJson(modelsPath()) || {};
+  const saved = readCachedSettings(modelsPath()) || {};
   const next = {};
   for (const [name, spec] of Object.entries(PROVIDERS)) {
     next[name] = cleanModel(saved[name], spec.model);
@@ -833,6 +882,7 @@ function writeModels(patch) {
   }
   fs.mkdirSync(path.dirname(modelsPath()), { recursive: true });
   fs.writeFileSync(modelsPath(), `${JSON.stringify(next, null, 2)}\n`, "utf8");
+  settingsCache.delete(modelsPath());
   return next;
 }
 
@@ -857,7 +907,7 @@ function prefsPath() {
 }
 
 function readPrefs() {
-  const saved = readJson(prefsPath()) || {};
+  const saved = readCachedSettings(prefsPath()) || {};
   const shortcuts = {};
   const shortcutSource = saved.shortcuts && typeof saved.shortcuts === "object" ? saved.shortcuts : {};
   for (const [name, fallback] of Object.entries(DEFAULT_SHORTCUTS)) {
@@ -964,6 +1014,7 @@ function writePrefs(patch) {
   }
   fs.mkdirSync(path.dirname(prefsPath()), { recursive: true });
   fs.writeFileSync(prefsPath(), `${JSON.stringify(next, null, 2)}\n`, "utf8");
+  settingsCache.delete(prefsPath());
   return next;
 }
 
@@ -1392,7 +1443,9 @@ function currentState() {
   if (!first && !latest && hooks.claude && hooks.cursor) {
     hint = "Sessions will check in here.";
   }
+  chatSession.ensure();
   const result = {
+    revision: ++stateRevision,
     status,
     hint,
     pending: first
@@ -1408,6 +1461,7 @@ function currentState() {
         }
       : null,
     pendingCount: pending.length,
+    requests: pending.slice(0,20).map(({id,agent,title,receivedAt})=>({id,agent,title,receivedAt})),
     activity: activity.slice(0, 8),
     displays: screen.getAllDisplays().map((item) => ({
       id: String(item.id),
@@ -1416,7 +1470,7 @@ function currentState() {
     })),
     sessions: [...sessions.values()].slice(-4).reverse(),
     celebrate,
-    attachment,
+    attachment, attachments: attachmentTray.snapshot(),
     hooks,
     keys: keyStatus(keys),
     serviceKeys: serviceKeyStatus(keys),
@@ -1425,6 +1479,7 @@ function currentState() {
     github,
     githubBadge,
     paused,
+    experience: experienceKit?.snapshot(), everyday: everydayKit?.snapshot(), currentDisplay:String(chosenDisplay().id), comparison, runtime: runtimeMode(), speech: speechKit?.snapshot(),
     greeting: displayName,
     recap: historyTail.recap(historyPath(), summarizeHistory),
     strings,
@@ -1434,9 +1489,9 @@ function currentState() {
     updates: updateKit ? updateKit.snapshot() : null,
     workspace: workspaceKit ? workspaceKit.snapshot() : null,
     push: pushBridge ? pushBridge.snapshot() : null,
-    models: readModels(),
-    look: readLook(),
-    messages: recentMessages(messages),
+    models: readModels(), connections: Object.fromEntries(connectionHealth),
+    look: readLook(), effectiveMotion: runtimeMode().economy && readLook().motion === "full" ? "economy" : readLook().motion,
+    messages: recentMessages(messages,200),
     chatBusy: chatBusyProviders.size > 0,
     chatBusyProviders: [...chatBusyProviders],
     handoffUndo: [...handoffUndo.keys()],
@@ -1453,8 +1508,8 @@ function currentState() {
 function broadcast() {
   const state = currentState();
   if (!state.demo) pushBridge?.update(state);
-  for (const target of [win, appWin, pet]) {
-    if (target && !target.isDestroyed()) {
+  for (const target of [win, appWin, pet, chatWin]) {
+    if (target && !target.isDestroyed() && (target !== appWin || target.isVisible())) {
       target.webContents.send("nook:state", state);
     }
   }
@@ -1598,6 +1653,7 @@ if (gotLock) {
     customAgents = require("./lib/custom-agents").createCustomAgents(app.getPath("userData"));
     soundKit = require("./lib/sound-settings").createSoundSettings(app.getPath("userData"));
     workspaceKit = createWorkspace({ directory: app.getPath('userData'),
+      onEvent(event) { everydayKit?.notice(event); },
       encrypt: text => { if (!safeStorage.isEncryptionAvailable()) throw new Error('Encryption unavailable'); return safeStorage.encryptString(text).toString('base64'); },
       decrypt: text => safeStorage.decryptString(Buffer.from(text, 'base64')),
       notify(event) {
@@ -1614,7 +1670,7 @@ if (gotLock) {
     pushBridge = require('./lib/phone-push').createPushBridge({ directory: app.getPath('userData'), getSettings: () => workspaceKit.snapshot().settings, getSecret: () => readKeys()['phone-relay'],
       encrypt: text => { if (!safeStorage.isEncryptionAvailable()) throw new Error(); return safeStorage.encryptString(text).toString('base64'); }, decrypt: text => safeStorage.decryptString(Buffer.from(text, 'base64')) });
     powerMonitor.on('lock-screen', () => { pushBridge.lock(true); broadcast(); }); powerMonitor.on('unlock-screen', () => { pushBridge.lock(false); broadcast(); });
-    featureKit = installFeatures({ app, ipcMain, desktopCapturer, clipboard, getState: currentState, readVoiceKey: () => readKeys().chatgpt, decide: handleDecision, broadcast, setAttachment: (file) => { attachment = file; }, onDraft: () => navigateSettings('companion'), serviceDetail: readServiceDetail, serviceAction: (id, input) => serviceDetails.act(id, input), registerDevice: input => pushBridge.register(input), revokeDevices: () => pushBridge.revoke(), historySearch: query => workspaceKit.search(query), historyDetail: id => workspaceKit.detail(id) });
+    featureKit = installFeatures({ app, ipcMain, desktopCapturer, clipboard, getState: currentState, getRuntime: runtimeMode, readVoiceKey: () => readKeys().chatgpt, decide: handleDecision, broadcast, setAttachment: addAttachment, onDraft: () => navigateSettings('companion'), serviceDetail: readServiceDetail, serviceAction: (id, input) => serviceDetails.act(id, input), registerDevice: input => pushBridge.register(input), revokeDevices: () => pushBridge.revoke(), historySearch: query => workspaceKit.search(query), historyDetail: id => workspaceKit.detail(id) });
     updateKit = createUpdateController({app, updater: app.isPackaged && process.platform === 'win32' ? require('electron-updater').autoUpdater : null, onChange: broadcast, getToken: () => readKeys()['update-access'] || '',
       async confirmRestart() {
         const busy = pending.length || chatBusyProviders.size || [...sessions.values()].some(session => !session.finished);
@@ -1647,8 +1703,19 @@ if (gotLock) {
     if (!fs.existsSync(connectedFlagPath())) {
       hookMessage = "Review the hook diff, then install it.";
     }
+    experienceKit = createExperienceStore(app.getPath('userData'));
+    everydayKit = createEverydayStore({directory:app.getPath('userData'),encrypt:text=>{if(!safeStorage.isEncryptionAvailable()||safeStorage.getSelectedStorageBackend?.()==='basic_text')throw new Error('Secure chat saving is unavailable on this system.');return safeStorage.encryptString(text).toString('base64');},decrypt:text=>safeStorage.decryptString(Buffer.from(text,'base64'))});
+    messages.push(...everydayKit.restore());
+    let retentionTicks=0;
+    focusTimer=setInterval(()=>{try{const expired=++retentionTicks%3600===0&&everydayKit.expire();if(everydayKit.tick()){celebrate++;broadcast();}else if(expired)broadcast();}catch{}},1000);focusTimer.unref();
+    setupDisplayBehavior();
+    speechKit = createSpeechOutput({onChange:broadcast});
+    for(const event of ['on-battery','on-ac'])powerMonitor.on(event,()=>{broadcast();refreshBackground();});
+    powerMonitor.on('suspend',()=>{suspended=true;speechKit.stop();broadcast();});
+    powerMonitor.on('resume',()=>{suspended=false;refreshBackground();broadcast();});
     createWindow();
     createTray();
+
     openApp();
     execFile(
       "powershell.exe",
@@ -1677,45 +1744,26 @@ if (gotLock) {
       const far = Math.abs(cursor.x - bounds.x) > 240 || Math.abs(cursor.y - bounds.y) > 240;
       pet.webContents.send("nook:pet", idle && far ? "asleep" : "awake");
     }, 15000);
-    setInterval(() => {
-      refreshUsage();
-      readCodexPlan();
-      refreshServices().catch(() => {});
-    }, 120000);
+    refreshBackground();
 
-    setInterval(() => {
-      if (!win || win.isDestroyed() || (mode !== "asleep" && mode !== "peek") || anim) {
-        return;
-      }
-      const prefs = readPrefs();
-      if (prefs.displayMode !== "follow") {
-        return;
-      }
-      const cursor = screen.getCursorScreenPoint();
-      const display = displayUnderCursor();
-      const near = cursor.y - display.bounds.y < 80;
-      if (!near && Date.now() % 500 > 125) {
-        return;
-      }
-      const next = targetBounds(mode);
-      const same =
-        boundsNow &&
-        Math.abs(boundsNow.x - next.x) < 2 &&
-        Math.abs(boundsNow.y - next.y) < 2;
-      if (!same) {
-        applyBounds(next);
-        if (mode === "asleep") {
-          clipIsland("asleep");
-        }
-      }
-    }, 125);
+    function followDisplay() {
+      let delay=500;
+      try {
+        if(suspended||!win||win.isDestroyed()||anim||(mode!=='asleep'&&mode!=='peek')||readPrefs().displayMode!=='follow')return;
+        const cursor=screen.getCursorScreenPoint(),display=screen.getDisplayNearestPoint(cursor),near=cursor.y-display.bounds.y<80;delay=near?125:runtimeMode().economy?1000:500;
+        const next=targetBounds(mode);if(!boundsNow||Math.abs(boundsNow.x-next.x)>2||Math.abs(boundsNow.y-next.y)>2){applyBounds(next);if(mode==='asleep')clipIsland('asleep');broadcast();}
+      }finally{const timer=setTimeout(followDisplay,delay);timer.unref();}
+    }
+    followDisplay();
   });
 }
 
 ipcMain.on("nook:set-open", (_event, open, height, reducedMotion) => {
+  if(_event.sender!==win?.webContents)return;
   motionReduced = Boolean(reducedMotion);
   if (motionReduced && anim) { clearInterval(anim); anim = null; applyBounds(targetBounds(mode)); clipIsland(mode); }
   const next = open === "peek" || open === "open" || open === "asleep" ? open : open ? "open" : "asleep";
+  if(next==='asleep'&&everydayKit?.snapshot().settings.paused){fullscreenOverride=false;updateNotchVisibility();}
   const requested = Number(height);
   let resized = false;
   if (next === "open" && Number.isFinite(requested) && requested > 0) {
@@ -1742,7 +1790,7 @@ ipcMain.on("nook:quit", () => {
 });
 
 ipcMain.on("nook:open-app", (_event, page) => {
-  if (["keys", "look"].includes(page)) navigateSettings(page);
+  if (["home","keys","look","agents","workspace","companion","updates","performance","shortcuts","week","everyday"].includes(page)) navigateSettings(page);
   else openApp();
 });
 
@@ -1858,16 +1906,19 @@ ipcMain.handle("nook:save-model", (_event, patch) => {
   return next;
 });
 
+function addAttachment(file) {const added=attachmentTray.add(file);attachment=added;return added;}
 function attachPath(filePath) {
   try {
-    attachment = require('./lib/attachments').readAttachment(filePath); broadcast();
+    addAttachment(require('./lib/attachments').readAttachment(filePath)); broadcast();
     return { ok: true, name: attachment.name };
   } catch (error) { return { ok: false, error: error.code ? 'That file could not be read.' : error.message }; }
 }
 ipcMain.handle('nook:attach-path', (_event, filePath) => attachPath(filePath));
 ipcMain.handle('nook:pick-file', async () => {
-  const result = await localDialog('showOpenDialog', win, { title: 'Add context to chat', properties: ['openFile'] });
-  return result.canceled ? { ok: false, cancelled: true } : attachPath(result.filePaths[0]);
+  const result = await localDialog('showOpenDialog', chatWin || win, { title: 'Add context to chat', properties: ['openFile','multiSelections'] });
+  if(result.canceled)return {ok:false,cancelled:true};
+  const results=result.filePaths.map(attachPath);const failed=results.find(r=>!r.ok);
+  return failed || {ok:true,name:result.filePaths.length+' files attached'};
 });
 ipcMain.handle("nook:attach-file", (_event, file) => {
   const name = file && typeof file.name === "string" ? file.name.slice(0, 120) : "file";
@@ -1875,13 +1926,14 @@ ipcMain.handle("nook:attach-file", (_event, file) => {
   if (!text) {
     return { ok: false, error: "That file is empty." };
   }
-  attachment = { name, text };
+  try {addAttachment({name,text});}catch(error){return {ok:false,error:error.message};}
   broadcast();
   return { ok: true, name };
 });
 
 ipcMain.handle("nook:clear-file", () => {
   attachment = null;
+  attachmentTray.clear();
   broadcast();
   return { ok: true };
 });
@@ -1919,55 +1971,16 @@ ipcMain.handle("nook:chat", async (_event, input) => {
     broadcast();
     return { ok: true, reply: answer };
   }
-  const spec = PROVIDERS[provider];
-  const key = readKeys()[provider];
-  if (["bearer", "anthropic"].includes(spec.auth) && !key) {
-    return { ok: false, error: `Save a ${spec.label} API key first.` };
-  }
-  if (chatBusyProviders.has(provider)) return { ok: false, error: "This model is still responding." };
-  chatBusyProviders.add(provider);
-  handoffUndo.delete(provider);
-  const models = readModels();
-  const file = attachment;
-  const content = file ? `${text}\n\n[${file.name} attached]` : text;
-  attachment = null;
-  messages.push({ role: "user", provider, content });
-  const replyMessage = { role: "assistant", provider, content: "" };
-  messages.push(replyMessage);
-  messages.splice(0, messages.length, ...recentMessages(messages));
-  broadcast();
-  let lastPaint = 0;
-  try {
-    const reply = await completeChat(
-      provider,
-      key,
-      messages.filter((message) => message.provider === provider && message !== replyMessage),
-      {
-        model: models[provider],
-        url: provider === "ollama" ? models.ollamaUrl : provider === "lmstudio" ? models.lmstudioUrl : models.customUrl,
-        attachment: file,
-        greeting: displayName,
-      },
-      (text) => {
-        replyMessage.content = text;
-        const now = Date.now();
-        if (now - lastPaint > 80) {
-          lastPaint = now;
-          broadcast();
-        }
-      },
-    );
-    replyMessage.content = reply;
-    broadcast();
-    return { ok: true };
-  } catch (error) {
-    replyMessage.content = error.message;
-    broadcast();
-    return { ok: false, error: error.message };
-  } finally {
-    chatBusyProviders.delete(provider);
-    broadcast();
-  }
+  const file=attachmentTray.take() || attachment;
+  const work=chatSession.send(provider,text,{attachment:file});
+  if(chatSession.busy(provider)){attachment=null;attachmentTray.clear();broadcast();}
+  return work;
+});
+ipcMain.handle('nook:chat-control',async (_event,input)=>{
+  const provider=input?.provider;if(!Object.hasOwn(PROVIDERS,provider)||demoOn)return {ok:false,error:'Choose a connected provider outside the walkthrough.'};
+  if(input.action==='stop')return chatSession.stop(provider);
+  if(['retry','regenerate','edit'].includes(input.action))return chatSession.send(provider,input.text,{action:input.action,messageId:input.messageId});
+  return {ok:false,error:'Unknown chat action.'};
 });
 
 ipcMain.handle('nook:handoff', (_event, input) => {
@@ -1994,6 +2007,7 @@ ipcMain.handle('nook:chat-url', async (_event, value) => {
 ipcMain.handle("nook:save-prefs", (_event, patch) => {
   const previous = readPrefs();
   let next = writePrefs(patch);
+  if(next.muted)speechKit?.stop();
   const registrationErrors = registerShortcuts();
   const shortcutErrors = registrationErrors.filter(name => patch && patch.shortcuts && Object.hasOwn(patch.shortcuts, name));
   if (shortcutErrors.length) { next = writePrefs({ shortcuts: previous.shortcuts }); registerShortcuts(); }
@@ -2149,7 +2163,8 @@ ipcMain.handle("nook:save-recap", () => {
 ipcMain.handle("nook:models", async (_event, provider) => {
   return (await modelDiscovery.discover(provider, readModels(), readKeys()[provider])).models;
 });
-ipcMain.handle('nook:check-connection', (_event, provider, refresh) => modelDiscovery.discover(provider, readModels(), readKeys()[provider], Boolean(refresh)));
+const connectionHealth = new Map();
+ipcMain.handle('nook:check-connection', async (_event, provider, refresh) => { const result=await modelDiscovery.discover(provider,readModels(),readKeys()[provider],Boolean(refresh));if(Object.hasOwn(PROVIDERS,provider)){connectionHealth.set(provider,{ok:result.ok,error:result.error,time:Date.now()});broadcast();}return result; });
 ipcMain.handle('nook:provider-guide', async (_event, provider) => {
   const url = providerGuides[provider]?.url;
   if (!url) return { ok: false };
@@ -2174,7 +2189,7 @@ ipcMain.handle('nook:workspace', async (_event, { action, value } = {}) => {
   try {
     if (action === 'search') return { ok: true, items: workspaceKit.search(value) };
     if (action === 'detail') return { ok: true, item: workspaceKit.detail(value) };
-    if (action === 'save') { const next = workspaceKit.save(value); broadcast(); return { ok: true, ...next }; }
+    if (action === 'save') { const next = workspaceKit.save(value);if(isQuiet(next.settings)&&speechKit?.snapshot().phase==='speaking')speechKit.stop(); broadcast(); return { ok: true, ...next }; }
     if (action === 'remove') { workspaceKit.remove(value); broadcast(); return { ok: true }; }
     if (action === 'clear') {
       const answer = await localDialog('showMessageBox', appWin || win, { type: 'question', title: 'Clear session history?', message: 'Delete all saved sessions and decisions?', detail: 'This removes Nook’s local session archive.', buttons: ['Keep history', 'Delete history'], defaultId: 0, cancelId: 0 });
@@ -2302,6 +2317,7 @@ ipcMain.handle('nook:pet-drop', async (_event, point) => {
 });
 
 app.on("before-quit", () => {
+  chatSession.dispose();comparisonAbort?.abort();speechKit?.stop();clearTimeout(backgroundTimer);clearInterval(focusTimer);fullscreenWatcher?.stop();
   workspaceKit?.stop();
   pushBridge?.stop();
   updateKit?.stop();
@@ -2317,4 +2333,112 @@ app.on("before-quit", () => {
 
 app.on("window-all-closed", () => {
   app.quit();
+});
+
+ipcMain.handle('nook:experience',async (_event,input)=>{
+  if(!experienceKit)return {ok:false,error:'Workspace settings are starting.'};
+  try {
+    if(input?.action==='save'){const before=experienceKit.snapshot().settings;experienceKit.save(input.value||{});if(before.batterySaver!==experienceKit.snapshot().settings.batterySaver)refreshBackground(false);if(before.spokenReplies&&!experienceKit.snapshot().settings.spokenReplies)speechKit?.stop();}
+    else if(input?.action==='create-profile')experienceKit.create(input.value,currentState());
+    else if(input?.action==='remove-profile')experienceKit.remove(input.value);
+    else if(input?.action==='apply-profile') {
+      if(chatBusyProviders.size)return {ok:false,error:'Stop or finish the current reply before switching profiles.'};
+      const profile=experienceKit.get(input.value);
+      writeLook(profile.look);writeModels(profile.models);writePrefs(profile.prefs);experienceKit.save(profile.experience);workspaceKit.save(profile.alerts);
+      experienceKit.activate(input.value);if(readPrefs().muted)speechKit?.stop();applyLookEverywhere();registerShortcuts();refreshTray();refreshBackground(false);
+    }
+    else if(input?.action==='detect-local') {
+      const results=await Promise.all(['ollama','lmstudio'].map(async id=>({id,...await modelDiscovery.discover(id,readModels(),'',true)})));
+      return {ok:true,results};
+    }
+    broadcast();return {ok:true,...experienceKit.snapshot()};
+  }catch(error){return {ok:false,error:error.message};}
+});
+let performanceSamples=0;
+ipcMain.handle('nook:performance',()=>{const measured=aggregateMetrics(app.getAppMetrics());if(performanceSamples++===0)measured.cpu=null;return {ok:true,...measured,startupMs,...runtimeMode(),backgroundInterval:backgroundDelay({battery:runtimeMode().economy,suspended,idle:powerMonitor.getSystemIdleTime()>120}),mode:readLook().motion};});
+ipcMain.handle('nook:speech-output',async (_event,input)=>{
+  if(!speechKit)return {ok:false,error:'Speech is starting.'};
+  if(input?.action==='stop')return speechKit.stop();
+  if(input?.action==='voices')return speechKit.voices();
+  if(input?.action==='speak'){
+    if(readPrefs().muted||isQuiet(workspaceKit?.snapshot().settings))return {ok:false,error:'Speech is muted by your sound or quiet-hours settings.'};
+    const prefs=experienceKit.snapshot().settings;return speechKit.speak({text:input.value,voice:prefs.speechVoice,rate:prefs.speechRate});
+  }
+  return {ok:false,error:'Unknown speech action.'};
+});
+ipcMain.on('nook:palette-command',(_event,command)=>{
+  if(typeof command!=='string'||command.length>220)return;
+  if(command==='chat'){showNook();win?.webContents.send('nook:open-chat');}
+  else if(command==='home'){showNook();win?.webContents.send('nook:command','home');}
+  else if(command.startsWith('provider:')&&Object.hasOwn(PROVIDERS,command.slice(9))){showNook();win?.webContents.send('nook:command',command);}
+  else if(command.startsWith('session:')&&sessions.has(command.slice(8))){showNook();win?.webContents.send('nook:command',command);}
+  else if(command.startsWith('service:')&&SERVICES.includes(command.slice(8))){showNook();win?.webContents.send('nook:command',command);}
+});
+
+function openChatWindow(provider='chatgpt') {
+  if(!Object.hasOwn(PROVIDERS,provider))throw new Error('Choose a chat provider.');
+  if(chatWin&&!chatWin.isDestroyed()){chatWin.show();chatWin.focus();chatWin.webContents.send('nook:command','provider:'+provider);return;}
+  chatWin=new BrowserWindow({width:900,height:760,minWidth:600,minHeight:520,title:'Nook · Chat',icon:path.join(__dirname,'assets','icon.png'),backgroundColor:appBackground(readLook()),autoHideMenuBar:true,webPreferences:{preload:path.join(__dirname,'preload.js'),contextIsolation:true,nodeIntegration:false,sandbox:true,backgroundThrottling:true}});
+  const target=chatWin;target.webContents.setWindowOpenHandler(()=>({action:'deny'}));target.webContents.on('will-navigate',event=>event.preventDefault());
+  target.on('closed',()=>{chatWin=null;});target.webContents.on('did-finish-load',()=>{applyLook(target);target.webContents.send('nook:state',currentState());target.webContents.send('nook:command','provider:'+provider);});
+  target.loadFile(path.join(__dirname,'index.html'),{query:{detached:'1'}});
+}
+function updateNotchVisibility(){if(!win||win.isDestroyed())return;const prefs=everydayKit?.snapshot().settings;
+  const hide=!fullscreenOverride&&(prefs?.paused||prefs?.hideFullscreen&&fullscreenDisplay===String(chosenDisplay().id));
+  if(hide)win.hide();else if(!win.isVisible())win.showInactive();
+}
+function setupDisplayBehavior(){
+  fullscreenWatcher=require('./lib/fullscreen').createFullscreenWatcher(value=>{fullscreenDisplay=value.fullscreen?String(screen.getDisplayNearestPoint(screen.screenToDipPoint({x:value.x,y:value.y})).id):'';fullscreenOverride=false;updateNotchVisibility();});
+  if(everydayKit.snapshot().settings.hideFullscreen)fullscreenWatcher.start();
+  for(const event of ['display-added','display-removed','display-metrics-changed'])screen.on(event,()=>{if(win&&!win.isDestroyed())animateTo(mode);updateNotchVisibility();broadcast();});
+}
+async function compareModels(input){
+  if(comparison.busy)throw new Error('Stop or finish the current comparison first.');
+  const text=typeof input?.text==='string'?input.text.trim():'';
+  if(!text||text.length>2000||!Array.isArray(input?.models)||input.models.length!==2)throw new Error('Enter a prompt and choose two models.');
+  const selected=input.models.map(value=>{if(!Object.hasOwn(PROVIDERS,value?.provider))throw new Error('Choose two known providers.');const spec=PROVIDERS[value.provider];const model=cleanModel(value.model,'');if(!model)throw new Error('Enter a valid model ID.');const key=readKeys()[value.provider];if(['bearer','anthropic'].includes(spec.auth)&&!key)throw new Error('Connect '+spec.label+' first.');const models=readModels();return {provider:value.provider,model,key,url:value.provider==='ollama'?models.ollamaUrl:value.provider==='lmstudio'?models.lmstudioUrl:models.customUrl};});
+  comparisonAbort=new AbortController();const controller=comparisonAbort;
+  comparison={busy:true,prompt:text,results:selected.map(({provider,model})=>({provider,model,content:'',status:'streaming'}))};broadcast();let last=0;
+  await Promise.all(selected.map(async(options,index)=>{const reply=comparison.results[index];try{reply.content=await completeChat(options.provider,options.key,[{role:'user',content:text}],options,delta=>{reply.content=delta;if(Date.now()-last>120){last=Date.now();broadcast();}},{signal:controller.signal});reply.status=controller.signal.aborted?'stopped':'complete';}catch(error){reply.status=controller.signal.aborted?'stopped':'error';reply.error=error.message;}finally{broadcast();}}));
+  comparison.busy=false;comparisonAbort=null;if(!controller.signal.aborted){const completed=comparison.results.some(r=>r.status==='complete');if(completed)celebrate++;everydayKit.notice({id:'compare:'+Date.now(),kind:'comparison',title:completed?'Model comparison finished':'Model comparison needs attention',agent:'Nook'});}broadcast();return {ok:true,...comparison};
+}
+ipcMain.handle('nook:everyday',async(event,{action,value}={})=>{
+  if(!everydayKit)return {ok:false,error:'Nook is starting.'};
+  try{
+    if(action==='save'){if(value&&Object.hasOwn(value,'paused'))fullscreenOverride=false;const next=everydayKit.save(value||{});if(next.settings.saveChats)everydayKit.checkpoint(messages);if(next.settings.hideFullscreen)fullscreenWatcher.start();else{fullscreenWatcher.stop();fullscreenDisplay='';}updateNotchVisibility();}
+    else if(action==='request-select'){const at=pending.findIndex(item=>item.id===value);if(at<0)throw new Error('That request is no longer waiting.');const [item]=pending.splice(at,1);pending.unshift(item);}
+    else if(action==='chat-window'){openChatWindow(value?.provider);return {ok:true};}
+    else if(action==='draft'){if(typeof value!=='string'||value.length>2000)throw new Error('Enter a prompt of up to 2,000 characters.');showNook();win?.webContents.send('nook:command','draft:'+value);return {ok:true};}
+    else if(action==='chat-return'){if(event.sender===chatWin?.webContents)chatWin.close();showNook();win?.webContents.send('nook:command','provider:'+(Object.hasOwn(PROVIDERS,value?.provider)?value.provider:'chatgpt'));return {ok:true};}
+    else if(action==='attachment-remove'){attachmentTray.remove(value);attachment=attachmentTray.snapshot().files.at(-1)||null;}
+    else if(action==='chat'){
+      if(demoOn)throw new Error('Leave the walkthrough to use saved chats.');
+      if(['open','new','delete','clear'].includes(value?.action)&&chatBusyProviders.size)throw new Error('Stop or finish current replies before changing conversations.');
+      if(value?.action==='export'){const entry=everydayKit.chat('detail',value);const result=await localDialog('showSaveDialog',chatWin||appWin||win,{title:'Export conversation',defaultPath:'Nook-conversation.md',filters:[{name:'Markdown',extensions:['md']}]});if(result.canceled)return {ok:false,cancelled:true};fs.writeFileSync(result.filePath,'# '+entry.name+'\n\n'+entry.messages.map(m=>'## '+(m.role==='user'?'You':PROVIDERS[entry.provider].label)+'\n\n'+m.content).join('\n\n'),'utf8');return {ok:true};}
+      if(value?.action==='delete')chatSession.forget(everydayKit.chat('detail',value).messages.map(m=>m.id));
+      if(value?.action==='clear')chatSession.forget();
+      const before=everydayKit.snapshot().active,result=everydayKit.chat(value?.action,value);
+      if(value?.action==='detail')return {ok:true,conversation:result};
+      if(value?.action==='open'){messages.splice(0,messages.length,...messages.filter(m=>m.provider!==result.provider),...result.messages);handoffUndo.delete(result.provider);}
+      if(value?.action==='new'){messages.splice(0,messages.length,...messages.filter(m=>m.provider!==value.provider));handoffUndo.delete(value.provider);}
+      if(value?.action==='clear'){messages.length=0;handoffUndo.clear();}
+      if(value?.action==='delete'){const provider=Object.keys(before).find(p=>before[p]===value.id);if(provider){messages.splice(0,messages.length,...messages.filter(m=>m.provider!==provider));handoffUndo.delete(provider);}}
+    }
+    else if(action==='task'){const next=everydayKit.task(value?.action,value);if(value?.action==='toggle'&&next.tasks.find(t=>t.id===value.id)?.done)celebrate++;}
+    else if(action==='prompt')everydayKit.prompt(value?.action,value);
+    else if(action==='focus')everydayKit.focus(value?.action,value);
+    else if(action==='inbox')everydayKit.inbox(value?.action,value?.id);
+    else if(action==='layout'){if(!screen.getAllDisplays().some(d=>String(d.id)===String(value?.id)))throw new Error('Choose a connected display.');everydayKit.layout(value.id,value.layout);animateTo(mode);}
+    else if(action==='compare'){if(demoOn)throw new Error('Leave the walkthrough to compare models.');return await compareModels(value);}
+    else if(action==='compare-stop'){comparisonAbort?.abort();return {ok:true};}
+    else if(action==='voice-preview')return {ok:true,command:voiceCommand(value)};
+    else if(action==='voice-run'){
+      const command=voiceCommand(value);if(!command)throw new Error('That command is not recognized.');
+      if(command.action.startsWith('focus-'))everydayKit.focus(command.action.slice(6));
+      else if(command.action==='mute'||command.action==='unmute'){writePrefs({muted:command.action==='mute'});if(command.action==='mute')speechKit?.stop();refreshTray();}
+      else{showNook();win?.webContents.send('nook:command',command.action==='chat'?'provider:chatgpt':command.action==='requests'?'home':'widget:'+command.action);}
+    }
+    else throw new Error('Unknown workspace action.');
+    broadcast();return {ok:true,...everydayKit.snapshot()};
+  }catch(error){return {ok:false,error:error.message};}
 });

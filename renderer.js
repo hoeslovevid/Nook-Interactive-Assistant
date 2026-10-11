@@ -14,6 +14,7 @@ const cardApproval = document.querySelector("#card-approval");
 const cardDiff = document.querySelector("#card-diff");
 const cardChat = document.querySelector("#card-chat");
 const cardSession = document.querySelector("#card-session");
+const cardWidgets = document.querySelector('#card-widgets');
 const chatPill = document.querySelector("#chat-pill");
 const transcript = document.querySelector("#transcript");
 const chatForm = document.querySelector("#chat-form");
@@ -65,7 +66,7 @@ function updateCompanion() {
   const working = ((state && state.sessions) || []).some(s => !s.finished);
   const activeSession = ((state && state.sessions) || []).find(s => !s.finished);
   if (state) window.NookCompanion.agentColor(seed, state, selectedSession);
-  seed.dataset.mood = window.NookMotion.companionMood({task:activeSession && activeSession.task,pending:waiting(),drop:island.classList.contains("is-drop"),receiving,thinking:sending,celebrating,dancing:Boolean(state?.features?.music?.playing),working,hover:hovering||welcome,sleeping:!chatting&&!welcome&&!working});
+  seed.dataset.mood = window.NookMotion.companionMood({task:activeSession && activeSession.task,pending:waiting(),drop:island.classList.contains("is-drop"),receiving,thinking:sending||Boolean(state?.chatBusy||state?.comparison?.busy),celebrating,dancing:Boolean(state?.features?.music?.playing),working,hover:hovering||welcome,sleeping:!chatting&&!welcome&&!working&&!hovering&&!held&&!pinned&&!expanded});
   document.body.classList.toggle("is-thinking", sending);
   if (state?.demoMood) seed.dataset.mood = state.demoMood;
   for (const canvas of document.querySelectorAll('.focus-pet,.task-pet')) {
@@ -83,10 +84,10 @@ function waiting() {
 }
 
 function shellMode() {
-  if (waiting() || pinned || held || expanded || welcome || chatting || document.querySelector(".usage-dialog[open],.voice-language-picker:not([hidden])")) {
+  if (waiting() || pinned || held || expanded || welcome || chatting || document.querySelector("dialog[open],.voice-language-picker:not([hidden])")) {
     return "open";
   }
-  if (hovering && state && state.prefs && state.prefs.openOnHover) {
+  if (hovering && state && (state.prefs?.openOnHover || state.everyday?.settings?.hoverDashboard)) {
     return "open";
   }
   if (hovering) {
@@ -123,7 +124,7 @@ function measureOpen() {
   const padding = style ? parseFloat(style.paddingTop) + parseFloat(style.paddingBottom) : 0;
   const gap = top ? parseFloat(getComputedStyle(top).marginBottom) || 0 : 0;
   const height = Math.ceil((top ? top.offsetHeight : 40) + content + padding + gap + 12);
-  const dialog = document.querySelector(".usage-dialog[open]");
+  const dialog = document.querySelector("dialog[open]");
   const overlayHeight = dialog ? Math.max(400, dialog.scrollHeight + 64) : document.querySelector(".voice-language-picker:not([hidden])") ? 300 : 0;
   return Math.max(180, Math.min(560, Math.max(height, overlayHeight)));
 }
@@ -140,7 +141,7 @@ async function playSound(kind) {
 }
 
 function showCard(next) {
-  card = next === "chat" || next === "diff" ? next : "session";
+  card = ['chat','diff','widgets'].includes(next) ? next : "session";
   chatting = card === "chat";
   layoutCards();
 }
@@ -150,13 +151,14 @@ function layoutCards() {
   const nextCard = showingApproval ? "approval" : card;
   if (island.dataset.card !== nextCard) {
     island.dataset.card = nextCard;
-    const entering = {approval:cardApproval,chat:cardChat,diff:cardDiff,session:cardSession}[nextCard];
+    const entering = {approval:cardApproval,chat:cardChat,diff:cardDiff,session:cardSession,widgets:cardWidgets}[nextCard];
     pulse(entering, "card-enter");
   }
   cardApproval.hidden = !showingApproval;
   cardDiff.hidden = showingApproval || card !== "diff";
   cardChat.hidden = showingApproval || card !== "chat";
-  cardSession.hidden = showingApproval || card === "diff" || card === "chat";
+  cardSession.hidden = showingApproval || card === "diff" || card === "chat" || card === 'widgets';
+  cardWidgets.hidden = showingApproval || card !== 'widgets';
   document.querySelector('#notch-home').setAttribute('aria-pressed', String(nextCard !== 'chat'));
   document.querySelector('#notch-chat').setAttribute('aria-pressed', String(nextCard === 'chat'));
 }
@@ -182,7 +184,9 @@ function usageTone(detail) {
   return "is-ok";
 }
 
+let headerSignature="";
 function paintHeader() {
+  const signature=JSON.stringify([state?.usage,state?.github?.weeks,weeksOpen]);if(signature===headerSignature)return;headerSignature=signature;
   meters.replaceChildren();
   for (const item of (state && state.usage) || []) {
     const button = document.createElement("button");
@@ -269,7 +273,10 @@ function collectAnswers() {
   return answers;
 }
 
+let sessionsSignature="";
 function paintSessions() {
+  const signature=JSON.stringify([state?.sessions,selectedSession]);
+  if(signature!==sessionsSignature){sessionsSignature=signature;
   sessionsBox.replaceChildren();
   for (const session of (state && state.sessions) || []) {
     const button = document.createElement("button");
@@ -284,6 +291,7 @@ function paintSessions() {
       showDiff(session);
     });
     sessionsBox.appendChild(button);
+  }
   }
   if (selectedSession && !((state && state.sessions) || []).some((session) => session.id === selectedSession)) {
     selectedSession = ''; if (card === 'diff') showCard('session');
@@ -323,7 +331,7 @@ function paintProviders(models) {
 }
 
 function paintExtras() {
-  const pills = [...((state && state.usage) || []), ...((state && state.services) || [])];
+  const pills = window.NookExperience.serviceSort([...((state && state.usage) || []), ...((state && state.services) || [])],state?.experience?.settings);
   window.NookServiceCards.render(extrasBox, pills, { openService: id => window.nook.openService(id), openUsage: id => window.NookUsage?.open(id), colors: state?.prefs?.colors });
 }
 
@@ -337,7 +345,9 @@ function githubRows() {
   return [...(github.pulls || []), ...(github.reviews || []), ...(github.branches || [])];
 }
 
+let githubSignature="";
 function paintGithub() {
+  const signature=JSON.stringify([state?.github,githubCursor,state?.githubBadge]);if(signature===githubSignature)return;githubSignature=signature;
   const box = document.querySelector("#github-list");
   const rows = githubRows();
   box.replaceChildren();
@@ -606,6 +616,7 @@ function paint() {
     content.dataset.noLocalize = 'true';
     content.append(window.NookRichMarkdown.renderMarkdown(message.content, { openUrl: url => window.nook.openChatUrl(url), copyLabel:'Copy code' }));
     bubble.append(content);
+    window.NookChatControls?.decorate(bubble,message);
   }
   if (!transcript.children.length) {
     const empty = document.createElement("div"); empty.className = "chat-empty";
@@ -625,6 +636,7 @@ function wake() {
     return;
   }
   hovering = true;
+  if(state?.everyday?.settings?.hoverDashboard && !held && !pinned && !expanded && !chatting && !new URLSearchParams(location.search).has('detached'))showCard('widgets');
   welcome = false;
   window.clearTimeout(leaveTimer);
   renderShell();
@@ -655,7 +667,7 @@ window.addEventListener("mousemove", (event) => {
 
 island.addEventListener("mouseleave", () => {
   window.clearTimeout(leaveTimer);
-  const hoverDelay = state && state.prefs && state.prefs.openOnHover ? 700 : 0;
+  const hoverDelay = state && (state.prefs?.openOnHover || state.everyday?.settings?.hoverDashboard) ? 700 : 0;
   const wait = Math.max(hoverDelay, holdUntil - Date.now());
   leaveTimer = window.setTimeout(() => {
     hovering = false;
@@ -696,14 +708,13 @@ island.addEventListener("dragover", event => { if (!Array.from(event.dataTransfe
 island.addEventListener("dragleave", () => { dragDepth = Math.max(0, dragDepth - 1); if (!dragDepth) setDrop(false); });
 island.addEventListener("drop", async event => {
   event.preventDefault(); dragDepth = 0; setDrop(false);
-  const file = event.dataTransfer.files && event.dataTransfer.files[0];
+  const files = Array.from(event.dataTransfer.files || []);
   showCard("chat"); expanded = true;
   receiving = true; renderShell();
   try {
-    const filePath = file && window.nook.filePath(file);
-    if (!filePath) throw new Error("Drop a file from Explorer.");
-    const attached = await window.nook.attachPath(filePath);
-    if (!attached || !attached.ok) throw new Error((attached && attached.error) || "Could not attach this file.");
+    if(!files.length)throw new Error('Drop a file from Explorer.');
+    let attached;
+    for(const file of files){const filePath=window.nook.filePath(file);if(!filePath)throw new Error('Drop a file from Explorer.');attached=await window.nook.attachPath(filePath);if(!attached?.ok)throw new Error(attached?.error||'Could not attach this file.');}
     fileChip.textContent = attached.name; fileChip.hidden = false; pulse(fileChip, "is-attached");
     chatError = ""; keyStatus.textContent = "Ready to ask about " + attached.name;
     window.setTimeout(() => { receiving = false; celebrateCompanion(); renderShell(); chatInput.focus(); }, (reducedMotion.matches || state?.look?.motion === "reduced") ? 0 : 450);
@@ -778,14 +789,19 @@ const modelPanel = document.querySelector('#chat-model-picker');
 const modelOptions = document.querySelector('#chat-model-options');
 const modelSearch = document.querySelector('#chat-model-search');
 const modelFeedback = document.querySelector('#chat-model-status');
-let availableChatModels = [], modelLookup = 0;
+let availableChatModels = [], availableChatDetails = {}, modelLookup = 0;
 function closeModelPicker() { modelLookup++; modelPanel.hidden = true; renderShell(); }
+let modelOptionSignature='';
 function paintChatModelOptions() {
+  const signature=JSON.stringify([availableChatModels,availableChatDetails,provider,state?.experience?.settings?.favorites,state?.experience?.settings?.recents,modelSearch.value,sending]);
+  if(signature===modelOptionSignature)return;modelOptionSignature=signature;
+  const chosen=modelOptions.value;
   modelOptions.replaceChildren();
   const placeholder = document.createElement('option'); placeholder.value = ''; placeholder.textContent = 'Choose a model'; modelOptions.append(placeholder);
-  for (const id of availableChatModels.filter(id => id.toLowerCase().includes(modelSearch.value.trim().toLowerCase()))) {
-    const option = document.createElement('option'); option.value = id; option.textContent = id; modelOptions.append(option);
+  for (const id of window.NookExperience.modelSort(availableChatModels,provider,state?.experience?.settings).filter(id => id.toLowerCase().includes(modelSearch.value.trim().toLowerCase()))) {
+    const option = document.createElement('option'); option.value = id; const info=availableChatDetails[id]||{},favorite=state?.experience?.settings?.favorites?.includes(provider+':'+id); option.textContent = (favorite?'★ ':'')+id+(info.vision===true?' · Images':'')+(info.contextWindow?' · '+Math.round(info.contextWindow/1000)+'k':''); modelOptions.append(option);
   }
+  if([...modelOptions.options].some(o=>o.value===chosen))modelOptions.value=chosen;
   modelOptions.disabled = sending;
 }
 document.querySelector('#chat-choose-model').addEventListener('click', async () => {
@@ -796,7 +812,7 @@ document.querySelector('#chat-choose-model').addEventListener('click', async () 
   try {
     const result = await window.nook.checkConnection(requestedProvider);
     if (lookup !== modelLookup || provider !== requestedProvider) return;
-    availableChatModels = result.models; paintChatModelOptions();
+    availableChatModels = result.models; availableChatDetails=result.details||{}; paintChatModelOptions();
     modelFeedback.textContent = !result.ok ? result.error : availableChatModels.length ? 'Choose a model to use for your next message.' : 'No chat models listed. Use Models to enter an ID manually.';
   } catch (_) { if (lookup === modelLookup) modelFeedback.textContent = 'Could not load models. Try again.'; }
   renderShell();
@@ -842,7 +858,7 @@ document.querySelector("#terminal").addEventListener("click", () => {
 });
 
 window.addEventListener("keydown", (event) => {
-  if (document.querySelector(".usage-dialog[open],.voice-language-picker:not([hidden])")) return;
+  if (document.querySelector("dialog[open],.voice-language-picker:not([hidden])")) return;
   if (event.target.matches("input, textarea, select, [contenteditable=true]") && event.key !== "Enter") {
     return;
   }
@@ -906,20 +922,17 @@ chatInput.addEventListener("blur", () => {
   renderShell();
 });
 
-chatForm.addEventListener("submit", async (event) => {
-  event.preventDefault();
-  const text = chatInput.value.trim(); if (!text || sending) return;
-  const sendButton = chatForm.querySelector('button[type="submit"]');
-  sending = true; providerSelect.disabled = true; sendButton.disabled = true; sendButton.textContent = '…';
-  chatInput.value = ""; chatError = ""; renderShell();
+async function runChatAction(action, text, messageId) {
+  if(sending)return;const originalProvider=provider;
+  const sendButton=chatForm.querySelector('button[type="submit"]');sending=true;providerSelect.disabled=true;sendButton.disabled=true;sendButton.textContent='…';chatError='';renderShell();
   try {
-    const result = await window.nook.sendChat(provider, text);
-    if (!result.ok) { chatError = result.error || "Could not send this message."; chatInput.value = text; playSound('error'); }
-    else celebrateCompanion();
-  } catch (_) { chatError = "Could not connect. Please try again."; chatInput.value = text; playSound('error'); }
-  finally { sending = false; providerSelect.disabled = false; sendButton.disabled = false; sendButton.textContent = '↑'; paint(); }
-
-});
+    const result=action==='send'?await window.nook.sendChat(originalProvider,text):await window.nook.chatControl(action,{provider:originalProvider,text,messageId});
+    if(!result.ok){chatError=result.error||'Could not send this request.';if(action==='send')chatInput.value=text;playSound('error');}
+    else if(!result.stopped)celebrateCompanion();
+  }catch{chatError='Could not connect. Please try again.';if(action==='send')chatInput.value=text;playSound('error');}
+  finally{sending=false;providerSelect.disabled=false;sendButton.disabled=false;sendButton.textContent='↑';paint();window.NookChatControls?.paint(state);}
+}
+chatForm.addEventListener('submit',event=>{event.preventDefault();const text=chatInput.value.trim();if(!text||sending)return;chatInput.value='';runChatAction('send',text);});
 
 document.querySelector("#tuck").addEventListener("click", (event) => {
   event.stopPropagation();
@@ -944,6 +957,8 @@ document.querySelector("#open-diff").addEventListener("click", (event) => {
 });
 
 window.nook.onCommand((action) => {
+  if(action.startsWith('provider:')){const id=action.slice(9);if(PROVIDER_NAMES.includes(id)){provider=id;providerSelect.value=id;showCard('chat');held=true;expanded=true;paint();chatInput.focus();}return;}
+  if(action.startsWith('service:')){window.nook.openService(action.slice(8));return;}
   if (action === 'home') { showCard('session'); held = true; welcome = false; expanded = true; renderShell(); return; }
   if (action.startsWith('session:')) {
     const session = state?.sessions?.find(item => item.id === action.slice(8));
@@ -993,7 +1008,7 @@ function showWelcome() {
 reducedMotion.addEventListener("change", () => renderShell());
 window.nook.onWelcome(showWelcome);
 window.nook.onState((next) => {
-  if (next.pending?.id !== state?.pending?.id) { tucked = false; attention = false; }
+  if (next.pending?.id !== state?.pending?.id) { tucked = false; attention = false; if(next.pending)window.NookPalette?.close(); }
   const wasDemo = Boolean(state?.demo);
   if (next.demo && !wasDemo) beforeTour = { provider, pinned, held, expanded, welcome, tucked, card, selectedSession };
   state = next;
@@ -1016,7 +1031,7 @@ document.querySelector('#notch-home').addEventListener('click', () => { showCard
 document.querySelector('#notch-chat').addEventListener('click', () => { showCard('chat'); held = true; welcome = false; expanded = true; renderShell(); chatInput.focus(); });
 document.querySelector('#notch-settings').addEventListener('click', () => window.nook.openApp());
 document.querySelector('#notch-sound').addEventListener('click', () => window.nook.savePrefs({ muted: !state?.prefs?.muted }));
-document.querySelector('#chat-retry').addEventListener('click', () => chatInput.focus());
+document.querySelector('#chat-retry').addEventListener('click', () => runChatAction('retry'));
 document.querySelector('#notch-attach').addEventListener('click', async () => {
   const button = document.querySelector('#notch-attach'); button.disabled = true;
   held = true; expanded = true; welcome = false; renderShell();

@@ -15,6 +15,8 @@
     <link rel="stylesheet" href="rich-chat.css" />
     <link rel="stylesheet" href="service-cards.css" />
   <link rel="stylesheet" href="companion-extras.css">
+<link rel="stylesheet" href="experience.css" />
+<link rel="stylesheet" href="everyday.css" />
 </head>
   <body>
     <div class="island" role="region" aria-label="Nook">
@@ -84,6 +86,8 @@
             <select id="chat-model-options" aria-label="Choose a chat model"></select>
             <p id="chat-model-status" class="hint" role="status"></p>
           </div>
+          <div class="chat-control-bar"><button type="button" id="chat-stop" class="text-button" hidden>Stop generating</button><button type="button" id="chat-regenerate" class="text-button">Regenerate</button><button type="button" id="chat-favorite-model" class="text-button" aria-pressed="false">☆ Favorite model</button><button type="button" id="chat-speak" class="text-button">Read aloud</button><button type="button" id="chat-stop-speech" class="text-button" hidden>Stop speaking</button></div>
+          <div id="chat-edit-panel" class="settings-group" hidden><label>Update your message<textarea id="chat-edit-text" maxlength="2000" rows="3"></textarea></label><p class="hint">This replaces this turn and the later replies in this provider’s chat. Other providers are kept.</p><button type="button" id="chat-edit-confirm" class="text-button">Save & resend</button><button type="button" id="chat-edit-cancel" class="text-button">Cancel</button></div>
           <div id="transcript" class="transcript"></div>
           <p class="file-chip" id="file-chip" hidden></p>
           <form id="chat-form" class="row">
@@ -96,13 +100,14 @@
             />
             <button type="submit" class="choice allow" aria-label="Send message">↑</button>
           </form>
-          <div id="chat-error-panel" class="chat-error-panel" role="status" hidden><canvas class="brand-seed" data-mood="dizzy" width="192" height="192" aria-hidden="true"></canvas><div><strong>Let’s try that again.</strong><p id="chat-error-copy"></p></div><button type="button" id="chat-retry" class="text-button">Review message</button></div>
-          <div class="chat-tools"><button type="button" class="tool-button" id="voice-button" aria-label="Start dictation">◉ Dictate</button><button type="button" class="tool-button" id="window-button">▣ Window context</button><span id="voice-wave" class="voice-wave" hidden><i></i><i></i><i></i><i></i><i></i></span></div>
+          <div id="chat-error-panel" class="chat-error-panel" role="status" hidden><canvas class="brand-seed" data-mood="dizzy" width="192" height="192" aria-hidden="true"></canvas><div><strong>Let’s try that again.</strong><p id="chat-error-copy"></p></div><button type="button" id="chat-retry" class="text-button">Retry request</button></div>
+          <div class="chat-tools"><button type="button" class="tool-button" id="voice-talk">Hold to talk</button><button type="button" class="tool-button" id="voice-button" aria-label="Start dictation">◉ Dictate</button><button type="button" class="tool-button" id="window-button">▣ Window context</button><span id="voice-wave" class="voice-wave" hidden><i></i><i></i><i></i><i></i><i></i></span></div>
           <p id="feature-status" class="hint" role="status" hidden></p>
           <div id="window-picker" class="window-picker" hidden><div class="chat-heading"><strong>Choose a window</strong><button type="button" class="text-button" id="window-cancel">Cancel</button></div><p class="hint">Capture once, then review before sending. Choose a model that supports images.</p><div id="window-sources"></div></div><div id="screenshot-preview" class="screenshot-preview" hidden><img id="screenshot-image" alt="Window captured for chat"><button type="button" class="text-button" id="remove-screenshot">Remove screenshot</button></div>
           <p class="hint" id="key-status"></p>
         </div>
 
+        <div id="card-widgets" hidden></div>
         <div id="card-session">
           <div class="session-focus"><canvas class="brand-seed focus-pet" width="192" height="192" aria-hidden="true"></canvas><div class="focus-copy">
           <p class="section-kicker" id="focus-label">YOUR WORKSPACE</p>
@@ -132,6 +137,8 @@
     <script src="lib/sound-player.js"></script>
     <script src="lib/alert-policy.js"></script>
     <script src="lib/appearance.js"></script>
+    <script src="lib/lifelike.js"></script>
+    <script src="lib/experience.js"></script>
     <script src="lib/seed.js"></script>
     <script src="lib/service-cards.js"></script>
     <script src="renderer.js"></script>
@@ -139,5 +146,10 @@
     <script src="chat-handoff-ui.js"></script>
   <script src="usage-ui.js"></script>
 <script src="voice-language-ui.js"></script>
+<script src="experience-notch-ui.js"></script>
+<script src="command-palette-ui.js"></script>
+<script src="lib/everyday.js"></script>
+<script src="everyday-ui.js"></script>
+<script src="personality-ui.js"></script>
 </body>
 </html>

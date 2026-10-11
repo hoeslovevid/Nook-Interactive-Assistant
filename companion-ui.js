@@ -203,6 +203,7 @@ async function stopVoice(cancel = false) {
     );
     if (!result.ok) throw new Error(result.error);
     if (result.text) {
+      if(window.NookEverydayUI?.voiceMode()) {await window.NookEverydayUI.reviewVoice(result.text);return;}
       chatInput.value = (chatInput.value + " " + result.text)
         .trim()
         .slice(0, 2000);
@@ -217,12 +218,9 @@ async function stopVoice(cancel = false) {
     renderShell();
   }
 }
-featureNode("voice-button").addEventListener("click", async () => {
+async function startVoice() {
   if (voiceTranscribing) return;
-  if (recording) {
-    await stopVoice();
-    return;
-  }
+  if(recording)return;
   const button = featureNode("voice-button");
   button.disabled = true;
   try {
@@ -268,7 +266,14 @@ featureNode("voice-button").addEventListener("click", async () => {
   } finally {
     button.disabled = false;
   }
-});
+}
+featureNode('voice-button').addEventListener('click',()=>recording?stopVoice():startVoice());
+let talkHolding=false;
+const talk=featureNode('voice-talk');
+async function holdTalk(event){event.preventDefault();if(voiceTranscribing||talkHolding)return;talkHolding=true;talk.setAttribute('aria-pressed','true');window.nook.speechOutput('stop');if(event.pointerId!=null)talk.setPointerCapture(event.pointerId);await startVoice();if(!talkHolding&&recording)await stopVoice(true);}
+function releaseTalk(cancel=false){talkHolding=false;talk.setAttribute('aria-pressed','false');if(recording)stopVoice(cancel);}
+talk.addEventListener('pointerdown',event=>{if(event.button===0)holdTalk(event);});talk.addEventListener('pointerup',()=>releaseTalk());talk.addEventListener('pointercancel',()=>releaseTalk(true));
+talk.addEventListener('keydown',event=>{if([' ','Enter'].includes(event.key)&&!event.repeat)holdTalk(event);});talk.addEventListener('keyup',event=>{if([' ','Enter'].includes(event.key)){event.preventDefault();releaseTalk();}});talk.addEventListener('blur',()=>{if(talkHolding)releaseTalk(true);});
 window.addEventListener("keydown", (event) => {
   if (event.key === "Escape" && recording) {
     stopVoice(true);

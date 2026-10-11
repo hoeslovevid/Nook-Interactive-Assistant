@@ -14,6 +14,8 @@
     <link rel="stylesheet" href="localization.css" />
     <link rel="stylesheet" href="sound-settings.css" />
   <link rel="stylesheet" href="companion-extras.css">
+<link rel="stylesheet" href="experience.css" />
+<link rel="stylesheet" href="everyday.css" />
 </head>
   <body>
     <aside>
@@ -25,6 +27,8 @@
         </div>
       </div>
       <nav>
+        <button type="button" class="nav" data-page="home">Home</button>
+        <button type="button" class="nav" data-page="everyday">Chats & everyday tools</button>
         <button type="button" class="nav is-selected" id="nav-look" data-page="look">
           Appearance
         </button>
@@ -43,12 +47,22 @@
         <button type="button" class="nav" id="nav-companion" data-page="companion">Companion & devices</button>
         <button type="button" class="nav" data-page="updates">Updates <span id="update-badge" hidden>New</span></button>
         <button type="button" class="nav" data-page="workspace">Workspace & alerts</button>
+        <button type="button" class="nav" data-page="performance">Performance</button>
       </nav><div class="sidebar-footer"><span class="connection-dot"></span> Made for your flow<span class="version">Nook · Desktop</span></div>
     </aside>
     <main>
       <div class="app-ribbon"><div class="workspace-location"><span class="workspace-orbit"></span><span>Personal workspace</span><span class="ribbon-divider">/</span><strong id="app-page-name">Appearance</strong></div><button type="button" id="app-open-notch" class="ribbon-action" data-icon="home">Open notch</button></div>
       <div class="workspace-glance" aria-label="Workspace status"><div><span class="glance-dot"></span><strong id="app-agent-count">No active agents</strong><small id="app-requests">Ready when you are</small></div><span id="app-context" class="context-chip">Local workspace</span></div>
-      <section id="page-look">
+      <section id="page-everyday" hidden><header><div class="eyebrow">A LITTLE MORE USEFUL, EVERY DAY</div><h1>Chats & everyday tools</h1><p>Keep conversations, stay focused, and choose what appears when you hover.</p></header><div id="everyday-app"></div></section>
+      <section id="page-home">
+        <header><div class="eyebrow">YOUR WORKSPACE, AT A GLANCE</div><h1>Welcome to Nook</h1><p>A calm place to see what’s working and what needs you.</p></header>
+        <div class="home-hero"><canvas class="brand-seed home-pet" width="192" height="192" data-mood="greeting" aria-hidden="true"></canvas><div><h2 id="home-heading">Ready when you are</h2><p id="home-summary">Connect an agent or start a conversation.</p><div class="settings-actions"><button type="button" class="solid" id="home-chat">Open chat</button><button type="button" class="ghost" id="home-customize">Customize notch</button><button type="button" class="ghost" id="home-search">Search everything · Ctrl+K</button></div></div></div>
+        <div class="home-stats" id="home-stats"></div>
+        <div class="home-grid"><div class="settings-group"><h2>Sessions & requests</h2><div id="home-sessions"></div></div><div class="settings-group"><h2>Models & connection health</h2><div id="home-connections"></div></div><div class="settings-group"><h2>Recent activity</h2><div id="home-activity"></div></div><div class="settings-group"><h2>Usage limits</h2><div id="home-usage"></div></div></div>
+        <div class="settings-group"><h2>Workspace profiles</h2><p class="feature-copy">Save this layout, preferred models, appearance, and notification preferences. Keys and server addresses stay separate.</p><div class="profile-actions"><input id="profile-name" maxlength="40" placeholder="Coding, personal, focus…" aria-label="New profile name"><button type="button" class="solid" id="profile-save">Save current setup</button></div><div id="profile-list"></div><p id="profile-note" class="note" role="status"></p></div>
+      </section>
+      <section id="page-performance" hidden><header><div class="eyebrow">LIGHT ON YOUR WORKSPACE</div><h1>Performance</h1><p>Measurements from this running app. Refreshes while this page is visible.</p></header><div id="performance-metrics" class="home-stats"></div><div class="settings-group"><h2>Power & motion</h2><label class="feature-toggle"><input id="battery-saver" type="checkbox" checked> Automatic battery saver <small>Use economy animation and slower background checks on battery</small></label><p id="performance-mode" class="feature-copy"></p><button type="button" class="ghost" id="performance-refresh">Refresh measurements</button><p id="performance-note" class="note" role="status"></p></div><p class="note">CPU is combined across Nook’s processes. Memory includes shared process pages, so it is an approximate footprint. CPU needs two samples before it becomes useful. Agent approvals continue to arrive immediately through the local relay.</p></section>
+      <section id="page-look" hidden>
         <header>
           <div class="eyebrow">MAKE IT YOURS</div><h1>Appearance</h1>
           <p>Shape your workspace. Preview changes as you go.</p>
@@ -75,9 +89,11 @@
             <text id="preview-name" x="142" y="46" font-size="14" font-family="Segoe UI, sans-serif">Nook</text>
           </svg>
         </div>
+        <div class="settings-group" id="notch-layout"><h2>Make the notch yours</h2><p class="feature-copy">Move cards, hide unused sections, and pin favorite integrations. Approval cards always remain available.</p><label class="model-field">Card spacing<select id="notch-layout-mode"><option value="compact">Compact</option><option value="spacious">Spacious</option></select></label><div id="notch-card-order"></div><h3>Pinned integrations</h3><div id="notch-service-pins" class="workspace-options"></div><p id="layout-note" class="note" role="status"></p></div>
         <div class="mood-preview" aria-label="Preview companion expressions"></div>
         <form id="look-form">
           <div class="appearance-options">
+            <label>Text size<select name="fontScale"><option value="1">Default</option><option value="1.15">Larger · 115%</option><option value="1.3">Largest · 130%</option></select></label><label>Contrast<select name="contrast"><option value="normal">Standard</option><option value="high">High contrast</option></select></label><label>Notch surface<select name="surface"><option value="solid">Solid</option><option value="frosted">Frosted</option></select></label><label>Notch opacity<input type="range" name="opacity" min="85" max="100" value="100"></label><p class="note">Frosted surfaces use Windows background material when available; other systems keep a tinted surface. Strong contrast remains available.</p>
             <label>Theme<select name="theme" id="app-theme"><optgroup label="Dark"><option value="black">Black (default)</option><option value="graphite">Graphite</option><option value="midnight">Midnight</option><option value="forest">Forest</option></optgroup><optgroup label="Light"><option value="pearl">Pearl · cool white</option><option value="sand">Sand · warm cream</option><option value="mint">Mint · soft green</option></optgroup></select></label>
             <label>Spacing<select name="density"><option value="comfortable">Comfortable</option><option value="compact">Compact</option></select></label>
             <label>Animation<select name="motion"><option value="full">Full · 30 fps companion</option><option value="economy">Economy · 15 fps companion</option><option value="reduced">Reduced · still companion</option></select></label>
@@ -333,6 +349,7 @@
       </section>
       <section id="page-companion" hidden>
         <header><div class="eyebrow">A LITTLE MORE PERSONAL</div><h1>Companion & devices</h1><p>Dress Nook up, connect your music, and bring your agents along.</p></header>
+        <div class="settings-group"><h2>Voice companion</h2><p class="feature-copy">Hold Talk in notch chat, release to transcribe, then review and send. Installed Windows voices read responses aloud on this PC.</p><label class="feature-toggle"><input id="spoken-replies" type="checkbox"> Read replies aloud <small>Off by default; respects mute and quiet hours</small></label><div class="custom-agent-grid"><label class="model-field">Voice<select id="speech-output-voice"><option value="">Windows default voice</option></select></label><label class="model-field">Speaking speed<select id="speech-output-rate"><option value="-2">Slower</option><option value="0">Normal</option><option value="2">Faster</option></select></label></div><div class="settings-actions"><button type="button" class="ghost" id="speech-load-voices">Find installed voices</button><button type="button" class="ghost" id="speech-preview">Preview voice</button><button type="button" class="ghost" id="speech-stop">Stop speaking</button></div><p id="speech-output-note" class="note" role="status"></p></div>
         <div class="settings-group"><h2>Wardrobe</h2><p class="feature-copy">Original outfits, shared across the notch and desktop companion.</p><div id="wardrobe" class="wardrobe-grid"></div><label class="feature-toggle"><input id="seasonal-outfit" type="checkbox"> Seasonal outfits <small>Nook changes with the season</small></label><p id="wardrobe-note" class="note" role="status"></p></div>
         <div class="settings-group"><h2>Music & movement</h2><p class="feature-copy">Control the active Windows media session: Spotify, browser playback, and compatible music apps.</p><label class="feature-toggle"><input id="music-enabled" type="checkbox"> Show music controls <small>Nook dances while music plays</small></label><button type="button" class="ghost" id="check-music">Refresh music</button><p id="music-note" class="note" role="status"></p></div>
         <div class="settings-group"><h2>Sound studio</h2><p class="feature-copy">Preview each event, choose your own audio, and adjust the volume. Supports WAV, MP3, OGG, and M4A under 2 MB.</p><label class="sound-volume">Volume<input type="range" id="sound-volume" min="0" max="100" value="60"><span id="sound-volume-value">60%</span></label><div id="sound-events"></div><p id="sound-status" class="note" role="status"></p></div>
@@ -389,6 +406,8 @@
     <script src="lib/shortcuts.js"></script>
     <script src="lib/companion.js"></script>
     <script src="lib/appearance.js"></script>
+    <script src="lib/lifelike.js"></script>
+    <script src="lib/experience.js"></script>
     <script src="lib/seed.js"></script>
     <script src="lib/provider-guides.js"></script>
     <script src="settings.js"></script>
@@ -404,5 +423,13 @@
   <script src="usage-ui.js"></script>
 <script src="voice-language-ui.js"></script>
 <script src="custom-agent-ui.js"></script>
+<script src="notch-preview-ui.js"></script>
+<script src="experience-settings-ui.js"></script>
+<script src="command-palette-ui.js"></script>
+<script src="model-setup-ui.js"></script>
+<script src="lib/everyday.js"></script>
+<script src="lib/rich-markdown.js"></script>
+<script src="everyday-ui.js"></script>
+<script src="personality-ui.js"></script>
 </body>
 </html>

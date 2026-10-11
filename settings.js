@@ -1,4 +1,7 @@
 const pages = {
+  everyday: document.querySelector('#page-everyday'),
+  home: document.querySelector("#page-home"),
+  performance: document.querySelector("#page-performance"),
   look: document.querySelector("#page-look"),
   keys: document.querySelector("#page-keys"),
   agents: document.querySelector("#page-agents"),
@@ -47,6 +50,7 @@ function readLookForm() {
     density: String(data.get("density") || "comfortable"),
     motion: String(data.get("motion") || "full"),
     notchWidth: Number(data.get("notchWidth") || 620),
+    fontScale:Number(data.get("fontScale")||1),contrast:String(data.get("contrast")||"normal"),surface:String(data.get("surface")||"solid"),opacity:Number(data.get("opacity")||100),
   };
 }
 
@@ -76,7 +80,7 @@ function fillLookForm(next) {
   if (!next) {
     return;
   }
-  for (const key of ["accent", "paper", "islandTop", "islandBottom", "seed", "radius", "theme", "density", "motion", "notchWidth"]) {
+  for (const key of ["accent", "paper", "islandTop", "islandBottom", "seed", "radius", "theme", "density", "motion", "notchWidth", "fontScale", "contrast", "surface", "opacity"]) {
     const field = lookForm.elements.namedItem(key);
     if (field && document.activeElement !== field) {
       field.value = String(next[key]);
@@ -493,7 +497,7 @@ window.nook.onState((state) => {
   document.querySelector("#toggle-demo").textContent = state.demo ? "Stop demo" : "Play demo";
 });
 
-showPage("look");
+showPage("home");
 
 const companionPreview = document.querySelector('.preview-companion');
 for (const [mood,label] of [['idle','Idle'],['curious','Curious'],['focused','Working'],['reading','Reading'],['coding','Editing'],['running','Terminal'],['thinking','Thinking'],['expectant','Approval'],['happy','Complete'],['receiving','File drop'],['sleepy','Sleepy']]) {

@@ -10,3 +10,5 @@
 .handoff-panel select { width:100%;padding:8px;background:var(--island-top);color:var(--paper);border:1px solid var(--line);border-radius:8px; }
 .handoff-messages { max-height:160px;overflow:auto;margin:12px 0; }.handoff-messages label { display:flex;gap:8px;align-items:start;padding:6px;font-size:11px; }.handoff-messages span { white-space:pre-wrap;overflow-wrap:anywhere; }
 .handoff-panel .choices { margin-top:10px; }.handoff-panel input { flex:none;accent-color:var(--lime); }
+
+.bubble [data-no-localize] strong{display:inline;font-size:inherit;font-weight:650;color:inherit;margin:0}

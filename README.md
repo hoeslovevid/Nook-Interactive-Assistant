@@ -4,6 +4,19 @@
 
 A Windows desktop companion for coding agents, with a compact notch and multi-provider AI chat.
 
+## Conversations and everyday tools
+
+Open **Chats & everyday tools** in the app, or use **Ctrl+K** to find a tool.
+
+- Hover the notch for your selected focus, task, notification, agent, music, service, and prompt widgets. Services needing attention can appear first; pinned services follow. Music and service widgets appear when connected. Approvals take priority, with a picker when several requests are waiting.
+- Keep named, searchable, pinned conversations and export them as Markdown. Chat saving is off by default; enabling it requires system encryption. Choose 7, 30, or 90 days of retention. Files, images, API keys, and server credentials are excluded. The library keeps up to 100 conversations and 200 messages per conversation within an 8 MB storage budget. Requests use the latest 12 messages as model context. Reattach files after restarting or when the shared memory cache expires.
+- Expand chat into a resizable window and return to the notch with the same conversation. Attach up to six text/source files or PNG/JPEG images, preview their included content, and remove them individually. File imports are limited to 2 MB and 60,000 text characters per file, with 120,000 characters of combined text. Token counts are rough text estimates; image usage varies by provider.
+- Save personal prompts or use starters, then review the draft before sending. Compare two provider/model pairs side by side: the review names both destinations, and clicking Send makes two requests with only the comparison prompt. Comparisons support Stop and preserve partial replies.
+- Use a focus timer with pause, resume, a five-minute break, and a small task list. Timer deadlines survive sleep and restart. Notification history contains bounded completion/service titles; approvals stay in their own review queue.
+- Choose calm, playful, or focused pet behavior, animation intensity, speed, and movement within the pet area. Reduced motion remains available.
+- Save notch width, horizontal placement, and widget selection per display. Missing monitors fall back to your existing monitor preference. Windows can hide the notch over fullscreen applications; the monitor watcher runs only while enabled. Pause hides the notch until opened from the tray or resumed in settings.
+- In notch chat, choose **Commands** beside Hold to talk. Review the recognized command and click **Run command**. Supported commands open chat, requests, notifications, or tasks; start/pause/resume/stop a focus timer; and mute/unmute sounds. Commands cannot approve requests or send chat messages. Transcription follows your existing Windows/OpenAI voice setting.
+
 ## See Nook in motion
 
 Real app recordings with local sample data—no API key needed for the walkthrough.
@@ -221,3 +234,31 @@ The iPhone source adds session pinning, swipe actions, context menus, a light/da
 Automatic Lock Screen handoff is opt-in on the iPhone and requires a configured Apple push relay. Routine work starts an activity after twenty seconds of PC lock; waiting approvals can start immediately. Unlocking gets thirty seconds before the activity ends, and relocking retains it. Start requests are deduplicated per handoff by the running relay; restarting the relay clears its in-memory deduplication cache. Apple delivery, permission, and throttling rules still apply. Manual Live Activities remain available. Details and actions continue to require the trusted LAN.
 
 These additions were inspired by [Coucou](https://github.com/Louis-CFM/coucou); Nook’s companion artwork and new outfits are original. API behavior follows the [GitHub review API](https://docs.github.com/en/rest/pulls/reviews), [Vercel cancellation API](https://vercel.com/docs/rest-api/deployments/cancel-a-deployment), [n8n public API client](https://github.com/n8n-io/n8n/blob/master/packages/%40n8n/cli/src/client.ts), [OpenAI dictation API](https://developers.openai.com/api/reference/resources/audio/subresources/transcriptions/methods/create), and [Apple ActivityKit guidance](https://developer.apple.com/documentation/activitykit/starting-and-updating-live-activities-with-activitykit-push-notifications).
+
+## Dashboard, workspace profiles, and interactive notch preview
+
+Nook opens on **Home**, with current agent sessions, waiting requests, recent activity, saved integrations, and agent-reported limits. Model checks are manual, non-generative requests; the dashboard records their last verification time rather than claiming continuous connection health.
+
+In **Appearance**, try the interactive notch with sample tasks, chat, approvals, and music. Collapse or expand it, click the pet, edit a sample greeting, and play the scene sequence. Sample messages and decisions stay inside the preview. The scene player pauses offscreen. Theme, colors, width, wardrobe, and reduced motion apply to its companion.
+
+Move or hide session, service, music, and GitHub cards; pin favorite integrations and choose compact or spacious card spacing. Actual approvals remain available regardless of layout. Text can be enlarged to 115% or 130%, with high contrast, notch opacity, and a frosted surface option. Native background material depends on Windows support; a tinted surface remains the fallback.
+
+Save up to twelve named **workspace profiles** on Home, then apply or remove them. Profiles capture appearance, card layout, model IDs, visible pills, and notification preferences. They exclude API keys, server addresses, push credentials, chat contents, and attachments. Existing credentials remain in Credential Manager. Applying a profile waits for the current chat to finish or be stopped.
+
+Press **Ctrl+K** inside Nook to search commands, settings, live sessions, linked terminals, services, and favorite models. Use the arrow keys and Enter to select; Escape closes it. New approvals interrupt notch search without making a decision. Alt+Left/Right navigates session and service buttons when a text field is not focused.
+
+## Chat controls, model setup, and voice companion
+
+**Stop generating** cancels the request and keeps any partial reply. **Retry request** and **Regenerate** replace the latest turn without duplicating its user prompt; its attachment is retained within a shared 32 MB memory budget. Evicted attachments require reattaching instead of silently retrying without them. **Edit & resend** replaces that provider's selected user turn and later replies, while preserving other providers. Failed replies display errors separately and do not send those diagnostics back to the model. User input remains limited to 2,000 characters per message.
+
+The guided **Connect an AI** wizard saves a provider key, checks the model directory, and lets you choose a model before opening chat. **Find local AI servers** checks the configured Ollama and LM Studio addresses on demand. Favorites and recent models appear first. Image, tool, and context-size badges use explicit provider metadata; unreported capabilities remain unknown.
+
+Hold **Talk** in notch chat, then release to transcribe and review your draft. Space or Enter also holds the button; cancellation releases the microphone. Sending still requires your click. Existing Windows/OpenAI transcription settings apply. **Read aloud** uses an installed Windows speech voice on this PC. Optional automatic spoken replies are off by default, respect mute/quiet hours, and have Stop controls. Choose a voice and speed in Companion & devices. No always-listening wake word is enabled.
+
+## Lifelike motion and performance measurements
+
+The original companion now has independently timed blinks, occasional stretches, glances, yawns, and nods. Reading turns pages, typing highlights keys, terminal work blinks a cursor, and speech animates its mouth. Task poses ease into each other. Reduced motion preserves expressions and brief interaction updates, then stops drawing again.
+
+**Performance** shows combined process CPU, approximate working-set memory, notch readiness time, power state, and background-check cadence. Measurements refresh only while the page is visible. Automatic battery saver uses economy motion and slower media/service checks; local agent events and approvals remain immediate. Settings reads are briefly cached with write invalidation, unchanged lists retain their elements, and hidden dashboards stop rebuilding.
+
+Run `npm run smoke:experience` for isolated checks of the new dashboard, interactive preview, profiles, card layout, larger text, command palette, local model setup, favorites, chat cancellation/regeneration/editing, speech controls, and approval interruption. Network providers and voice output are simulated during these checks. Windows microphone and audible voice quality still depend on installed hardware, voices, recognizers, and permissions.
