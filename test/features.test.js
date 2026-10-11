@@ -8,7 +8,7 @@ test('wardrobe choices are validated and seasons select original outfits',()=>{
   assert.equal(normalize({outfit:'unknown'}).outfit,'none');
   assert.equal(outfit({outfit:'glasses',seasonal:false},new Date(2026,11,1)),'glasses');
   assert.equal(outfit({seasonal:true},new Date(2026,11,1)),'winter');
-  assert.equal(outfit({seasonal:true},new Date(2026,6,1)),'cap');
+  assert.equal(outfit({seasonal:true},new Date(2026,6,1)),'sunvisor');
 });
 test('microphone samples become a bounded mono PCM WAV',()=>{
   const wav=encodeWav(new Float32Array([-2,0,2]),16000);const view=new DataView(wav.buffer);

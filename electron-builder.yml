@@ -20,6 +20,7 @@ files:
   - "assets/logo.svg"
   - "assets/favicon.ico"
   - "assets/apple-touch-icon.png"
+  - "assets/terminal-helper.vsix"
 win:
   # Windows releases are currently unsigned; downloaded files still use SHA-512 integrity checks.
   verifyUpdateCodeSignature: false

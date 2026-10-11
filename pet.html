@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'none'; style-src 'self'; script-src 'self'; img-src 'self'"
+      content="default-src 'none'; style-src 'self'; script-src 'self'; img-src 'self'; media-src data:"
     />
     <title>Nook</title>
     <link rel="icon" href="assets/favicon.ico" sizes="any" />
@@ -12,8 +12,13 @@
   </head>
   <body>
     <canvas class="seed" width="192" height="192" aria-label="Nook companion"></canvas>
+    <script src="lib/locale-catalog.js"></script>
+    <script src="lib/locale.js"></script>
     <script src="lib/motion.js"></script>
     <script src="lib/companion.js"></script>
+    <script src="lib/appearance.js"></script>
+    <script src="lib/alert-policy.js"></script>
+    <script src="lib/sound-player.js"></script>
     <script src="lib/seed.js"></script>
     <script src="pet.js"></script>
   </body>

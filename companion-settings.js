@@ -1,4 +1,5 @@
 const featureSelect = (id) => document.getElementById(id);
+let outfitPreviewOverride = null;
 let companionConfig = window.NookCompanion.normalize();
 async function saveCompanion(patch) {
   try {
@@ -16,7 +17,7 @@ const outfitLabels = {
   headphones: "Headphones",
   scarf: "Cozy scarf",
   winter: "Winter",
-  crown: "Little monarch", bow: "Blush bow", raincoat: "Rainy day",
+  crown: "Little monarch", bow: "Blush bow", raincoat: "Rainy day", sunvisor: "Summer breeze", wizard: "Moon wizard", festive: "Holiday",
 };
 for (const outfit of window.NookCompanion.OUTFITS) {
   const button = document.createElement("button");
@@ -32,6 +33,8 @@ for (const outfit of window.NookCompanion.OUTFITS) {
   const text = document.createElement("span");
   text.textContent = outfitLabels[outfit];
   button.append(canvas, text);
+  for (const event of ['pointerenter', 'focus']) button.addEventListener(event, () => window.nook.previewOutfit(outfit));
+  for (const event of ['pointerleave', 'blur']) button.addEventListener(event, () => window.nook.previewOutfit(null, outfit));
   button.addEventListener("click", () =>
     saveCompanion({ outfit, seasonal: false }),
   );
@@ -55,7 +58,7 @@ function paintCompanionSettings() {
   for (const canvas of document.querySelectorAll(
     ".preview-companion",
   ))
-    window.NookCompanion.apply(canvas, companionConfig);
+    window.NookCompanion.apply(canvas, companionConfig, outfitPreviewOverride);
 }
 const autoPhone = document.createElement('label'); autoPhone.className = 'feature-toggle';
 autoPhone.innerHTML = '<input type="checkbox" id="phone-auto-start"> Start phone access with Nook <small>Use the same address after restarting; only enable on trusted Wi-Fi</small>';
@@ -123,6 +126,7 @@ featureSelect("phone-copy").addEventListener("click", async () => {
     : result.error;
 });
 window.nook.onState((state) => {
+  outfitPreviewOverride = state.features?.previewOutfit;
   companionConfig = window.NookCompanion.normalize(state.features?.companion);
   paintCompanionSettings();
   paintPhone(state.features?.phone || {});

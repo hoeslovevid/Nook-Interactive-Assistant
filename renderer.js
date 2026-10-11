@@ -70,7 +70,7 @@ function updateCompanion() {
   if (state?.demoMood) seed.dataset.mood = state.demoMood;
   for (const canvas of document.querySelectorAll('.focus-pet,.task-pet')) {
     canvas.dataset.mood = seed.dataset.mood;
-    if (state) { window.NookCompanion.agentColor(canvas, state, selectedSession); window.NookCompanion.apply(canvas, state.features?.companion || {}); }
+    if (state) { window.NookCompanion.agentColor(canvas, state, selectedSession); window.NookCompanion.apply(canvas, state.features?.companion || {}, state.features?.previewOutfit); }
   }
 }
 function celebrateCompanion() {
@@ -83,7 +83,7 @@ function waiting() {
 }
 
 function shellMode() {
-  if (waiting() || pinned || held || expanded || welcome || chatting) {
+  if (waiting() || pinned || held || expanded || welcome || chatting || document.querySelector(".usage-dialog[open],.voice-language-picker:not([hidden])")) {
     return "open";
   }
   if (hovering && state && state.prefs && state.prefs.openOnHover) {
@@ -123,7 +123,9 @@ function measureOpen() {
   const padding = style ? parseFloat(style.paddingTop) + parseFloat(style.paddingBottom) : 0;
   const gap = top ? parseFloat(getComputedStyle(top).marginBottom) || 0 : 0;
   const height = Math.ceil((top ? top.offsetHeight : 40) + content + padding + gap + 12);
-  return Math.max(180, Math.min(560, height));
+  const dialog = document.querySelector(".usage-dialog[open]");
+  const overlayHeight = dialog ? Math.max(400, dialog.scrollHeight + 64) : document.querySelector(".voice-language-picker:not([hidden])") ? 300 : 0;
+  return Math.max(180, Math.min(560, Math.max(height, overlayHeight)));
 }
 
 async function playSound(kind) {
@@ -134,34 +136,7 @@ async function playSound(kind) {
   if (state && state.prefs && state.prefs.muted) {
     return;
   }
-  const custom = await window.nook.readSound(kind);
-  if (custom) {
-    const audio = new Audio(custom);
-    audio.play().catch(() => {});
-    return;
-  }
-  const Context = window.AudioContext || window.webkitAudioContext;
-  if (!Context) {
-    return;
-  }
-  if (!audioCtx) {
-    audioCtx = new Context();
-  }
-  const notes = kind === "finish" ? [523, 659, 784] : kind === "hi" ? [440, 554] : [660, 880];
-  const now = audioCtx.currentTime;
-  notes.forEach((freq, index) => {
-    const osc = audioCtx.createOscillator();
-    const gain = audioCtx.createGain();
-    const start = now + index * 0.08;
-    osc.type = "sine";
-    osc.frequency.value = freq;
-    gain.gain.setValueAtTime(0.0001, start);
-    gain.gain.exponentialRampToValueAtTime(0.04, start + 0.02);
-    gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.16);
-    osc.connect(gain).connect(audioCtx.destination);
-    osc.start(start);
-    osc.stop(start + 0.18);
-  });
+  return window.NookSoundPlayer.play(kind, state?.sounds);
 }
 
 function showCard(next) {
@@ -348,17 +323,8 @@ function paintProviders(models) {
 }
 
 function paintExtras() {
-  extrasBox.replaceChildren();
   const pills = [...((state && state.usage) || []), ...((state && state.services) || [])];
-  for (const item of pills) {
-    const hasDetails = ['github', 'vercel', 'n8n'].includes(item.id);
-    const pill = document.createElement(hasDetails ? 'button' : 'p');
-    if (hasDetails) { pill.type = 'button'; pill.title = 'View service details'; pill.addEventListener('click', event => { event.stopPropagation(); window.nook.openService(item.id); }); }
-    pill.className = "pill";
-    pill.dataset.agent = item.id || "";
-    pill.textContent = `${item.title}: ${item.detail}`;
-    extrasBox.appendChild(pill);
-  }
+  window.NookServiceCards.render(extrasBox, pills, { openService: id => window.nook.openService(id), openUsage: id => window.NookUsage?.open(id), colors: state?.prefs?.colors });
 }
 
 let githubCursor = 0;
@@ -503,7 +469,7 @@ function openLatestDiff() {
 
 function applyChrome() {
   const strings = (state && state.strings) || {};
-  const language = state && state.prefs ? state.prefs.language : "en";
+  const language = state && state.prefs ? (state.prefs.resolvedLanguage || state.prefs.language) : "en";
   document.documentElement.lang = language || "en";
   document.documentElement.dir = language === "ar" ? "rtl" : "ltr";
   if (strings.chat) {
@@ -636,29 +602,10 @@ function paint() {
       const dots = document.createElement('span'); dots.className = 'thinking-dots'; dots.setAttribute('aria-label', 'Model is responding');
       for (let index = 0; index < 3; index++) dots.append(document.createElement('i')); bubble.append(dots);
     }
-    const blocks = window.NookMarkdown
-      ? window.NookMarkdown.markdownBlocks(message.content)
-      : [{ type: "text", text: message.content }];
-    for (const block of blocks) {
-      if (block.type === "code") {
-        const pre = document.createElement("pre");
-        pre.className = "diff";
-        pre.textContent = block.text;
-        const copy = document.createElement("button");
-        copy.type = "button";
-        copy.className = "text-button";
-        copy.textContent = "Copy";
-        copy.addEventListener("click", (event) => {
-          event.stopPropagation();
-          navigator.clipboard.writeText(block.text).catch(() => {});
-        });
-        bubble.append(pre, copy);
-      } else {
-        const line = document.createElement(block.type === "heading" ? "strong" : "p");
-        line.textContent = block.text;
-        bubble.appendChild(line);
-      }
-    }
+    const content = document.createElement('div');
+    content.dataset.noLocalize = 'true';
+    content.append(window.NookRichMarkdown.renderMarkdown(message.content, { openUrl: url => window.nook.openChatUrl(url), copyLabel:'Copy code' }));
+    bubble.append(content);
   }
   if (!transcript.children.length) {
     const empty = document.createElement("div"); empty.className = "chat-empty";
@@ -895,6 +842,7 @@ document.querySelector("#terminal").addEventListener("click", () => {
 });
 
 window.addEventListener("keydown", (event) => {
+  if (document.querySelector(".usage-dialog[open],.voice-language-picker:not([hidden])")) return;
   if (event.target.matches("input, textarea, select, [contenteditable=true]") && event.key !== "Enter") {
     return;
   }
@@ -966,9 +914,9 @@ chatForm.addEventListener("submit", async (event) => {
   chatInput.value = ""; chatError = ""; renderShell();
   try {
     const result = await window.nook.sendChat(provider, text);
-    if (!result.ok) { chatError = result.error || "Could not send this message."; chatInput.value = text; }
+    if (!result.ok) { chatError = result.error || "Could not send this message."; chatInput.value = text; playSound('error'); }
     else celebrateCompanion();
-  } catch (_) { chatError = "Could not connect. Please try again."; chatInput.value = text; }
+  } catch (_) { chatError = "Could not connect. Please try again."; chatInput.value = text; playSound('error'); }
   finally { sending = false; providerSelect.disabled = false; sendButton.disabled = false; sendButton.textContent = '↑'; paint(); }
 
 });

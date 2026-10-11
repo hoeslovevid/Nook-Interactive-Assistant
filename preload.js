@@ -25,6 +25,7 @@ contextBridge.exposeInMainWorld("nook", {
   decide(id, action, answers) {
     ipcRenderer.send("nook:decide", { id, action, answers });
   },
+  customAgent(action, value) { return ipcRenderer.invoke('nook:custom-agent', { action, value }); },
   previewHooks() {
     return ipcRenderer.invoke("nook:preview-hooks");
   },
@@ -37,6 +38,8 @@ contextBridge.exposeInMainWorld("nook", {
   sendChat(provider, text) {
     return ipcRenderer.invoke("nook:chat", { provider, text });
   },
+  handoff(action, value) { return ipcRenderer.invoke('nook:handoff', { action, ...value }); },
+  openChatUrl(url) { return ipcRenderer.invoke('nook:chat-url', url); },
   saveModel(patch) {
     return ipcRenderer.invoke("nook:save-model", patch);
   },
@@ -86,6 +89,7 @@ contextBridge.exposeInMainWorld("nook", {
   readSound(kind) {
     return ipcRenderer.invoke("nook:read-sound", kind);
   },
+  sounds(action, value) { return ipcRenderer.invoke('nook:sounds', { action, value }); },
   togglePet() {
     return ipcRenderer.invoke("nook:toggle-pet");
   },
@@ -111,6 +115,7 @@ contextBridge.exposeInMainWorld("nook", {
   openTerminal(sessionId) {
     return ipcRenderer.invoke("nook:open-terminal", sessionId);
   },
+  terminalSetup(action) { return ipcRenderer.invoke('nook:terminal-setup', action); },
   openFile(file) {
     return ipcRenderer.invoke("nook:open-file", file);
   },
@@ -120,6 +125,8 @@ contextBridge.exposeInMainWorld("nook", {
   saveRecap() {
     return ipcRenderer.invoke("nook:save-recap");
   },
+  previewOutfit(outfit, previous) { return ipcRenderer.invoke("nook:outfit-preview", { outfit, previous }); },
+  speechLanguages() { return ipcRenderer.invoke("nook:speech-languages"); },
   saveCompanion(patch) { return ipcRenderer.invoke("nook:companion-save", patch); },
   media(action, position) { return ipcRenderer.invoke("nook:media", { action, position }); },
   windows() { return ipcRenderer.invoke("nook:windows"); },
@@ -130,7 +137,7 @@ contextBridge.exposeInMainWorld("nook", {
   workspace(action, value) { return ipcRenderer.invoke('nook:workspace', { action, value }); },
   serviceDetail(service) { return ipcRenderer.invoke('nook:service-detail', service); },
   openService(service) { ipcRenderer.send('nook:open-service', service); },
-  serviceAction(id) { return ipcRenderer.invoke('nook:service-action', id); },
+  serviceAction(id, input) { return ipcRenderer.invoke('nook:service-action', { id, input }); },
   openServiceUrl(url) { return ipcRenderer.invoke('nook:service-url', url); },
   saveRecapPng() { return ipcRenderer.invoke('nook:recap-png'); },
   checkConnection(provider, refresh = false) { return ipcRenderer.invoke('nook:check-connection', provider, refresh); },

@@ -85,7 +85,7 @@ function previewAttachment(attached) {
   else featureNode("screenshot-image").removeAttribute("src");
 }
 window.nook.onState((next) => {
-  window.NookCompanion.apply(seed, next.features?.companion);
+  window.NookCompanion.apply(seed, next.features?.companion, next.features?.previewOutfit);
   paintMusic(next.features?.music);
   previewAttachment(next.attachment);
 });

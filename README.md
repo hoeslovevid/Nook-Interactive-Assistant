@@ -30,6 +30,30 @@ Real app recordings with local sample data—no API key needed for the walkthrou
 
 ![Animated appearance, connections, shortcuts, and workspace settings](assets/previews/app-settings.gif)
 
+### Choose your theme
+
+![Animated dark and light appearance presets](assets/previews/themes.gif)
+
+### Usage limits at a glance
+
+![Animated sample Claude usage dashboard with reset countdowns and warnings](assets/previews/usage-dashboard.gif)
+
+### Continue a conversation with another AI
+
+![Animated Markdown chat and selected-message handoff between sample local providers](assets/previews/chat-handoff.gif)
+
+### Connected service companions
+
+![Animated service companions showing connected services, reviews, and failed builds](assets/previews/service-companions.gif)
+
+### Sound studio and custom agents
+
+![Animated event sound and volume controls](assets/previews/sound-studio.gif)
+
+![Animated custom-agent identity, event mapping, and sample-event setup](assets/previews/custom-agents.gif)
+
+These clips show the real Nook interface using isolated sample sessions and simulated provider/service data. Usage, service balances, and failures are examples; no API credentials or personal account data are used in the recordings. Existing clips have also been refreshed for the latest interface.
+
 Prefer still images? See the [welcome screen](assets/previews/welcome.png), [model connections](assets/previews/models.png), and [phone session details](assets/previews/phone-details.png).
 
 The latest source UI has a compact toolbar, animated task companion, line-numbered changes, queue-aware approvals, and a quieter chat composer. See the [task workbench](assets/previews/notch-workbench.png), [approval card](assets/previews/notch-approval.png), and [chat view](assets/previews/notch-chat.png). The app includes a live workspace status strip and consistent navigation icons. These screenshots use isolated sample sessions.
@@ -56,7 +80,7 @@ Install dependencies with npm install, then run npm start. Run npm test for the 
 
 Preview the default [black app](assets/previews/black-theme.png) and [black notch](assets/previews/black-notch.png), the [appearance controls](assets/previews/customization.png) and [guided model setup](assets/previews/model-setup.png). These screenshots use isolated sample data.
 
-**Appearance** offers Black (default), Graphite, Midnight, and Forest app themes, comfortable or compact spacing, a 520–820 px expanded notch width (clamped to your display), and the existing notch colors and corner controls. Animation modes apply to the app, notch, and desktop companion: Full caps companion drawing at 30 fps, Economy at 15 fps, and Reduced draws still poses when they change. Windows reduced motion always takes priority.
+**Appearance** offers four dark themes—Black (default), Graphite, Midnight, and Forest—and three light themes: Pearl (cool white), Sand (warm cream), and Mint (soft green). Selecting a theme applies matching app and notch colors; fine-tune the notch colors afterward. Your theme and custom colors are saved between launches. Comfortable or compact spacing, a 520–820 px expanded notch width (clamped to your display), and corner controls are also available. Animation modes apply to the app, notch, and desktop companion: Full caps companion drawing at 30 fps, Economy at 15 fps, and Reduced draws still poses when they change. Windows reduced motion always takes priority.
 
 Hidden and offscreen companion previews stop drawing. Unchanged chat transcripts and provider choices retain their existing interface elements; pointer tracking stops after the gaze settles. Each provider retains its own last 24 chat messages in memory. Activity recaps reuse unchanged history and refresh the rolling week at least every minute, using at most the last 2,000 log lines within a 4 MB tail to keep lifetime log growth from blocking the interface.
 
@@ -68,7 +92,7 @@ Use Node.js 22 or newer, run `npm ci`, then `npm run dist` on Windows. The insta
 
 For a release, update the version in package.json and package-lock.json, update `.github/RELEASE_NOTES.md`, commit, and push a matching tag such as `v0.2.0`. The Windows release workflow runs tests, builds and verifies the installer and update metadata, then publishes the installer, block map, `latest.yml`, and SHA-256 checksums together. A manual workflow run produces a downloadable build artifact without publishing a release. Releases currently use unsigned executables; code signing is not configured. The updater uses this public GitHub repository over HTTPS with optional locally saved authentication and SHA-512 artifact checksums; Authenticode verification is disabled until signed installers are available.
 
-To refresh the animated previews, run `npx electron scripts/capture-previews.cjs`, then `python scripts/encode-previews.py` with Pillow installed. The recorder uses isolated sample data and writes frames under `dist/`; only the resulting GIFs are committed and they are excluded from the installer.
+To refresh all thirteen animated previews, run `npx electron scripts/capture-previews.cjs`, then `python scripts/encode-previews.py` with Pillow installed. The recorder uses isolated sample data and writes frames under `dist/`; only the resulting GIFs are committed and they are excluded from the installer.
 
 ## Connect models
 
@@ -82,9 +106,35 @@ Supported connections: OpenAI, Gemini, Claude, OpenRouter, DeepSeek, Mistral, Gr
 
 Ollama and LM Studio connect to a running server on this PC without a key. Custom endpoints accept HTTPS remote servers or loopback HTTP, with an optional encrypted API key. Enter the full chat/completions endpoint URL.
 
+## Chat formatting and continuing with another AI
+
+Notch chat renders headings, emphasis, inline code, nested lists, quotes, and fenced code with a copy button. Links open only after a click and accept HTTP or HTTPS. Model output is rendered as text and safe interface elements; embedded HTML cannot run scripts.
+
+Choose **Continue with another AI**, pick a destination and select the messages to copy. This replaces that provider's in-memory conversation while preserving the source. Files and images are excluded. Nothing is sent to the destination until you submit your next message. **Restore previous chat** remains available until you send a new message there. A handoff accepts up to 24 messages and 64,000 characters; larger selections are rejected instead of silently shortened.
+
+Connected GitHub, Vercel, Stripe, Resend, Notion, n8n, and Cal.com cards have small animated companions with distinct colors and status expressions. Click one to open its details. Existing confirmation-based actions remain available for GitHub CI, Vercel previews, and n8n; the other service details are read-only. Cards retain their canvases between status updates and release their animation listeners when removed.
+
+## Sound studio
+
+In **Companion & devices**, preview greeting, approval, completion, chat-error, and pet-interaction sounds. Import WAV, MP3, OGG, or M4A recordings under 2 MB, adjust volume, and enable events individually. **Use default** restores a built-in tone and **Stop preview** stops playback. Custom sounds are local, limited to 15 seconds per playback, and master mute stops active audio. Older hi.wav, greet.wav, approval.wav, and finish.wav files are recognized.
+
+## Languages
+
+The default follows the Windows language, falling back to English when unsupported. Select English, Simplified Chinese, Hindi, Spanish, Arabic, French, Bengali, Brazilian Portuguese, Russian, or Indonesian in settings. App controls, help, onboarding, tray menus, dialogs, and common errors update with the selected language. Arabic uses right-to-left reading; code, URLs, keys, model identifiers, and user-authored content retain their direction and original text. Provider-supplied diagnostics and content may remain in their original language.
+
+Translations are compiled from the editable files in locales/ with python scripts/build-locales.py. Some common translations are adapted from [Coucou](https://github.com/Louis-CFM/coucou), copyright 2026 Louis Raillé, under its MIT license. The attribution and license are distributed in lib/Coucou-Translation-LICENSE.txt. Nook's additional interface translations, artwork, and animations are maintained here.
+
+## Secure keys and exact terminal navigation
+
+Provider, integration, update-access, and push-relay keys use Windows Credential Manager. On first startup, Nook migrates the previous encrypted key file, verifies each migrated value, and keeps an encrypted recovery copy. Existing native entries take priority. A failed migration preserves the old encrypted file; the settings page reports storage status without exposing keys. Credential entries are scoped to the local Nook profile.
+
+For precise VS Code or Cursor terminal selection, open **Agents → Linked terminals → Show terminal helper**. Install terminal-helper.vsix through the editor's **Extensions → Install from VSIX**, then run **Nook: Create linked terminal** and start the agent inside it. The helper restores that specific terminal, including split terminals, through an authenticated local pipe; it cannot type or execute commands.
+
+Alternatively, use **Open linked Windows Terminal** to create a named tab. Keep its Nook title so Nook can select it again. Windows Terminal navigation restores the tab, rather than a particular split pane. Existing unlinked sessions use window or project-folder fallback. The helper source is in terminal-helper/; regenerate the bundled extension with python scripts/build-terminal-helper.py.
+
 ## Appearance
 
-Appearance offers live color and corner controls. Reset look applies the new slate and periwinkle palette. Existing saved colors are preserved. Keyboard focus and reduced-motion settings are supported.
+Appearance offers live color and corner controls. Reset look restores the default Black theme and periwinkle accent. Existing saved colors are preserved until you choose a new theme or reset the look. Keyboard focus and reduced-motion settings are supported.
 
 ## Companion & motion
 
@@ -146,6 +196,28 @@ Weekly recap can now be saved as a 1080 × 1920 PNG through the Save PNG button,
 
 The [iPhone app](ios/README.md) includes SwiftUI sessions, questions, diffs, drafts, service details, local history search, authenticated approvals, notification actions, widgets, Siri shortcuts, and a Live Activity/Dynamic Island. Pairing is stored in iPhone Keychain; widget snapshots contain only status and their timestamp. Authentication happens before Allow, and the PC rechecks the exact pending request. Notification actions open the app to complete that flow.
 
-The optional [self-hosted APNs relay](push-relay/README.md) updates an activity started from the phone and delivers generic background alerts. The PC encrypts relay and device tokens. Push payloads contain agent status and request IDs, not commands, code, questions, or provider keys. Details and actions still require the trusted local network; no internet approval tunnel is included. Revoke native devices in desktop settings, disable phone access, or rotate pairing to stop native delivery.
+The optional [self-hosted APNs relay](push-relay/README.md) can start, update, and end Live Activities when the phone opts into automatic handoff, and delivers generic background alerts. The PC encrypts relay and device tokens. Push payloads contain agent status and request IDs, not commands, code, questions, or provider keys. Details and actions still require the trusted local network; no internet approval tunnel is included. Revoke native devices in desktop settings, disable phone access, or rotate pairing to stop native delivery.
 
 Apple signing, provisioning, real-device testing, and relay deployment are not configured in this Windows workspace. The native source includes XcodeGen configuration and a macOS simulator-build workflow for verification on Apple tooling before distribution.
+
+## Usage, dictation, wardrobe, and custom agents
+
+The Claude and Codex plan cards open a usage dashboard with progress rings, reset countdowns, and warnings at 90% used. Enable the corresponding plan-usage setting in Agents. These are the latest limits reported by the local agent, rather than API billing totals; unknown reset times stay unknown, and expired countdowns ask you to refresh the agent.
+
+Choose **Speech language** in Companion & devices, or right-click the chat microphone. Windows lists installed System.Speech recognizers and uses the exact chosen culture. Add speech support in Windows language settings if it is missing. OpenAI dictation uses your saved OpenAI key and sends the selected language with the recording; Automatic lets the recognizer select its default or detect the language. Review the text before sending.
+
+Hover or focus a wardrobe tile to preview it on the app, notch, and desktop pet. Click to save; previews never change the saved outfit and expire after ten seconds. Nook has original summer visor, moon wizard, and holiday outfits. Seasonal mode selects the visor in summer and the wizard in October. Reduced motion applies to all outfits.
+
+In **Agents → Custom agents**, name and color an agent, map its JSON event fields and event names, and test a sample without sending it anywhere. Save and export the profile, then copy the generated PowerShell command into that agent’s activity hook configuration. The hook consumes one JSON object from standard input, emits Read/Edit/Bash/Stop activity, and exits successfully if Nook is unavailable. It never handles or grants permissions; the agent keeps its own prompts. Up to ten profiles can be saved. Field paths are simple dot-separated properties, with no expressions or prototype traversal. Exported profiles contain mappings and appearance, not keys. Keep the exported profile path stable; export again after changing a mapping.
+
+## More service controls
+
+With **Offer service actions** enabled, GitHub PRs can be approved, given a review comment, or sent a request for changes. Inspect the changes in GitHub first. Reviews attach to the fetched commit and refuse to submit if the PR changes during confirmation. Vercel queued/running builds can be cancelled; n8n failed executions can be retried. Cancellation and retry re-check the current item after confirmation. Workflow retries can repeat side effects, which the PC confirmation explicitly describes. Service credentials need write access for these actions. Every offer expires after five minutes and is consumed once.
+
+## iPhone search and automatic handoff
+
+The iPhone source adds session pinning, swipe actions, context menus, a light/dark/system appearance setting, an iOS Focus filter for waiting approvals, and opt-in Spotlight search. Spotlight indexes session/project names and agent names on the phone, excludes code and answers, expires entries after a day, and clears when disabled, disconnected, or PC detail sharing is switched off. Search identifiers are scoped to the paired PC.
+
+Automatic Lock Screen handoff is opt-in on the iPhone and requires a configured Apple push relay. Routine work starts an activity after twenty seconds of PC lock; waiting approvals can start immediately. Unlocking gets thirty seconds before the activity ends, and relocking retains it. Start requests are deduplicated per handoff by the running relay; restarting the relay clears its in-memory deduplication cache. Apple delivery, permission, and throttling rules still apply. Manual Live Activities remain available. Details and actions continue to require the trusted LAN.
+
+These additions were inspired by [Coucou](https://github.com/Louis-CFM/coucou); Nook’s companion artwork and new outfits are original. API behavior follows the [GitHub review API](https://docs.github.com/en/rest/pulls/reviews), [Vercel cancellation API](https://vercel.com/docs/rest-api/deployments/cancel-a-deployment), [n8n public API client](https://github.com/n8n-io/n8n/blob/master/packages/%40n8n/cli/src/client.ts), [OpenAI dictation API](https://developers.openai.com/api/reference/resources/audio/subresources/transcriptions/methods/create), and [Apple ActivityKit guidance](https://developer.apple.com/documentation/activitykit/starting-and-updating-live-activities-with-activitykit-push-notifications).

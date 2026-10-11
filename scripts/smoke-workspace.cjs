@@ -8,9 +8,17 @@ fs.writeFileSync(path.join(data, 'prefs.json'), JSON.stringify({ muted: true }))
 const pipe = '\\\\.\\pipe\\nook-workspace-qa-' + process.pid;
 const relayModule = require('../lib/relay'), realRelay = relayModule.createRelay;
 relayModule.createRelay = (_pipe, options) => realRelay(pipe, options);
+const credentialsModule = require('../lib/credential-store'), realCredentials = credentialsModule.createCredentialStore;
+const testCredentials = {};
+credentialsModule.createCredentialStore = options => realCredentials({ ...options, adapter: { read: async targets => Object.fromEntries(targets.filter(target => Object.hasOwn(testCredentials, target)).map(target => [target, testCredentials[target]])), write: async (target, value) => { testCredentials[target] = value; }, delete: async target => { delete testCredentials[target]; } } });
 Notification.prototype.show = function () {};
 dialog.showMessageBox = async () => ({ response: 1 });
 dialog.showSaveDialog = async () => ({ canceled: false, filePath: path.join(output, 'recap.png') });
+let pickedAudio = '';
+dialog.showOpenDialog = async () => pickedAudio ? ({ canceled:false,filePaths:[pickedAudio] }) : ({ canceled:true,filePaths:[] });
+const native = require('../lib/native'), realScript = native.runScript; native.runScript = (name, args, ...rest) => name === 'windows-speech.ps1' && args.includes('languages') ? Promise.resolve({ok:true,languages:[{id:'en-US',name:'English (United States)'},{id:'fr-FR',name:'French'}]}) : realScript(name,args,...rest);
+let chatCalls = 0;
+require('../lib/chat-transport').completeChat = async (_provider,_key,_history,_options,onDelta) => { chatCalls++; const text = '**Sample reply**\n\n- Parent\n  - Child\n\n> Quote\n\n~~~js\nconst answer = 42;\n~~~'; onDelta(text); return text; };
 const detailsModule = require('../lib/service-details'), realDetails = detailsModule.createServiceDetails;
 const writes = [];
 detailsModule.createServiceDetails = options => realDetails({ ...options, fetcher: async (url, request) => {
@@ -21,6 +29,7 @@ let push;
 const pushModule = require('../lib/phone-push'), realPush = pushModule.createPushBridge;
 pushModule.createPushBridge = options => (push = realPush({ ...options, fetcher: async () => ({ ok: true, json: async () => ({ ok: true }) }) }));
 const errors = [];
+const watchdog = setTimeout(() => { fs.writeFileSync(path.join(output, 'result.json'), JSON.stringify({ ok:false, error:'UI verification timed out', errors },null,2)); app.exit(1); },120000);
 app.on('web-contents-created', (_event, contents) => {
   contents.on('console-message', (_event, level, text) => { if (level >= 3) errors.push(text); });
   contents.on('did-fail-load', (_event, code, text) => errors.push(code + ': ' + text));
@@ -30,6 +39,14 @@ let discoveryCalls = 0;
 discoveryModule.createModelDiscovery = () => realDiscovery({ fetcher: async () => { discoveryCalls++; return new Response(JSON.stringify({ data: [{id:'sample-chat-fast'},{id:'sample-chat-reasoning'},{id:'text-embedding-3-small'}] })); } });
 require('../main');
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
+function contrast(foreground, background) {
+  const luminance = hex => {
+    const rgb = hex.slice(1).match(/../g).map(value => parseInt(value, 16) / 255).map(value => value <= .04045 ? value / 12.92 : Math.pow((value + .055) / 1.055, 2.4));
+    return rgb[0] * .2126 + rgb[1] * .7152 + rgb[2] * .0722;
+  };
+  const a = luminance(foreground), b = luminance(background);
+  return (Math.max(a, b) + .05) / (Math.min(a, b) + .05);
+}
 let sequence = 0;
 function activity(payload) { return new Promise((resolve, reject) => { const socket = net.connect(pipe); socket.on('error', reject); socket.on('connect', () => socket.write(JSON.stringify({ id: 'sample-' + ++sequence, agent: 'claude', payload }) + '\n')); socket.on('data', () => { socket.destroy(); resolve(); }); }); }
 function approval(id, input = {}) { return new Promise((resolve, reject) => { const socket = net.connect(pipe); socket.on('error', reject); socket.on('connect', () => { socket.write(JSON.stringify({ id, agent: 'claude', wait: true, payload: { hook_event_name: 'PermissionRequest', session_id: 'sample', tool_name: 'Bash', tool_input: { command: 'echo sample' }, ...input } }) + '\n'); resolve(socket); }); }); }
@@ -72,6 +89,44 @@ app.whenReady().then(async () => {
     await run('document.querySelector("#history-results button").click()'); await delay(120);
     assert.ok(await run('document.getElementById("history-detail").innerText.includes("Completed the sample greeting")'));
     await run('window.nook.saveKey("vercel", "sample-key-for-mocked-api")');
+    await notchRun('window.nook.sendChat("custom", "Source question")');
+    await notchRun('window.nook.sendChat("ollama", "Target question")');
+    await notchRun('providerSelect.value="custom"; providerSelect.dispatchEvent(new Event("change")); showCard("chat"); expanded=true; paint()'); await delay(150);
+    const sourceRows = await notchRun('state.messages.filter(row=>row.provider==="custom").map(row=>row.content)');
+    const targetRows = await notchRun('state.messages.filter(row=>row.provider==="ollama").map(row=>row.content)');
+    assert.ok(await notchRun('Boolean(document.querySelector("#transcript strong"))'));
+    assert.ok(await notchRun('Boolean(document.querySelector("#transcript ul ul"))'));
+    assert.ok(await notchRun('Boolean(document.querySelector("#transcript blockquote"))'));
+    await notchRun('document.querySelector("#chat-handoff").click()'); await delay(120);
+    assert.equal(await notchRun('document.querySelector("#handoff-panel").hidden'),false);
+    await notchRun('document.querySelector("#handoff-provider").value="ollama"; document.querySelector("#handoff-messages input:last-of-type")');
+    await notchRun('document.querySelectorAll("#handoff-messages input")[1].checked=false; document.querySelector("#handoff-confirm").click()'); await delay(150);
+    assert.deepEqual(await notchRun('state.messages.filter(row=>row.provider==="custom").map(row=>row.content)'),sourceRows);
+    assert.deepEqual(await notchRun('state.messages.filter(row=>row.provider==="ollama").map(row=>row.content)'),[sourceRows[0]]);
+    assert.equal(chatCalls,2,'Handoff does not contact an AI');
+    await notchRun('document.querySelector("#handoff-undo").click()'); await delay(120);
+    assert.deepEqual(await notchRun('state.messages.filter(row=>row.provider==="ollama").map(row=>row.content)'),targetRows);
+    const safeMarkdown = await notchRun('(()=>{const box=document.createElement("div");let url="",copied="";box.append(NookRichMarkdown.renderMarkdown("<img src=x onerror=alert(1)> [bad](javascript:alert) [safe](https://example.com)\\n~~~js\\nconst x=1;\\n~~~",{openUrl:value=>url=value,copy:value=>copied=value}));box.querySelector("a").click();box.querySelector("button").click();return {images:box.querySelectorAll("img").length,links:box.querySelectorAll("a").length,url,copied};})()');
+    assert.deepEqual(safeMarkdown,{images:0,links:1,url:'https://example.com/',copied:'const x=1;'});
+    await run('showPage("companion"); window.nook.sounds("save",{volume:35,enabled:{ask:false}})'); await delay(120);
+    const wav = Buffer.alloc(44); wav.write('RIFF'); wav.write('WAVE',8); pickedAudio = path.join(output,'sample.wav'); fs.writeFileSync(pickedAudio,wav);
+    assert.equal((await run('window.nook.sounds("import","ask")')).ok,true);
+    assert.equal((await run('window.nook.sounds("snapshot")')).custom.ask,'ask.wav');
+    assert.equal(await run('document.querySelector("#sound-volume").value'),'35');
+    assert.equal(await run('document.querySelector("[data-sound=ask]").checked'),false);
+    await run('document.querySelector("#sound-stop").click(); window.nook.sounds("remove","ask")'); pickedAudio='';
+    const cards = await notchRun('(()=>{const box=document.createElement("div");document.body.append(box);const items=["github","vercel","stripe","resend","notion","n8n","cal"].map(id=>({id,title:id,detail:"Connected"}));NookServiceCards.render(box,items,{openService:()=>{}});const canvas=box.querySelector("canvas");NookServiceCards.render(box,items,{openService:()=>{}});const result={count:box.querySelectorAll("button").length,reused:canvas===box.querySelector("canvas")};box.remove();return result;})()');
+    assert.deepEqual(cards,{count:7,reused:true});
+    assert.equal(await run('document.querySelector("#key-storage-status").textContent'),'Keys are stored in Windows Credential Manager.');
+    await run('window.nook.savePrefs({language:"es"})'); await delay(200);
+    assert.equal(await run('document.documentElement.lang'),'es');
+    assert.equal(await run('document.querySelector("#nav-keys").innerText.trim()'),'Modelos y conexiones');
+    await run('window.nook.savePrefs({language:"ar"})'); await delay(200);
+    assert.equal(await notchRun('document.documentElement.dir'),'rtl');
+    assert.equal(await run('getComputedStyle(document.querySelector("input[data-model]")).direction'),'ltr');
+    assert.deepEqual(await notchRun('state.messages.filter(row=>row.provider==="custom").map(row=>row.content)'),sourceRows,'Language preserves conversation text');
+    fs.writeFileSync(path.join(output,'arabic-settings.png'),(await settings.webContents.capturePage()).toPNG());
+    await run('window.nook.savePrefs({language:"system"})'); await delay(200);
     await run('document.getElementById("service-choice").value="vercel"; document.getElementById("service-refresh").click()'); await delay(160);
     assert.equal(await run('document.querySelectorAll("#service-items .workspace-card").length'), 1);
     await run('document.querySelector("#service-items button:last-child").click()'); await delay(160); assert.equal(writes.length, 1);
@@ -109,6 +164,45 @@ app.whenReady().then(async () => {
     await notchRun('document.querySelector("#transcript").firstElementChild.dataset.preserved="yes"');
     await run('window.nook.savePrefs({muted:true})'); await delay(100);
     assert.equal(await notchRun('document.querySelector("#transcript").firstElementChild.dataset.preserved'), 'yes', 'Unrelated state preserves transcript nodes');
+    await run('showPage("companion"); window.nook.saveCompanion({outfit:"glasses",seasonal:false,voiceLanguage:"fr-FR"})'); await delay(120);
+    assert.equal(await run('document.querySelector("#voice-language").value'), 'fr-FR');
+    assert.equal(await run('document.querySelectorAll("#voice-language option").length'), 3);
+    const beforePreview = fs.readFileSync(path.join(data, 'companion.json'), 'utf8');
+    await run('document.querySelector(".outfit-option[data-outfit=wizard]").dispatchEvent(new Event("pointerenter"))'); await delay(150);
+    assert.equal(await notchRun('document.querySelector("canvas.seed").dataset.outfit'), 'wizard');
+    assert.equal(await pet.webContents.executeJavaScript('document.querySelector("canvas").dataset.outfit'), 'wizard');
+    assert.equal(fs.readFileSync(path.join(data, 'companion.json'), 'utf8'), beforePreview);
+    await run('document.querySelector(".outfit-option[data-outfit=wizard]").dispatchEvent(new Event("pointerleave"))'); await delay(120);
+    assert.equal(await pet.webContents.executeJavaScript('document.querySelector("canvas").dataset.outfit'), 'glasses');
+    await notchRun('document.querySelector("#voice-button").dispatchEvent(new MouseEvent("contextmenu",{bubbles:true,cancelable:true}))'); await delay(100);
+    assert.equal(await notchRun('document.querySelector(".voice-language-picker").hidden'), false);
+    await notchRun('document.querySelector(".voice-language-picker select").value="en-US";document.querySelector(".voice-language-picker select").dispatchEvent(new Event("change"))'); await delay(100);
+    assert.equal(await run('document.querySelector("#voice-language").value'), 'en-US');
+    await notchRun('document.querySelector(".voice-language-picker button").click()');
+    await run('showPage("agents");document.querySelector("#custom-agent-form [name=name]").value="Sample agent";document.querySelector("#custom-agent-form [name=id]").value="sample-agent";document.querySelector("#custom-agent-next").click()');
+    assert.equal(await run('document.querySelectorAll("[data-agent-step]")[1].hidden'), false);
+    await run('document.querySelector("#custom-agent-test-step").click();document.querySelector("#custom-agent-test").click()'); await delay(100);
+    assert.ok(await run('document.querySelector("#custom-agent-preview").textContent.includes("PostToolUse")'));
+    await run('document.querySelector("#custom-agent-form").requestSubmit()'); await delay(100);
+    assert.ok(await run('document.querySelector("#custom-agent-list").textContent.includes("Sample agent")'));
+    await run('document.querySelectorAll("#custom-agent-list button")[1].click()'); await delay(100);
+    const exported = JSON.parse(fs.readFileSync(path.join(output, 'recap.png'), 'utf8')); assert.equal(exported.id, 'sample-agent');
+    assert.ok(await run('document.querySelector("#custom-agent-command-text").value.includes("nook-custom-hook.js")'));
+    await run('document.querySelector("#custom-agent-form").scrollIntoView({block:"start"})'); await delay(200);
+    fs.writeFileSync(path.join(output, 'custom-agent-wizard.png'), (await settings.webContents.capturePage()).toPNG());
+    await run('document.querySelector("#usage-show-claude").click()'); await delay(120);
+    const statusSocket = net.connect(pipe); await new Promise((resolve,reject) => {statusSocket.on('error',reject);statusSocket.on('connect',()=>statusSocket.write(JSON.stringify({id:'usage-sample',agent:'claude',statusline:true,payload:{rate_limits:{five_hour:{utilization:91,resets_at:new Date(Date.now()+3600000).toISOString()},weekly:{utilization:30}}}})+'\n'));statusSocket.on('data',()=>{statusSocket.destroy();resolve();});}); await delay(120);
+    assert.equal(await notchRun('state.usage.find(item=>item.id==="claude").primaryUsed'),91);
+    await notchRun('document.querySelector("#extras [data-agent=claude]").click()'); await delay(100);
+    assert.equal(await notchRun('document.querySelector(".usage-dialog").open'),true);
+    assert.equal(await notchRun('document.querySelector(".usage-dialog .usage-ring").getAttribute("aria-valuenow")'),'91');
+    assert.ok(await notchRun('document.querySelector(".usage-dialog").innerText.includes("Near your limit")'));
+    await delay(650); assert.ok(notch.getBounds().height >= 400, 'The usage dialog keeps the notch open at a readable height');
+    fs.writeFileSync(path.join(output,'usage-dashboard.png'),(await notch.webContents.capturePage()).toPNG());
+    await notchRun('document.querySelector(".usage-dialog").dispatchEvent(new KeyboardEvent("keydown",{key:"a",bubbles:true}))');
+    const usageRequest = await approval('usage-review'); waiting.push(usageRequest); await delay(150);
+    assert.equal(await notchRun('document.querySelector(".usage-dialog").open'), false, 'A new approval interrupts the usage dialog');
+    assert.equal(await notchRun('state.pending.id'), 'usage-review'); await run('window.nook.decide("usage-review","deny",{})'); await delay(150);
     await run('window.nook.saveCompanion({outfit:"raincoat",seasonal:false})'); await delay(200);
     assert.equal(await pet.webContents.executeJavaScript('document.querySelector("canvas").dataset.outfit'), 'raincoat');
     await run('window.nook.saveRecapPng()'); assert.deepEqual(nativeImage.createFromPath(path.join(output, 'recap.png')).getSize(), { width: 1080, height: 1920 });
@@ -123,6 +217,52 @@ app.whenReady().then(async () => {
     assert.equal(notch.getBounds().width, 720 + 44);
     await run('document.querySelector(".appearance-options").scrollIntoView({block:"start"})'); await delay(120);
     fs.writeFileSync(path.join(output, "appearance-options.png"), (await settings.webContents.capturePage()).toPNG());
+    // Exercise the real preset control, both renderers, custom colors, and reload persistence.
+    for (const theme of ['pearl', 'sand', 'mint']) {
+      await run(`document.querySelector('#app-theme').value=${JSON.stringify(theme)}; document.querySelector('#app-theme').dispatchEvent(new Event('input', {bubbles:true})); document.querySelector('#app-theme').dispatchEvent(new Event('change', {bubbles:true}))`);
+      await delay(350);
+      const preset = require('../lib/appearance').normalizeLook({ theme });
+      assert.equal(await run('document.documentElement.dataset.scheme'), 'light');
+      assert.equal(await notchRun('document.documentElement.dataset.scheme'), 'light');
+      assert.equal(await notchRun('state.look.paper'), preset.paper);
+      assert.equal(await notchRun('state.look.islandBottom'), preset.islandBottom);
+      assert.equal(await notchRun('state.look.notchWidth'), 720, 'Theme selection retains layout');
+      assert.equal(await notchRun('state.look.motion'), 'economy', 'Theme selection retains animation');
+      assert.equal(await run('getComputedStyle(document.documentElement).colorScheme'), 'light');
+      assert.equal(await notchRun('getComputedStyle(document.documentElement).getPropertyValue("--island-shade").trim()'), '#ffffff');
+      const palette = await run('Object.fromEntries(["paper","muted","app","lime"].map(key => [key,getComputedStyle(document.documentElement).getPropertyValue("--"+key).trim()]))');
+      assert.equal('#' + settings.getBackgroundColor().slice(-6).toLowerCase(), palette.app, 'Native loading background follows the selected theme');
+      for (const background of [palette.app, preset.islandBottom]) {
+        assert.ok(contrast(palette.paper, background) >= 4.5, `${theme} text contrast`);
+        assert.ok(contrast(palette.muted, background) >= 4.5, `${theme} secondary text contrast`);
+      }
+      assert.ok(contrast('#ffffff', palette.lime) >= 4.5, `${theme} primary button contrast`);
+      await run('document.querySelector("main").scrollTop=0'); await delay(120);
+      fs.writeFileSync(path.join(output, `${theme}-app.png`), (await settings.webContents.capturePage()).toPNG());
+      fs.writeFileSync(path.join(output, `${theme}-notch.png`), (await notch.webContents.capturePage()).toPNG());
+      if (theme === 'pearl') {
+        for (const page of ['keys', 'shortcuts', 'updates']) {
+          await run(`showPage(${JSON.stringify(page)})`); await delay(300);
+          fs.writeFileSync(path.join(output, `pearl-${page}.png`), (await settings.webContents.capturePage()).toPNG());
+        }
+        await run('showPage("look"); window.nook.setDemo(true); window.nook.tourStep(1)'); await delay(600);
+        await notchRun('document.querySelector("#sessions button").click()'); await delay(500);
+        fs.writeFileSync(path.join(output, 'pearl-diff.png'), (await notch.webContents.capturePage()).toPNG());
+        await run('window.nook.tourStep(2)'); await delay(650);
+        fs.writeFileSync(path.join(output, 'pearl-approval.png'), (await notch.webContents.capturePage()).toPNG());
+        await run('window.nook.setDemo(false)'); await delay(200);
+        await notchRun('showCard("chat"); expanded=true; paint()'); await delay(350);
+      }
+      await run('document.querySelector("#islandTop").value="#e6e8ed"; document.querySelector("#islandTop").dispatchEvent(new Event("change", {bubbles:true}))'); await delay(200);
+      settings.webContents.reload(); await delay(600);
+      assert.ok(settings.isVisible(), 'The saved light theme is shown after reloading');
+      assert.equal(await run('document.querySelector("#app-theme").value'), theme);
+      assert.equal(await run('document.querySelector("#islandTop").value'), '#e6e8ed');
+      assert.equal(await notchRun('state.look.islandTop'), '#e6e8ed');
+    }
+    await run('document.querySelector("#app-theme").value="forest"; document.querySelector("#app-theme").dispatchEvent(new Event("change", {bubbles:true}))'); await delay(350);
+    assert.equal(await run('document.documentElement.dataset.scheme'), 'dark');
+    assert.equal(await notchRun('state.look.paper'), '#edf0f6');
     await notchRun('document.querySelector("#chat-choose-model").click()'); await delay(180);
     assert.equal(await notchRun('availableChatModels.length'), 2);
     await notchRun('document.querySelector("#chat-model-options").value="sample-chat-reasoning"; document.querySelector("#chat-model-options").dispatchEvent(new Event("change"))'); await delay(150);
@@ -157,7 +297,7 @@ app.whenReady().then(async () => {
     assert.ok(await notchRun('Math.abs(eyeX)+Math.abs(eyeY)<.05'), 'Gaze returns to center after the pointer leaves');
     await run('window.nook.phone("stop")'); assert.equal(push.snapshot().devices, 0);
     assert.deepEqual(errors, []);
-    fs.writeFileSync(path.join(output, 'result.json'), JSON.stringify({ ok: true, errors, archiveSearch: true, serviceConfirmation: true, queueTravel: true, disconnectedRequest: true, nativeDeviceRevocation: true, pngExport: true, sessionDiff: true, typedOnlyAnswers: true, nextQueuedApproval: true, narrowLayout: true, unsavedPreferences: true, customKeyStatus: true, appearanceOptions: true, hiddenAnimationPaused: true, reducedAnimationPaused: true, keySetup: true, modelSelection: true, transcriptPreserved: true, gazeSettles: true, blackDefaults: true, discoveryCalls }, null, 2));
+    fs.writeFileSync(path.join(output, 'result.json'), JSON.stringify({ ok: true, errors, archiveSearch: true, serviceConfirmation: true, queueTravel: true, disconnectedRequest: true, nativeDeviceRevocation: true, pngExport: true, sessionDiff: true, typedOnlyAnswers: true, nextQueuedApproval: true, narrowLayout: true, unsavedPreferences: true, customKeyStatus: true, appearanceOptions: true, lightThemes: true, hiddenAnimationPaused: true, reducedAnimationPaused: true, keySetup: true, modelSelection: true, transcriptPreserved: true, gazeSettles: true, blackDefaults: true, richChat:true, chatHandoff:true, serviceCompanions:true, soundStudio:true, localization:true, credentialStorage:true, usageDashboard:true, dictationLanguages:true, liveWardrobe:true, customAgentWizard:true, discoveryCalls }, null, 2));
   } catch (error) { fs.writeFileSync(path.join(output, 'result.json'), JSON.stringify({ ok: false, error: error.stack, errors }, null, 2)); }
-  finally { for (const socket of waiting) socket.destroy(); app.quit(); }
+  finally { clearTimeout(watchdog); for (const socket of waiting) socket.destroy(); app.quit(); }
 });

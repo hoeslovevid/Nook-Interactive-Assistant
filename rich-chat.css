@@ -1,0 +1,12 @@
+.bubble :is(h1,h2,h3,h4,h5,h6) { font-size:15px;line-height:1.5;margin:14px 0 8px;font-weight:650; }
+.bubble :is(ul,ol) { padding-inline-start:22px;margin:8px 0; }.bubble li { margin:4px 0; }.bubble li :is(ul,ol) { margin:5px 0; }
+.bubble blockquote { border-inline-start:3px solid var(--lime);padding:6px 12px;margin:10px 0;color:var(--muted);background:color-mix(in srgb,var(--lime) 5%,transparent); }
+.bubble a { color:var(--lime);text-decoration:underline;text-underline-offset:3px;cursor:pointer; }
+.bubble :not(pre)>code { padding:2px 5px;border:1px solid var(--line);border-radius:5px;background:color-mix(in srgb,var(--paper) 6%,transparent);font:11px 'Cascadia Mono',Consolas,monospace; }
+.markdown-code { margin:12px 0;border:1px solid var(--line);border-radius:12px;overflow:hidden;direction:ltr;text-align:left; }
+.markdown-code-header { display:flex;align-items:center;justify-content:space-between;padding:7px 12px;background:color-mix(in srgb,var(--paper) 5%,transparent);color:var(--muted);font-size:10px; }
+.markdown-code-header .text-button { margin:0; }.markdown-code pre { margin:0;padding:12px;max-height:260px;overflow:auto;user-select:text;font:11px/1.7 'Cascadia Mono',Consolas,monospace; }
+.handoff-panel { margin:0 0 12px;padding:14px;border:1px solid var(--line);border-radius:14px;background:var(--island-bottom); }
+.handoff-panel select { width:100%;padding:8px;background:var(--island-top);color:var(--paper);border:1px solid var(--line);border-radius:8px; }
+.handoff-messages { max-height:160px;overflow:auto;margin:12px 0; }.handoff-messages label { display:flex;gap:8px;align-items:start;padding:6px;font-size:11px; }.handoff-messages span { white-space:pre-wrap;overflow-wrap:anywhere; }
+.handoff-panel .choices { margin-top:10px; }.handoff-panel input { flex:none;accent-color:var(--lime); }

@@ -4,13 +4,17 @@
     <meta charset="UTF-8" />
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'none'; style-src 'self'; script-src 'self'; img-src 'self'"
+      content="default-src 'none'; style-src 'self'; script-src 'self'; img-src 'self'; media-src data:"
     />
     <title>Nook</title>
     <link rel="icon" href="assets/favicon.ico" sizes="any" />
     <link rel="stylesheet" href="settings.css" />
     <link rel="stylesheet" href="app-modern.css" />
-  </head>
+    <link rel="stylesheet" href="light-theme.css" />
+    <link rel="stylesheet" href="localization.css" />
+    <link rel="stylesheet" href="sound-settings.css" />
+  <link rel="stylesheet" href="companion-extras.css">
+</head>
   <body>
     <aside>
       <div class="brand">
@@ -58,7 +62,7 @@
                 <stop id="fill-bottom" offset="70%" stop-color="#000000" />
               </linearGradient>
             </defs>
-            <rect width="280" height="120" fill="#0b0c0e" />
+            <rect id="preview-desktop" width="280" height="120" fill="#0b0c0e" />
             <path id="preview-body" fill="url(#island-fill)" d="M70 0 H210 V78 Q210 96 192 96 H88 Q70 96 70 78 Z" />
             <rect id="preview-bar" x="70" y="0" width="140" height="3" />
             <rect x="70" y="0" width="140" height="16" fill="rgba(255,255,255,0.06)" />
@@ -74,11 +78,11 @@
         <div class="mood-preview" aria-label="Preview companion expressions"></div>
         <form id="look-form">
           <div class="appearance-options">
-            <label>App theme<select name="theme" id="app-theme"><option value="black">Black (default)</option><option value="graphite">Graphite</option><option value="midnight">Midnight</option><option value="forest">Forest</option></select></label>
+            <label>Theme<select name="theme" id="app-theme"><optgroup label="Dark"><option value="black">Black (default)</option><option value="graphite">Graphite</option><option value="midnight">Midnight</option><option value="forest">Forest</option></optgroup><optgroup label="Light"><option value="pearl">Pearl · cool white</option><option value="sand">Sand · warm cream</option><option value="mint">Mint · soft green</option></optgroup></select></label>
             <label>Spacing<select name="density"><option value="comfortable">Comfortable</option><option value="compact">Compact</option></select></label>
             <label>Animation<select name="motion"><option value="full">Full · 30 fps companion</option><option value="economy">Economy · 15 fps companion</option><option value="reduced">Reduced · still companion</option></select></label>
             <label>Expanded notch width <span id="notch-width-value">620 px</span><input type="range" name="notchWidth" min="520" max="820" step="20" value="620"></label>
-            <p class="note">Themes style the app; colors below style the notch. Motion applies to every companion and respects Windows reduced motion.</p>
+            <p class="note">Choose a theme for the app and a matching notch palette, then fine-tune the colors below. Motion applies to every companion and respects Windows reduced motion.</p>
           </div>
           <label>
             ChatGPT model
@@ -123,6 +127,7 @@
           <div class="eyebrow">YOUR AI WORKSPACE</div><h1>Models & connections</h1>
           <p>Connect your favorite cloud or local models. Keys stay encrypted on this PC.</p>
         </header>
+        <p id="key-storage-status" class="note" role="status"></p>
         <form class="key-card" data-provider="chatgpt">
           <div class="key-heading">
             <h2>ChatGPT</h2>
@@ -213,6 +218,7 @@
         </form>
       </section>
       <section id="page-agents" hidden>
+        <div class="settings-group"><h2>Linked terminals</h2><p class="feature-copy">For exact tabs in VS Code or Cursor, install the bundled VSIX through Extensions → Install from VSIX, then run Nook: Create linked terminal. Start your agent there. Windows Terminal can use a named Nook tab; keep its title to restore it precisely.</p><div class="settings-actions"><button type="button" id="terminal-helper" class="ghost">Show terminal helper</button><button type="button" id="linked-wt" class="ghost">Open linked Windows Terminal</button></div><p id="terminal-setup-status" class="note" role="status"></p></div>
         <header>
           <h1>Agents</h1>
           <p>Review the hook diff, then install it. Your other hooks stay in place. Codex asks you to trust new hooks with /hooks.</p>
@@ -222,7 +228,8 @@
         <button type="button" class="solid" id="install-hooks">Install these hooks</button>
         <button type="button" class="ghost" id="uninstall-hooks">Remove Nook hooks</button>
         <p class="note" id="agents-note"></p>
-      </section>
+      <div class="settings-group"><h2>Custom agents</h2><p class="feature-copy">Connect an agent that emits JSON activity. Its own permission prompts stay in charge.</p><div id="custom-agent-list"></div><form id="custom-agent-form"><fieldset data-agent-step="0"><legend>1 · Identity</legend><div class="custom-agent-grid"><label class="model-field">Agent name<input name="name" maxlength="40" required placeholder="My assistant"></label><label class="model-field">Agent ID<input name="id" maxlength="25" required pattern="[a-z][a-z0-9\-]{1,24}" placeholder="my-agent"></label><label class="model-field">Pet color<input name="color" type="color" value="#9bbaff"></label></div><button type="button" class="ghost" id="custom-agent-next">Next · Map events</button></fieldset><fieldset data-agent-step="1" hidden><legend>2 · Activity mapping</legend><p class="note">Use dot-separated fields, such as payload.session.id. Event names must match exactly.</p><div id="custom-agent-fields" class="custom-agent-grid"></div><div id="custom-agent-events" class="custom-agent-grid"></div><button type="button" class="ghost" id="custom-agent-back">Back</button><button type="button" class="ghost" id="custom-agent-test-step">Next · Test connection</button></fieldset><fieldset data-agent-step="2" hidden><legend>3 · Test & connect</legend><label class="model-field">Sample JSON event<textarea id="custom-agent-sample" spellcheck="false" maxlength="20000">{"event":"read","session_id":"example-session","file_path":"app.js"}</textarea></label><div class="settings-actions"><button type="button" class="ghost" id="custom-agent-test">Preview event</button><button type="button" class="ghost" id="custom-agent-mapping">Back to mapping</button><button type="submit" class="solid">Save agent</button></div><div id="custom-agent-result" class="custom-agent-result" hidden><p id="custom-agent-result-label"></p><details><summary>Show mapped JSON</summary><pre id="custom-agent-preview" class="diff"></pre></details></div><p class="note">After saving, export its profile and add the generated command to your agent’s activity hook. JSON is read from standard input. Configure read, edit, run, and completion events.</p></fieldset><p id="custom-agent-status" class="note" role="status"></p></form><div id="custom-agent-command" hidden><label class="model-field">PowerShell hook command<textarea readonly id="custom-agent-command-text" rows="4"></textarea></label><button type="button" class="ghost" id="custom-agent-copy">Copy command</button></div></div><div class="settings-group"><h2>AI usage</h2><p class="feature-copy">Session and weekly limits reported by your local agent. Logs can lag behind your account.</p><div class="workspace-options"><label><input id="usage-show-claude" type="checkbox"> Claude plan usage</label><label><input id="usage-show-codex" type="checkbox"> Codex plan usage</label></div><p class="note">Claude needs the status-line hook. After enabling it, review and install the hook changes above.</p><div id="usage-dashboard"></div></div>
+</section>
       <section id="page-shortcuts" hidden>
         <header>
           <h1>Shortcuts</h1>
@@ -300,7 +307,7 @@
           <label>
             Language
             <select id="language" name="language">
-              <option value="en">English</option>
+              <option value="system">System language</option><option value="en">English</option>
               <option value="zh">中文</option>
               <option value="hi">हिन्दी</option>
               <option value="es">Español</option>
@@ -328,7 +335,8 @@
         <header><div class="eyebrow">A LITTLE MORE PERSONAL</div><h1>Companion & devices</h1><p>Dress Nook up, connect your music, and bring your agents along.</p></header>
         <div class="settings-group"><h2>Wardrobe</h2><p class="feature-copy">Original outfits, shared across the notch and desktop companion.</p><div id="wardrobe" class="wardrobe-grid"></div><label class="feature-toggle"><input id="seasonal-outfit" type="checkbox"> Seasonal outfits <small>Nook changes with the season</small></label><p id="wardrobe-note" class="note" role="status"></p></div>
         <div class="settings-group"><h2>Music & movement</h2><p class="feature-copy">Control the active Windows media session: Spotify, browser playback, and compatible music apps.</p><label class="feature-toggle"><input id="music-enabled" type="checkbox"> Show music controls <small>Nook dances while music plays</small></label><button type="button" class="ghost" id="check-music">Refresh music</button><p id="music-note" class="note" role="status"></p></div>
-        <div class="settings-group"><h2>Voice input</h2><p class="feature-copy">Click the microphone in chat, speak, then stop to review the text before sending.</p><label class="model-field">Dictation service<select id="voice-service"><option value="windows">Windows · on this PC</option><option value="openai">OpenAI · uses your saved OpenAI key</option></select></label><p class="note" id="voice-service-note">Windows dictation uses your installed speech language. OpenAI mode sends the recording to OpenAI.</p></div>
+        <div class="settings-group"><h2>Sound studio</h2><p class="feature-copy">Preview each event, choose your own audio, and adjust the volume. Supports WAV, MP3, OGG, and M4A under 2 MB.</p><label class="sound-volume">Volume<input type="range" id="sound-volume" min="0" max="100" value="60"><span id="sound-volume-value">60%</span></label><div id="sound-events"></div><p id="sound-status" class="note" role="status"></p></div>
+        <div class="settings-group"><h2>Voice input</h2><p class="feature-copy">Click the microphone in chat, speak, then stop to review the text before sending.</p><label class="model-field">Dictation service<select id="voice-service"><option value="windows">Windows · on this PC</option><option value="openai">OpenAI · uses your saved OpenAI key</option></select></label><label class="model-field">Speech language<select id="voice-language"><option value="auto">Automatic</option></select></label><p id="voice-languages-note" class="note" role="status"></p><p class="note" id="voice-service-note">Windows dictation uses your installed speech language. OpenAI mode sends the recording to OpenAI.</p></div>
         <div class="settings-group"><h2>Phone sharing</h2><label class="feature-toggle"><input id="phone-details" type="checkbox"> Share session details <small>Timelines, code diffs, and final answers on paired phones</small></label><label class="feature-toggle"><input id="phone-instructions" type="checkbox"> Receive follow-up drafts <small>Review on this PC, copy, and send from your terminal</small></label><p class="note">Details may include code and commands. Enable only on trusted Wi-Fi. Keys, chat messages, and screenshots are excluded.</p></div><div class="settings-group"><h2>Phone draft inbox</h2><p class="feature-copy">Drafts from paired phones stay here until you dismiss them. Nothing is typed or run automatically.</p><div id="phone-drafts"></div></div><div class="settings-group phone-setup"><h2>Nook in your pocket</h2><p class="feature-copy">A paired browser companion for sessions, activity, and approvals. Your phone and PC need the same trusted Wi-Fi. Access stops when Nook closes.</p><div class="settings-actions"><button type="button" id="phone-enable" class="solid">Enable phone access</button><button type="button" id="phone-disable" class="ghost" hidden>Disable</button><button type="button" id="phone-revoke" class="ghost" hidden>Revoke & new code</button></div><div id="phone-pairing" hidden><p class="note">Open this address on your phone</p><code id="phone-url"></code><button type="button" id="phone-copy" class="ghost">Copy address</button><p class="note">Enter this pairing code · expires in 10 minutes</p><strong id="phone-code" class="pairing-code"></strong><p id="phone-count" class="note"></p></div><p id="phone-note" class="note" role="status"></p><small class="feature-copy">Local-network access uses HTTP. Use trusted Wi-Fi; no internet relay or router changes are configured.</small></div>
       </section>
       <section id="page-week" hidden>
@@ -363,7 +371,7 @@
           <label class="model-field">Mute agents<select name="mutedAgents" id="workspace-muted" multiple size="4" aria-describedby="muted-help"></select></label><p id="muted-help" class="note">Ctrl-click to select more than one agent. Live requests remain available in the notch.</p>
           <h2>Local session history</h2><label class="feature-toggle"><input type="checkbox" name="archive"> Keep completed sessions and decisions <small>Encrypted on this PC; includes shared code, commands, and answers</small></label>
           <label class="model-field">Keep history for<select name="retention"><option value="7">7 days</option><option value="30">30 days</option><option value="90">90 days</option></select></label><p class="note">Turning history off stops new recording. Use Clear history to remove existing entries. Provider keys and chat attachments are never included.</p>
-          <h2>Connected service actions</h2><label class="feature-toggle"><input type="checkbox" name="serviceActions"> Offer service actions <small>Retry failed CI, redeploy previews, or activate and pause n8n workflows; each action requires confirmation on this PC</small></label>
+          <h2>Connected service actions</h2><label class="feature-toggle"><input type="checkbox" name="serviceActions"> Offer service actions <small>Review PRs, retry CI and workflows, cancel builds, or redeploy previews; each action requires confirmation on this PC</small></label>
           <h2>Native iPhone notifications</h2><p class="feature-copy">Pair the Nook iPhone app on trusted Wi-Fi. Background alerts and Live Activity updates require your own Apple push relay.</p>
           <label class="feature-toggle"><input type="checkbox" name="phonePush"> Send phone push updates <small>Only agent status and request IDs go to your relay; quiet hours and per-agent alert settings apply</small></label>
           <label class="model-field">Relay address<input type="url" name="relayUrl" placeholder="https://push.example.com" maxlength="200"></label>
@@ -371,21 +379,30 @@
         </form>
         <div class="settings-group"><h2>Push relay access</h2><form id="relay-access-form"><label class="model-field">Relay access token<input id="relay-token" type="password" autocomplete="off" maxlength="500"></label><div class="settings-actions"><button type="submit" class="ghost">Save relay token</button><button type="button" id="relay-token-clear" class="ghost">Remove token</button><button type="button" id="revoke-native" class="ghost">Revoke native phone devices</button></div></form><p id="relay-status" class="note" role="status"></p></div>
         <div class="settings-group"><h2>Search history</h2><div class="workspace-options"><input id="history-query" type="search" placeholder="Search projects, commands, diffs, or answers…" maxlength="200" aria-label="Search history"><input id="history-agent" placeholder="Filter by agent" maxlength="30" aria-label="Filter history by agent"></div><div class="settings-actions"><button type="button" id="history-search" class="ghost">Search</button><button type="button" id="history-clear" class="ghost">Clear history</button></div><p id="history-count" class="note" role="status"></p><div id="history-results"></div><div id="history-detail" hidden></div></div>
-        <div class="settings-group"><h2>Service details</h2><div class="workspace-options"><select id="service-choice" aria-label="Service"><option value="github">GitHub</option><option value="vercel">Vercel</option><option value="n8n">n8n</option></select><button type="button" id="service-refresh" class="ghost">Refresh details</button></div><p id="service-status" class="note" role="status"></p><div id="service-items"></div></div>
+        <div class="settings-group"><h2>Service details</h2><div class="workspace-options"><select id="service-choice" aria-label="Service"><option value="github">GitHub</option><option value="vercel">Vercel</option><option value="n8n">n8n</option><option value="stripe">Stripe</option><option value="resend">Resend</option><option value="notion">Notion</option><option value="cal">Cal.com</option></select><button type="button" id="service-refresh" class="ghost">Refresh details</button></div><p id="service-status" class="note" role="status"></p><div id="service-items"></div></div>
       </section>
     </main>
+    <script src="lib/locale-catalog.js"></script>
+    <script src="lib/locale.js"></script>
     <script src="lib/motion.js"></script>
     <script src="lib/ui-icons.js"></script>
     <script src="lib/shortcuts.js"></script>
     <script src="lib/companion.js"></script>
+    <script src="lib/appearance.js"></script>
     <script src="lib/seed.js"></script>
     <script src="lib/provider-guides.js"></script>
     <script src="settings.js"></script>
     <script src="settings-enhance.js"></script>
     <script src="companion-settings.js"></script>
+    <script src="lib/sound-player.js"></script>
+    <script src="sound-settings-ui.js"></script>
     <script src="tour.js"></script>
     <script src="updates-ui.js"></script>
     <script src="workspace-ui.js"></script>
     <script src="app-modern.js"></script>
-  </body>
+    <script src="terminal-settings-ui.js"></script>
+  <script src="usage-ui.js"></script>
+<script src="voice-language-ui.js"></script>
+<script src="custom-agent-ui.js"></script>
+</body>
 </html>

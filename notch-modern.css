@@ -1,5 +1,5 @@
 .ui-icon { width:18px; height:18px; fill:none; stroke:currentColor; stroke-width:1.65; stroke-linecap:round; stroke-linejoin:round; flex:none; }
-.island { background:linear-gradient(160deg,color-mix(in srgb,var(--island-top) 75%,#000000),var(--island-bottom)); }
+.island { background:linear-gradient(160deg,color-mix(in srgb,var(--island-top) 75%,var(--island-shade,#000000)),var(--island-bottom)); }
 .island::before { background:transparent; }
 body.is-open .top { margin:0; height:60px; padding:0 18px; border:0; gap:10px; }
 body.is-open .top .seed { width:28px; height:28px; }

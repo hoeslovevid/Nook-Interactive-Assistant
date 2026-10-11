@@ -1,0 +1,9 @@
+:root[dir=rtl] body { direction:ltr; }
+:root[dir=rtl] :is(main,aside,.details) { direction:rtl;text-align:start; }
+:root[dir=rtl] .island { direction:ltr; }
+:root[dir=rtl] :is(.top,.chrome-tools,.notch-nav,.pills,#sessions,.music-controls) { direction:ltr; }
+:root[dir=rtl] :is(pre,code,kbd,.markdown-code,.diff,#diff-path,#phone-url,input[data-model],input[data-url],input[data-service-url],input[type=url],input[type=password]) { direction:ltr;text-align:left; }
+:root[dir=rtl] :is(#transcript,#chat-input,.typed-answer) { unicode-bidi:plaintext; }
+:root[dir=rtl] .bubble { text-align:start; }
+
+#custom-agent-sample,#custom-agent-preview,#custom-agent-command-text,#custom-agent-form [name=id],#custom-agent-fields input,#custom-agent-events input { direction:ltr;unicode-bidi:plaintext; }

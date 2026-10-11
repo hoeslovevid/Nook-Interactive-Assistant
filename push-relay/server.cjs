@@ -4,7 +4,7 @@ const validToken = value => typeof value === 'string' && /^[a-f0-9]{32,512}$/i.t
 function cleanPayload(input) {
   const state = input?.state;
   if (!state || !['Needs review', 'Finished', 'Working', 'Quiet'].includes(state.status) || !Array.isArray(input.devices) || input.devices.length > 3 || !Number.isSafeInteger(state.updated) || Math.abs(Date.now() / 1000 - state.updated) > 300) throw new Error('Invalid status payload');
-  return { state: { status: state.status, agent: String(state.agent || 'Nook').slice(0, 40), waiting: Boolean(state.waiting), requestId: String(state.requestId || '').slice(0, 200), updated: state.updated, locked: Boolean(state.locked) }, alert: input.alert === true, devices: input.devices.map(device => ({ token: validToken(device.token) ? device.token : '', activityToken: validToken(device.activityToken) ? device.activityToken : '' })) };
+  return { state: { status: state.status, agent: String(state.agent || 'Nook').slice(0, 40), waiting: Boolean(state.waiting), requestId: String(state.requestId || '').slice(0, 200), updated: state.updated, locked: Boolean(state.locked) }, alert: input.alert === true, devices: input.devices.map(device => ({ token: validToken(device.token) ? device.token : '', activityToken: validToken(device.activityToken) ? device.activityToken : '', startToken: validToken(device.startToken) ? device.startToken : '', event: ['start', 'end'].includes(device.event) ? device.event : 'update', eventId: /^[a-zA-Z0-9-]{1,80}$/.test(device.eventId || '') ? device.eventId : '' })) };
 }
 function createApns({ teamId, keyId, key, bundleId, sandbox = true }) {
   if (!/^[A-Z0-9]{10}$/.test(teamId) || !/^[A-Z0-9]{10}$/.test(keyId) || !/^[a-zA-Z0-9.-]{3,150}$/.test(bundleId)) throw new Error('Configure the Apple team, key, and bundle identifiers.');
@@ -23,7 +23,7 @@ function createApns({ teamId, keyId, key, bundleId, sandbox = true }) {
     const finish = (error, result) => { if (completed) return; completed = true; clearTimeout(timer); session.close(); if (error) reject(error); else resolve(result); };
     const timer = setTimeout(() => { session.destroy(); finish(new Error('Apple push timed out')); }, 8000);
     session.on('error', error => finish(error));
-    const stream = session.request({ ':method': 'POST', ':path': '/3/device/' + token, authorization: 'bearer ' + jwt(), 'apns-topic': bundleId + (live ? '.push-type.liveactivity' : ''), 'apns-push-type': live ? 'liveactivity' : 'alert', 'apns-priority': live ? '5' : '10', 'apns-expiration': String(Math.floor(Date.now() / 1000) + 120) });
+    const stream = session.request({ ':method': 'POST', ':path': '/3/device/' + token, authorization: 'bearer ' + jwt(), 'apns-topic': bundleId + (live ? '.push-type.liveactivity' : ''), 'apns-push-type': live ? 'liveactivity' : 'alert', 'apns-priority': live && payload.aps?.event !== 'start' ? '5' : '10', 'apns-expiration': String(Math.floor(Date.now() / 1000) + 120) });
     let status = 0, result = '';
     stream.on('response', headers => { status = Number(headers[':status']); });
     stream.on('data', chunk => { if (result.length < 1000) result += chunk; });
@@ -34,7 +34,7 @@ function createApns({ teamId, keyId, key, bundleId, sandbox = true }) {
 }
 function createServer({ secret, send }) {
   if (typeof secret !== 'string' || !/^[A-Za-z0-9_-]{32,500}$/.test(secret)) throw new Error('Set a strong NOOK_RELAY_TOKEN.');
-  const expected = Buffer.from('Bearer ' + secret), rate = new Map();
+  const expected = Buffer.from('Bearer ' + secret), rate = new Map(), starts = new Map();
   return http.createServer(async (request, response) => {
     const reply = (status, data) => { response.writeHead(status, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' }); response.end(JSON.stringify(data)); };
     if (request.url === '/healthz' && request.method === 'GET') return reply(200, { ok: true });
@@ -46,18 +46,28 @@ function createServer({ secret, send }) {
     if (count > 30) return reply(429, { ok: false });
     try {
       let raw = ''; for await (const chunk of request) { raw += chunk; if (Buffer.byteLength(raw) > 16000) return reply(413, { ok: false }); }
-      const { state, alert, devices } = cleanPayload(JSON.parse(raw)), invalidTokens = [], results = [];
+      const { state, alert, devices } = cleanPayload(JSON.parse(raw)), invalidTokens = [], deliveredTokens = [], results = [];
       await Promise.all(devices.map(async device => {
-        if (device.activityToken) {
-          const result = await send(device.activityToken, { aps: { timestamp: state.updated, event: 'update', 'content-state': state, 'stale-date': state.updated + 120 } }, true);
-          if (result.invalid) invalidTokens.push(device.activityToken); else results.push(result.ok);
+        if (device.event === 'start' && device.startToken && device.eventId) {
+          const key = device.startToken + ':' + device.eventId;
+          let delivery = starts.get(key);
+          if (!delivery) {
+            delivery = send(device.startToken, { aps: { timestamp: state.updated, event: 'start', 'attributes-type': 'NookActivity', 'input-push-token': 1, attributes: { name: 'Nook' }, 'content-state': state, 'stale-date': state.updated + 120, alert: { title: 'Nook', body: state.waiting ? 'An agent needs your review.' : 'Your agents are working.' } } }, true);
+            starts.set(key, delivery); if (starts.size > 1000) starts.delete(starts.keys().next().value);
+          }
+          let result; try { result = await delivery; } catch (error) { starts.delete(key); throw error; }
+          if (result.invalid) invalidTokens.push(device.startToken); else { results.push(result.ok); if (result.ok) deliveredTokens.push(device.startToken); else starts.delete(key); }
+        } else if (device.activityToken) {
+          const event = device.event === 'end' ? 'end' : 'update';
+          const result = await send(device.activityToken, { aps: { timestamp: state.updated, event, 'content-state': state, ...(event === 'end' ? { 'dismissal-date': state.updated } : { 'stale-date': state.updated + 120 }) } }, true);
+          if (result.invalid) invalidTokens.push(device.activityToken); else { results.push(result.ok); if (result.ok) deliveredTokens.push(device.activityToken); }
         }
         if (alert && device.token) {
           const result = await send(device.token, { aps: { alert: { title: 'Nook', body: state.waiting ? 'An agent needs your review.' : 'An agent finished working.' }, sound: 'default', category: 'NOOK_REVIEW' }, requestId: state.requestId }, false);
           if (result.invalid) invalidTokens.push(device.token); else results.push(result.ok);
         }
       }));
-      reply(200, { ok: results.every(Boolean), invalidTokens });
+      reply(200, { ok: results.every(Boolean), invalidTokens, deliveredTokens });
     } catch { reply(400, { ok: false }); }
   });
 }

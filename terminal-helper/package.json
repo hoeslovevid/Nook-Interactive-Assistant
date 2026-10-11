@@ -1,0 +1,12 @@
+{
+  "name": "terminal-helper",
+  "displayName": "Nook Terminal Helper",
+  "publisher": "nook",
+  "version": "0.1.0",
+  "description": "Create a terminal Nook can restore to the exact tab without typing or running commands.",
+  "engines": { "vscode": "^1.85.0" },
+  "categories": ["Other"],
+  "main": "extension.js",
+  "activationEvents": ["onCommand:nook.createLinkedTerminal"],
+  "contributes": { "commands": [{ "command": "nook.createLinkedTerminal", "title": "Nook: Create linked terminal" }] }
+}

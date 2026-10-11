@@ -229,6 +229,15 @@ navButtons.forEach((button) => {
 });
 
 let lookSaveTimer = 0;
+function applyThemePreset(event) {
+  if (event.target.name !== 'theme') return;
+  // A user-selected preset replaces only palette colors, keeping layout and motion.
+  if (look?.theme === event.target.value) return;
+  const preset = window.NookAppearance.normalizeLook({ theme: event.target.value });
+  for (const key of ['accent', 'paper', 'islandTop', 'islandBottom', 'seed']) {
+    lookForm.elements.namedItem(key).value = preset[key];
+  }
+}
 async function persistLook(next) {
   clearTimeout(lookSaveTimer); lookSaveTimer = 0;
   const note = document.querySelector('#appearance-status');
@@ -239,13 +248,20 @@ lookForm.addEventListener("input", (event) => {
   if (event.target.dataset.model || event.target.dataset.url) {
     return;
   }
+  applyThemePreset(event);
   const next = readLookForm();
   look = next;
   paintPreview(next);
   clearTimeout(lookSaveTimer);
   lookSaveTimer = setTimeout(() => persistLook(next), 160);
 });
-lookForm.addEventListener('change', () => persistLook(readLookForm()));
+lookForm.addEventListener('change', (event) => {
+  if (event.target.dataset.model || event.target.dataset.url) return;
+  applyThemePreset(event);
+  look = readLookForm();
+  paintPreview(look);
+  persistLook(look);
+});
 
 document.querySelector("#reset-look").addEventListener("click", () => {
   clearTimeout(lookSaveTimer);
@@ -468,6 +484,7 @@ document.querySelector("#copy-recap").addEventListener("click", async () => {
 });
 
 window.nook.onState((state) => {
+  document.querySelector('#key-storage-status').textContent = state.keyStorage?.ready ? 'Keys are stored in Windows Credential Manager.' : state.keyStorage?.error || '';
   if (!lookSaveTimer) { look = state.look || look; fillLookForm(state.look); }
   paintKeys(state.keys, state.serviceKeys);
   fillModels(state.models);

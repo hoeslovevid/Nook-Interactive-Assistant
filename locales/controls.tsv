@@ -1,0 +1,83 @@
+# English|zh-Hans|hi|es|ar|fr|bn|pt-BR|ru|id
+Search|搜索|खोजें|Buscar|بحث|Rechercher|খুঁজুন|Buscar|Поиск|Cari
+Filter by agent|按代理筛选|एजेंट से फ़िल्टर करें|Filtrar por agente|تصفية حسب الوكيل|Filtrer par agent|এজেন্ট অনুযায়ী বাছুন|Filtrar por agente|Фильтр по агенту|Filter menurut agen
+Keep history for|历史保留时间|इतिहास रखने की अवधि|Conservar historial|الاحتفاظ بالسجل لمدة|Conserver l’historique|ইতিহাস রাখুন|Manter histórico por|Хранить историю|Simpan riwayat selama
+{count} days|{count} 天|{count} दिन|{count} días|{count} أيام|{count} jours|{count} দিন|{count} dias|{count} дней|{count} hari
+{count} fps companion|伙伴 {count} 帧/秒|साथी {count} fps|compañero a {count} fps|الرفيق {count} إطار/ث|compagnon à {count} fps|সঙ্গী {count} fps|companheiro a {count} fps|компаньон {count} кадр/с|teman {count} fps
+Ask, or drop a file|提问或拖入文件|पूछें या फ़ाइल छोड़ें|Pregunta o arrastra un archivo|اسأل أو أسقط ملفًا|Posez une question ou déposez un fichier|প্রশ্ন করুন বা ফাইল দিন|Pergunte ou solte um arquivo|Спросите или перетащите файл|Tanya atau lepaskan file
+Attach a file|附加文件|फ़ाइल जोड़ें|Adjuntar archivo|إرفاق ملف|Joindre un fichier|ফাইল যুক্ত করুন|Anexar arquivo|Прикрепить файл|Lampirkan file
+Back to activity|返回活动|गतिविधि पर वापस जाएँ|Volver a actividad|العودة إلى النشاط|Retour à l’activité|কার্যকলাপে ফিরুন|Voltar à atividade|Назад к активности|Kembali ke aktivitas
+Activity|活动|गतिविधि|Actividad|النشاط|Activité|কার্যকলাপ|Atividade|Активность|Aktivitas
+At startup and every six hours|启动时及每六小时|शुरू होने पर और हर छह घंटे|Al iniciar y cada seis horas|عند البدء وكل ست ساعات|Au démarrage et toutes les six heures|শুরুতে ও প্রতি ছয় ঘণ্টায়|Ao iniciar e a cada seis horas|При запуске и каждые шесть часов|Saat mulai dan setiap enam jam
+Automatically check for updates|自动检查更新|अपने आप अपडेट देखें|Buscar actualizaciones automáticamente|البحث التلقائي عن تحديثات|Rechercher automatiquement les mises à jour|স্বয়ংক্রিয়ভাবে আপডেট দেখুন|Verificar atualizações automaticamente|Проверять обновления автоматически|Periksa pembaruan otomatis
+Checking your version…|正在检查版本…|वर्ज़न जाँचा जा रहा है…|Comprobando versión…|جارٍ فحص الإصدار…|Vérification de la version…|সংস্করণ যাচাই হচ্ছে…|Verificando versão…|Проверка версии…|Memeriksa versi…
+Choose a chat model|选择聊天模型|चैट मॉडल चुनें|Elegir modelo de chat|اختر نموذج دردشة|Choisir un modèle de chat|চ্যাট মডেল বাছুন|Escolher modelo de chat|Выбрать модель чата|Pilih model obrolan
+Choose a window|选择窗口|विंडो चुनें|Elegir ventana|اختر نافذة|Choisir une fenêtre|উইন্ডো বাছুন|Escolher janela|Выбрать окно|Pilih jendela
+Companion preview|伙伴预览|साथी का पूर्वावलोकन|Vista del compañero|معاينة الرفيق|Aperçu du compagnon|সঙ্গীর পূর্বরূপ|Prévia do companheiro|Просмотр компаньона|Pratinjau teman
+Copy share image|复制分享图片|साझा तस्वीर कॉपी करें|Copiar imagen|نسخ صورة المشاركة|Copier l’image|শেয়ার ছবি কপি করুন|Copiar imagem|Скопировать изображение|Salin gambar
+Dictation service|听写服务|डिक्टेशन सेवा|Servicio de dictado|خدمة الإملاء|Service de dictée|কণ্ঠলিপির সেবা|Serviço de ditado|Сервис диктовки|Layanan dikte
+File changes|文件更改|फ़ाइल बदलाव|Cambios de archivo|تغييرات الملفات|Modifications de fichiers|ফাইল পরিবর্তন|Alterações de arquivos|Изменения файлов|Perubahan file
+Follow the pointer|跟随指针|कर्सर का अनुसरण करें|Seguir el puntero|اتباع المؤشر|Suivre le pointeur|পয়েন্টার অনুসরণ করুন|Seguir o ponteiro|Следовать за указателем|Ikuti penunjuk
+GitHub CI changes|GitHub CI 变化|GitHub CI बदलाव|Cambios de CI de GitHub|تغييرات GitHub CI|Changements CI GitHub|GitHub CI পরিবর্তন|Alterações de CI do GitHub|Изменения CI GitHub|Perubahan CI GitHub
+GitHub access token (optional)|GitHub 访问令牌（可选）|GitHub टोकन (वैकल्पिक)|Token GitHub (opcional)|رمز GitHub (اختياري)|Jeton GitHub (facultatif)|GitHub টোকেন (ঐচ্ছিক)|Token GitHub (opcional)|Токен GitHub (необязательно)|Token GitHub (opsional)
+Hide project names on the share image|分享图片隐藏项目名|साझा तस्वीर में प्रोजेक्ट नाम छिपाएँ|Ocultar proyectos en la imagen|إخفاء أسماء المشاريع في الصورة|Masquer les projets sur l’image|শেয়ার ছবিতে প্রকল্পের নাম লুকান|Ocultar projetos na imagem|Скрыть проекты на изображении|Sembunyikan nama proyek di gambar
+Hover the top edge, or ask a model.|悬停顶部或向模型提问。|ऊपरी किनारे पर जाएँ या मॉडल से पूछें।|Pasa por el borde superior o pregunta a un modelo.|مرر المؤشر أعلى الشاشة أو اسأل نموذجًا.|Survolez le bord supérieur ou interrogez un modèle.|উপরের প্রান্তে যান বা মডেলকে প্রশ্ন করুন।|Passe no topo ou pergunte a um modelo.|Наведите на верхний край или спросите модель.|Arahkan ke tepi atas atau tanya model.
+Jump to alert|跳转到提醒|सूचना पर जाएँ|Ir al aviso|الانتقال للتنبيه|Aller à l’alerte|সতর্কতায় যান|Ir ao alerta|Перейти к уведомлению|Ke pemberitahuan
+Keep completed sessions and decisions|保留会话与决定|पूरे सत्र और निर्णय रखें|Guardar sesiones y decisiones|حفظ الجلسات والقرارات|Conserver sessions et décisions|সেশন ও সিদ্ধান্ত রাখুন|Guardar sessões e decisões|Хранить сеансы и решения|Simpan sesi dan keputusan
+Later|稍后|बाद में|Más tarde|لاحقًا|Plus tard|পরে|Mais tarde|Позже|Nanti
+Latest diff|最新差异|नवीनतम बदलाव|Últimos cambios|أحدث الفروق|Dernières différences|সর্বশেষ পরিবর্তন|Últimas diferenças|Последние изменения|Perbedaan terbaru
+Let’s try that again.|再试一次。|फिर कोशिश करें।|Intentémoslo de nuevo.|لنحاول مجددًا.|Réessayons.|আবার চেষ্টা করি।|Vamos tentar novamente.|Попробуем ещё раз.|Mari coba lagi.
+Main screen|主屏幕|मुख्य स्क्रीन|Pantalla principal|الشاشة الرئيسية|Écran principal|প্রধান পর্দা|Tela principal|Основной экран|Layar utama
+Music & movement|音乐与动作|संगीत और गति|Música y movimiento|الموسيقى والحركة|Musique et mouvement|সঙ্গীত ও নড়াচড়া|Música e movimento|Музыка и движение|Musik dan gerakan
+Mute agents|静音代理|एजेंट म्यूट करें|Silenciar agentes|كتم الوكلاء|Couper les agents|এজেন্ট নীরব করুন|Silenciar agentes|Заглушить агентов|Bisukan agen
+Mute sounds|静音|आवाज़ बंद करें|Silenciar sonidos|كتم الأصوات|Couper les sons|শব্দ বন্ধ করুন|Silenciar sons|Выключить звуки|Bisukan suara
+Unmute sounds|开启声音|आवाज़ चालू करें|Activar sonidos|تشغيل الأصوات|Activer les sons|শব্দ চালু করুন|Ativar sons|Включить звуки|Aktifkan suara
+Next track|下一曲|अगला गाना|Siguiente pista|المقطع التالي|Piste suivante|পরের গান|Próxima faixa|Следующий трек|Lagu berikutnya
+Previous track|上一曲|पिछला गाना|Pista anterior|المقطع السابق|Piste précédente|আগের গান|Faixa anterior|Предыдущий трек|Lagu sebelumnya
+No token saved.|未保存令牌。|कोई टोकन नहीं सहेजा गया।|Sin token guardado.|لم يُحفظ رمز.|Aucun jeton enregistré.|কোনো টোকেন সংরক্ষিত নেই।|Nenhum token salvo.|Токен не сохранён.|Belum ada token tersimpan.
+Not saved|未保存|नहीं सहेजा गया|Sin guardar|غير محفوظ|Non enregistré|সংরক্ষিত নয়|Não salvo|Не сохранено|Belum tersimpan
+Notch screen|灵动岛屏幕|नॉच स्क्रीन|Pantalla de isla|شاشة الجزيرة|Écran de l’îlot|নচের পর্দা|Tela da ilha|Экран островка|Layar notch
+Notch views|灵动岛视图|नॉच दृश्य|Vistas de isla|عروض الجزيرة|Vues de l’îlot|নচের দৃশ্য|Visualizações da ilha|Виды островка|Tampilan notch
+Offer service actions|显示服务操作|सेवा कार्रवाइयाँ दिखाएँ|Ofrecer acciones|عرض إجراءات الخدمات|Proposer des actions|সেবার কাজ দেখান|Oferecer ações|Предлагать действия|Tawarkan tindakan
+Open Nook settings|打开 Nook 设置|Nook सेटिंग्स खोलें|Abrir ajustes de Nook|فتح إعدادات Nook|Ouvrir les réglages Nook|Nook সেটিংস খুলুন|Abrir configurações Nook|Открыть настройки Nook|Buka pengaturan Nook
+Open file ↗|打开文件 ↗|फ़ाइल खोलें ↗|Abrir archivo ↗|فتح الملف ↗|Ouvrir le fichier ↗|ফাইল খুলুন ↗|Abrir arquivo ↗|Открыть файл ↗|Buka file ↗
+Open this address on your phone|在手机打开此地址|फ़ोन पर यह पता खोलें|Abre esta dirección en tu teléfono|افتح هذا العنوان على هاتفك|Ouvrez cette adresse sur le téléphone|ফোনে এই ঠিকানা খুলুন|Abra este endereço no telefone|Откройте адрес на телефоне|Buka alamat ini di ponsel
+Other local server|其他本地服务器|अन्य स्थानीय सर्वर|Otro servidor local|خادم محلي آخر|Autre serveur local|অন্য স্থানীয় সার্ভার|Outro servidor local|Другой локальный сервер|Server lokal lain
+Play demo|播放演示|डेमो चलाएँ|Ver demostración|تشغيل العرض|Lancer la démo|ডেমো চালান|Ver demonstração|Запустить демо|Putar demo
+Stop demo|停止演示|डेमो रोकें|Detener demostración|إيقاف العرض|Arrêter la démo|ডেমো থামান|Parar demonstração|Остановить демо|Hentikan demo
+Play or pause|播放或暂停|चलाएँ या रोकें|Reproducir o pausar|تشغيل أو إيقاف مؤقت|Lecture ou pause|চালান বা থামান|Reproduzir ou pausar|Воспроизвести или пауза|Putar atau jeda
+Playback position|播放位置|चलाने की स्थिति|Posición de reproducción|موضع التشغيل|Position de lecture|গানের অবস্থান|Posição de reprodução|Позиция воспроизведения|Posisi pemutaran
+Receive follow-up drafts|接收后续草稿|अगले निर्देश के ड्राफ़्ट लें|Recibir borradores|تلقي مسودات المتابعة|Recevoir les brouillons|পরবর্তী নির্দেশের খসড়া নিন|Receber rascunhos|Получать черновики|Terima draf lanjutan
+Refresh music|刷新音乐|संगीत ताज़ा करें|Actualizar música|تحديث الموسيقى|Actualiser la musique|সঙ্গীত হালনাগাদ করুন|Atualizar música|Обновить музыку|Perbarui musik
+Remove Nook hooks|移除 Nook 钩子|Nook हुक हटाएँ|Quitar hooks de Nook|إزالة خطافات Nook|Retirer les hooks Nook|Nook হুক সরান|Remover hooks Nook|Удалить хуки Nook|Hapus hook Nook
+Remove screenshot|移除截图|स्क्रीनशॉट हटाएँ|Quitar captura|إزالة لقطة الشاشة|Retirer la capture|স্ক্রিনশট সরান|Remover captura|Удалить снимок|Hapus tangkapan layar
+Repeat|循环|दोहराएँ|Repetir|تكرار|Répéter|পুনরাবৃত্তি|Repetir|Повтор|Ulangi
+Repeat mode|循环模式|दोहराने का मोड|Modo de repetición|وضع التكرار|Mode de répétition|পুনরাবৃত্তির ধরন|Modo de repetição|Режим повтора|Mode pengulangan
+Review changes|查看更改|बदलाव देखें|Revisar cambios|مراجعة التغييرات|Examiner les modifications|পরিবর্তন দেখুন|Revisar alterações|Проверить изменения|Tinjau perubahan
+Review message|查看消息|संदेश देखें|Revisar mensaje|مراجعة الرسالة|Relire le message|বার্তা দেখুন|Revisar mensagem|Проверить сообщение|Tinjau pesan
+Review request|查看请求|अनुरोध देखें|Revisar solicitud|مراجعة الطلب|Examiner la demande|অনুরোধ দেখুন|Revisar solicitação|Проверить запрос|Tinjau permintaan
+Save PNG|保存 PNG|PNG सहेजें|Guardar PNG|حفظ PNG|Enregistrer PNG|PNG সংরক্ষণ করুন|Salvar PNG|Сохранить PNG|Simpan PNG
+Save token|保存令牌|टोकन सहेजें|Guardar token|حفظ الرمز|Enregistrer le jeton|টোকেন সংরক্ষণ করুন|Salvar token|Сохранить токен|Simpan token
+Search models…|搜索模型…|मॉडल खोजें…|Buscar modelos…|البحث عن نماذج…|Chercher des modèles…|মডেল খুঁজুন…|Buscar modelos…|Поиск моделей…|Cari model…
+Search projects, commands, diffs, or answers…|搜索项目、命令、差异或答案…|प्रोजेक्ट, कमांड, बदलाव या उत्तर खोजें…|Buscar proyectos, comandos o respuestas…|البحث في المشاريع والأوامر والإجابات…|Chercher projets, commandes ou réponses…|প্রকল্প, কমান্ড বা উত্তর খুঁজুন…|Buscar projetos, comandos ou respostas…|Поиск проектов, команд и ответов…|Cari proyek, perintah, atau jawaban…
+Seasonal outfits|季节服装|मौसमी पोशाकें|Ropa de temporada|ملابس موسمية|Tenues saisonnières|ঋতুভিত্তিক পোশাক|Roupas sazonais|Сезонные наряды|Pakaian musiman
+Send message|发送消息|संदेश भेजें|Enviar mensaje|إرسال رسالة|Envoyer le message|বার্তা পাঠান|Enviar mensagem|Отправить сообщение|Kirim pesan
+Send phone push updates|发送手机推送|फ़ोन पुश भेजें|Enviar avisos al teléfono|إرسال إشعارات الهاتف|Envoyer les notifications|ফোনে পুশ পাঠান|Enviar notificações|Отправлять уведомления|Kirim pembaruan push
+Send the character out|放出伙伴|साथी बाहर भेजें|Sacar al compañero|إخراج الرفيق|Sortir le compagnon|সঙ্গীকে বাইরে দিন|Soltar o companheiro|Отправить питомца наружу|Keluarkan teman
+Server|服务器|सर्वर|Servidor|الخادم|Serveur|সার্ভার|Servidor|Сервер|Server
+Service|服务|सेवा|Servicio|الخدمة|Service|সেবা|Serviço|Сервис|Layanan
+Share session details|共享会话详情|सत्र विवरण साझा करें|Compartir sesiones|مشاركة تفاصيل الجلسة|Partager les sessions|সেশনের বিবরণ শেয়ার করুন|Compartilhar sessões|Делиться сведениями о сеансах|Bagikan detail sesi
+Show music controls|显示音乐控制|संगीत नियंत्रण दिखाएँ|Mostrar controles musicales|عرض تحكم الموسيقى|Afficher les commandes musicales|সঙ্গীত নিয়ন্ত্রণ দেখান|Mostrar controles de música|Показать управление музыкой|Tampilkan kontrol musik
+Shuffle|随机播放|क्रम बदलें|Aleatorio|تشغيل عشوائي|Aléatoire|এলোমেলো|Aleatório|Перемешать|Acak
+Start dictation|开始听写|डिक्टेशन शुरू करें|Iniciar dictado|بدء الإملاء|Démarrer la dictée|কণ্ঠলিপি শুরু করুন|Iniciar ditado|Начать диктовку|Mulai dikte
+Dictate|听写|बोलकर लिखें|Dictar|إملاء|Dicter|বলে লিখুন|Ditar|Диктовать|Dikte
+Window context|窗口上下文|विंडो संदर्भ|Contexto de ventana|سياق النافذة|Contexte de fenêtre|উইন্ডোর প্রসঙ্গ|Contexto da janela|Контекст окна|Konteks jendela
+This screen|此屏幕|यह स्क्रीन|Esta pantalla|هذه الشاشة|Cet écran|এই পর্দা|Esta tela|Этот экран|Layar ini
+This week|本周|इस हफ़्ते|Esta semana|هذا الأسبوع|Cette semaine|এই সপ্তাহ|Esta semana|Эта неделя|Minggu ini
+Toggle the island|切换灵动岛|नॉच खोलें या बंद करें|Alternar isla|تبديل الجزيرة|Basculer l’îlot|নচ চালু বা বন্ধ করুন|Alternar ilha|Переключить островок|Alihkan notch
+View release on GitHub|在 GitHub 查看版本|GitHub पर रिलीज़ देखें|Ver versión en GitHub|عرض الإصدار على GitHub|Voir la version sur GitHub|GitHub-এ সংস্করণ দেখুন|Ver versão no GitHub|Открыть выпуск на GitHub|Lihat rilis di GitHub
+Windows notifications|Windows 通知|Windows सूचनाएँ|Notificaciones de Windows|إشعارات Windows|Notifications Windows|Windows বিজ্ঞপ্তি|Notificações Windows|Уведомления Windows|Notifikasi Windows
+on this PC|在此电脑上|इस PC पर|en este PC|على هذا الكمبيوتر|sur ce PC|এই পিসিতে|neste PC|на этом ПК|di PC ini
+uses your saved OpenAI key|使用已保存的 OpenAI 密钥|सहेजी OpenAI कुंजी का उपयोग|usa tu clave OpenAI guardada|يستخدم مفتاح OpenAI المحفوظ|utilise votre clé OpenAI|সংরক্ষিত OpenAI কী ব্যবহার করে|usa sua chave OpenAI salva|использует сохранённый ключ OpenAI|memakai kunci OpenAI tersimpan
+Open Nook|打开 Nook|Nook खोलें|Abrir Nook|فتح Nook|Ouvrir Nook|Nook খুলুন|Abrir Nook|Открыть Nook|Buka Nook
+Show the notch|显示灵动岛|नॉच दिखाएँ|Mostrar isla|إظهار الجزيرة|Afficher l’îlot|নচ দেখান|Mostrar ilha|Показать островок|Tampilkan notch

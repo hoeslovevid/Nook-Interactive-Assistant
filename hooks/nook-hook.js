@@ -32,6 +32,7 @@ function send(agent, wait, payload, extra) {
     wait,
     pid: process.pid,
     payload,
+    terminal: process.env.NOOK_TERMINAL_ID ? { host: 'editor', id: process.env.NOOK_TERMINAL_ID, token: process.env.NOOK_TERMINAL_TOKEN, pid: process.env.NOOK_TERMINAL_PID } : process.env.NOOK_TERMINAL_TITLE ? { host: 'wt', title: process.env.NOOK_TERMINAL_TITLE } : null,
     ...(extra || {}),
   };
   const socket = net.connect(PIPE);

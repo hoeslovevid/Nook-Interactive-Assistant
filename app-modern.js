@@ -8,10 +8,12 @@
   }
   function updatePage() {
     const selected = document.querySelector('.nav.is-selected');
-    document.querySelector('#app-page-name').textContent = selected?.querySelector('span')?.textContent.replace(/New\s*$/, '').trim() || 'Workspace';
+    const label = selected?.querySelector('span');
+    document.querySelector('#app-page-name').textContent = label ? [...label.childNodes].filter(node=>node.nodeType===Node.TEXT_NODE).map(node=>node.textContent).join('').trim() : 'Workspace';
     for (const button of document.querySelectorAll('.nav')) { if (button === selected) button.setAttribute('aria-current', 'page'); else button.removeAttribute('aria-current'); }
   }
   new MutationObserver(updatePage).observe(document.querySelector('nav'), { subtree: true, attributes: true, attributeFilter: ['class'] });
+  window.addEventListener('nook-language-change',updatePage);
   document.querySelector('#app-open-notch').addEventListener('click', () => window.nook.showNotch());
   window.nook.onState(state => {
     const active = (state.sessions || []).filter(session => !session.finished).length;

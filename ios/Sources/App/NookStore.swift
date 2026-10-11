@@ -5,6 +5,7 @@ import ActivityKit
 import WidgetKit
 import UserNotifications
 import UIKit
+import CoreSpotlight
 
 final class NookNoRedirects: NSObject, URLSessionTaskDelegate {
     func urlSession(_ session: URLSession, task: URLSessionTask, willPerformHTTPRedirection response: HTTPURLResponse, newRequest request: URLRequest, completionHandler: @escaping (URLRequest?) -> Void) { completionHandler(nil) }
@@ -16,6 +17,37 @@ final class NookNoRedirects: NSObject, URLSessionTaskDelegate {
     @Published var state: PhoneState?
     @Published var message = ""
     @Published var focusRequests = false
+    @Published var systemFocusRequests = UserDefaults(suiteName: NookShared.group)?.bool(forKey: "focusOnlyRequests") ?? false
+    @Published var openSession: IndexedSession?
+    @Published var pinnedIDs = Set(UserDefaults.standard.stringArray(forKey: "pinnedSessions") ?? [])
+    @Published var spotlightEnabled = UserDefaults.standard.bool(forKey: "spotlightEnabled")
+    @Published var autoHandoff = UserDefaults.standard.bool(forKey: "autoHandoff")
+    private var archivedSearchItems: [HistoryItem] = []
+    private var searchHistoryUpdated = Date.distantPast
+    private var searchHistoryTask: Task<Void, Never>?
+    private let searchIndex = NookSearchIndex()
+    private var startToken = ""
+    private var startTokenTask: Task<Void, Never>?, activityDiscoveryTask: Task<Void, Never>?
+    private var activityTokenTasks: [String: Task<Void, Never>] = [:]
+    var showingOnlyRequests: Bool { focusRequests || systemFocusRequests }
+    func togglePin(_ id: String) { if pinnedIDs.contains(id) { pinnedIDs.remove(id) } else { if pinnedIDs.count >= 100 { return }; pinnedIDs.insert(id) }; UserDefaults.standard.set(Array(pinnedIDs), forKey: "pinnedSessions") }
+    func setSpotlight(_ enabled: Bool) async { spotlightEnabled = enabled; UserDefaults.standard.set(enabled, forKey: "spotlightEnabled"); if !enabled { await searchIndex.clear() } else { await updateSearch() } }
+    func indexHistory(_ history: [HistoryItem]) async { archivedSearchItems = Array(history.prefix(100)); await updateSearch() }
+    private func updateSearch() async { await searchIndex.update(sessions: state?.sessions ?? [], history: archivedSearchItems, enabled: connection != nil && spotlightEnabled && state?.detailsEnabled == true, scope: IndexedSession.pcScope(connection?.address ?? "")) }
+    func openSearch(_ activity: NSUserActivity) { guard connection != nil, spotlightEnabled, let identifier = activity.userInfo?[CSSearchableItemActivityIdentifier] as? String, let session = IndexedSession.decode(identifier), session.scope == IndexedSession.pcScope(connection?.address ?? "") else { return }; openSession = session }
+    func setAutoHandoff(_ enabled: Bool) async { autoHandoff = enabled; UserDefaults.standard.set(enabled, forKey: "autoHandoff"); await registerDevice() }
+    func beginSystemIntegration() {
+        systemFocusRequests = UserDefaults(suiteName: NookShared.group)?.bool(forKey: "focusOnlyRequests") ?? false
+        if startTokenTask == nil { startTokenTask = Task { for await token in Activity<NookActivity>.pushToStartTokenUpdates { startToken = token.map { String(format: "%02x", $0) }.joined(); await registerDevice() } } }
+        if activityDiscoveryTask == nil { activityDiscoveryTask = Task { for await activity in Activity<NookActivity>.activityUpdates { observeActivity(activity) } } }
+        for activity in Activity<NookActivity>.activities { observeActivity(activity) }
+        Task { if let current = try? await NookFocusFilter.current { systemFocusRequests = current.onlyRequests }; await updateSearch() }
+    }
+    private func observeActivity(_ activity: Activity<NookActivity>) {
+        guard activityTokenTasks[activity.id] == nil else { return }
+        activityTokenTasks[activity.id] = Task { for await token in activity.pushTokenUpdates { await registerDevice(activityToken: token.map { String(format: "%02x", $0) }.joined()) }; activityTokenTasks.removeValue(forKey: activity.id) }
+        if let token = activity.pushToken { Task { await registerDevice(activityToken: token.map { String(format: "%02x", $0) }.joined()) } }
+    }
     @Published var busy = false
     @Published var isReachable = false
     @Published var reviewRequestID: String?
@@ -61,12 +93,24 @@ final class NookNoRedirects: NSObject, URLSessionTaskDelegate {
         guard connection != nil else { return }
         do {
             let next: PhoneState = try await request("/state"); state = next; isReachable = true
+            if !next.detailsEnabled { archivedSearchItems = []; await searchIndex.clear() } else {
+                if spotlightEnabled && searchHistoryTask == nil && Date().timeIntervalSince(searchHistoryUpdated) >= 60 {
+                    searchHistoryUpdated = Date()
+                    searchHistoryTask = Task {
+                        defer { searchHistoryTask = nil }
+                        if let history: HistoryResponse = try? await request("/history?q="), !Task.isCancelled, state?.detailsEnabled == true, spotlightEnabled {
+                            archivedSearchItems = Array(history.items.prefix(100)); await updateSearch()
+                        }
+                    }
+                }
+                await updateSearch()
+            }
             if let id = reviewRequestID, !id.isEmpty, id != next.pending?.id { message = "That request is no longer waiting. Review the current requests below."; reviewRequestID = nil }
-            let snapshot = WidgetSnapshot(status: next.status, agent: next.sessions.first?.agent ?? "Nook", waiting: next.pending != nil, count: next.sessions.count, updated: Date())
+            let snapshot = WidgetSnapshot(status: next.status, agent: next.pending?.agent ?? next.sessions.first?.agent ?? "Nook", waiting: next.pending != nil, count: next.sessions.count, updated: Date())
             let signature = snapshot.status + snapshot.agent + String(snapshot.waiting) + String(snapshot.count)
             if signature != widgetSignature || Date().timeIntervalSince(widgetUpdated) >= 60 { UserDefaults(suiteName: NookShared.group)?.set(try JSONEncoder().encode(snapshot), forKey: "snapshot"); WidgetCenter.shared.reloadAllTimelines(); widgetSignature = signature; widgetUpdated = Date() }
             let content = activityState(next)
-            if signature + content.requestId != activitySignature || Date().timeIntervalSince(activityUpdated) >= 60 { for activity in Activity<NookActivity>.activities { await activity.update(ActivityContent(state: content, staleDate: Date().addingTimeInterval(120))) }; activitySignature = signature + content.requestId; activityUpdated = Date() }
+            if signature + content.requestId + String(content.locked) != activitySignature || Date().timeIntervalSince(activityUpdated) >= 60 { for activity in Activity<NookActivity>.activities { await activity.update(ActivityContent(state: content, staleDate: Date().addingTimeInterval(120))) }; activitySignature = signature + content.requestId + String(content.locked); activityUpdated = Date() }
         } catch { isReachable = false; message = error.localizedDescription }
     }
     func decision(id: String, action: String, answers: [String: String] = [:]) async {
@@ -84,22 +128,24 @@ final class NookNoRedirects: NSObject, URLSessionTaskDelegate {
     }
     func draft(id: String, text: String) async { do { let result: ResultResponse = try await request("/instruction", body: ["id": id, "text": text]); message = result.ok ? "Draft sent to your PC for review." : result.error ?? "Draft not sent." } catch { message = error.localizedDescription } }
     func enableNotifications() async { do { let allowed = try await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound]); if allowed { UIApplication.shared.registerForRemoteNotifications() } } catch { message = error.localizedDescription } }
-    func registerDevice(activityToken: String = "") async { guard connection != nil && (!deviceToken.isEmpty || !activityToken.isEmpty) else { return }; do { let result: ResultResponse = try await request("/device", body: ["id": deviceID, "token": deviceToken, "activityToken": activityToken]); if !result.ok { message = result.error ?? "Push registration failed." } } catch { message = error.localizedDescription } }
-    private func activityState(_ state: PhoneState) -> NookActivity.ContentState { NookActivity.ContentState(status: state.pending != nil ? "Needs review" : state.sessions.contains(where: { !$0.finished }) ? "Working" : "Quiet", agent: state.sessions.first?.agent ?? "Nook", waiting: state.pending != nil, requestId: state.pending?.id ?? "", updated: Int(Date().timeIntervalSince1970), locked: false) }
+    func registerDevice(activityToken: String = "") async { guard connection != nil && (!deviceToken.isEmpty || !activityToken.isEmpty || !startToken.isEmpty) else { return }; do { let result: ResultResponse = try await request("/device", body: ["id": deviceID, "token": deviceToken, "activityToken": activityToken, "startToken": startToken, "autoHandoff": autoHandoff]); if !result.ok { message = result.error ?? "Push registration failed." } } catch { message = error.localizedDescription } }
+    private func activityState(_ state: PhoneState) -> NookActivity.ContentState { NookActivity.ContentState(status: state.pending != nil ? "Needs review" : state.sessions.contains(where: { !$0.finished }) ? "Working" : "Quiet", agent: state.pending?.agent ?? state.sessions.first?.agent ?? "Nook", waiting: state.pending != nil, requestId: state.pending?.id ?? "", updated: Int(Date().timeIntervalSince1970), locked: state.locked ?? false) }
     func startActivity() async {
         guard let state, isReachable, connection != nil, ActivityAuthorizationInfo().areActivitiesEnabled else { message = "Enable Live Activities in iPhone Settings and connect to the PC first."; return }
         if !Activity<NookActivity>.activities.isEmpty { return }
         do { let activity = try Activity.request(attributes: NookActivity(name: "Nook"), content: ActivityContent(state: activityState(state), staleDate: Date().addingTimeInterval(120)), pushType: .token)
-            activityTask = Task { for await token in activity.pushTokenUpdates { await registerDevice(activityToken: token.map { String(format: "%02x", $0) }.joined()) } }
+            observeActivity(activity)
         } catch { message = error.localizedDescription }
     }
-    func stopActivities() async { activityTask?.cancel(); for activity in Activity<NookActivity>.activities { await activity.end(nil, dismissalPolicy: .immediate) }; let _: ResultResponse? = try? await request("/device", body: ["id": deviceID, "activityEnded": true]) }
+    func stopActivities() async { activityTask?.cancel(); for task in activityTokenTasks.values { task.cancel() }; activityTokenTasks.removeAll(); for activity in Activity<NookActivity>.activities { await activity.end(nil, dismissalPolicy: .immediate) }; let _: ResultResponse? = try? await request("/device", body: ["id": deviceID, "activityEnded": true]) }
     func disconnect() async { await stopActivities(); let _: ResultResponse? = try? await request("/device", body: ["id": deviceID, "remove": true]); let _: ResultResponse? = try? await request("/logout", body: [:]); disconnectLocally() }
     private func disconnectLocally() {
-        stopPolling(); activityTask?.cancel(); activityTask = nil
+        stopPolling(); activityTask?.cancel(); activityTask = nil; searchHistoryTask?.cancel()
         let activities = Activity<NookActivity>.activities
         Task { for activity in activities { await activity.end(nil, dismissalPolicy: .immediate) } }
         ConnectionKeychain.clear(); connection = nil; state = nil; isReachable = false; reviewRequestID = nil
+        openSession = nil; archivedSearchItems = []; searchHistoryUpdated = .distantPast; pinnedIDs = []; UserDefaults.standard.removeObject(forKey: "pinnedSessions"); Task { await searchIndex.clear() }
+        for task in activityTokenTasks.values { task.cancel() }; activityTokenTasks.removeAll()
         widgetSignature = ""; widgetUpdated = .distantPast; activitySignature = ""; activityUpdated = .distantPast
         UserDefaults(suiteName: NookShared.group)?.removeObject(forKey: "snapshot"); WidgetCenter.shared.reloadAllTimelines()
     }

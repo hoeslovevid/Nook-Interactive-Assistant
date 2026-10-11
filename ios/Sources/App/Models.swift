@@ -13,6 +13,8 @@ enum NookQuery {
 struct Connection: Codable { var address: String; var token: String }
 struct PhoneState: Decodable {
     var status: String
+    var locked: Bool?
+    var handoffActive: Bool?
     var sessions: [AgentSession]
     var pending: AgentRequest?
     var activity: [RecentActivity]
@@ -24,7 +26,7 @@ struct AgentSession: Decodable, Identifiable {
     var id: String; var label: String?; var agent: String; var finished: Bool; var file: String?; var task: String?
 }
 struct AgentRequest: Decodable, Identifiable {
-    var id: String; var title: String; var detail: String; var kind: String; var questions: [AgentQuestion]; var always: Bool
+    var id: String; var agent: String?; var title: String; var detail: String; var kind: String; var questions: [AgentQuestion]; var always: Bool
 }
 struct AgentQuestion: Decodable, Identifiable {
     var question: String; var options: [QuestionOption]; var multi: Bool?
@@ -44,6 +46,6 @@ struct HistoryItem: Decodable, Identifiable { var id: String; var label: String;
 struct HistoryResponse: Decodable { var items: [HistoryItem] }
 struct ServiceDetail: Decodable { var service: String; var items: [ServiceItem] }
 struct ServiceItem: Decodable, Identifiable { var id: String; var title: String; var detail: String; var url: String; var actions: [ServiceAction] }
-struct ServiceAction: Decodable, Identifiable { var id: String; var label: String }
+struct ServiceAction: Decodable, Identifiable { var id: String; var label: String; var needsText: Bool?; var summary: String? }
 struct PairResponse: Decodable { var token: String }
 struct ResultResponse: Decodable { var ok: Bool; var cancelled: Bool?; var error: String? }

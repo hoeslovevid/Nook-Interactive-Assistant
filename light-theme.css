@@ -1,0 +1,44 @@
+/* Shared light surfaces for settings and the floating notch. */
+:root[data-scheme=light] {
+  --wash: color-mix(in srgb,var(--paper) 5%,var(--panel));
+  --hover: color-mix(in srgb,var(--paper) 9%,var(--panel));
+}
+:root[data-scheme=light] :is(.workspace-location strong,.chrome-button[aria-pressed=true]) { color:var(--paper); }
+:root[data-scheme=light] :is(.workspace-glance,.update-card,.window-picker,.screenshot-preview,.music-card,.draft-card,.tour-dialog) { background:var(--panel); border-color:var(--line); color:var(--paper); }
+:root[data-scheme=light] :is(.workspace-card,.outfit-option,.shortcut-recorder,kbd,#phone-url,.diff,.window-choice,.music-controls button) { background:var(--wash); color:var(--paper); border-color:var(--line); }
+:root[data-scheme=light] :is(.workspace-glance small,.context-chip,.version,.eyebrow,.stage::before,.stage::after,.provider-summary,.connection-count,.bubble strong,#key-status,#diff-path,.diff-gutter,.diff-sign,#tour-copy) { color:var(--muted); }
+:root[data-scheme=light] :is(input:not([type=color]):not([type=range]):not([type=checkbox]),select) { border-color:var(--line); }
+:root[data-scheme=light] input::placeholder { color:var(--muted); }
+:root[data-scheme=light] :is(.nav:hover,.ribbon-action:hover,.shortcut-recorder:hover,.chrome-button:hover,.chrome-button[aria-pressed=true]) { background:var(--hover); color:var(--paper); }
+:root[data-scheme=light] :is(.nav.is-selected,.nav.is-selected:hover,.filter-button[aria-pressed=true],.outfit-option[aria-pressed=true],.shortcut-recorder.is-recording,.connection-grid details[open] summary) { background:color-mix(in srgb,var(--lime) 11%,var(--panel)); color:var(--paper); }
+:root[data-scheme=light] :is(.badge,.pill,.session-focus,.workbench,#card-chat,.ticker-final,.bubble[data-role=user],#chat-form,.model-row select,.questions fieldset,.approval-detail) { background:var(--wash); border-color:var(--line); }
+:root[data-scheme=light] :is(.solid,.choice.allow,#chat-form .choice) { background:var(--lime); color:#ffffff; }
+:root[data-scheme=light] :is(.badge.is-saved,.note[data-status=connected],.added .diff-code,.added .diff-sign,#diff-counts) { color:#246344; }
+:root[data-scheme=light] :is(.meter,.ticker-step .plus) { color:#246344; }
+:root[data-scheme=light] .meter.is-warn { color:#845410; }
+:root[data-scheme=light] :is(.meter.is-hot,.ticker-step .minus) { color:#a52d42; }
+:root[data-scheme=light] .badge.is-saved { background:#e0f2e7; }
+:root[data-scheme=light] :is(.note[data-status=error],.removed .diff-code,.removed .diff-sign) { color:#a52d42; }
+:root[data-scheme=light] .approval { background:color-mix(in srgb,#c38b33 8%,var(--panel)); }
+:root[data-scheme=light] :is(#approval-queue,.workspace-glance.has-requests small) { color:#845410; }
+:root[data-scheme=light] #card-approval .allow { background:#247a4c; color:#ffffff; }
+:root[data-scheme=light] #card-approval .deny { background:#fae7e8; border-color:#e2bfc3; color:#982d3b; }
+:root[data-scheme=light] .editor-panel { background:var(--panel); border-color:var(--line); }
+:root[data-scheme=light] .editor-tab { background:var(--wash); }
+:root[data-scheme=light] .diff-line.added { background:#247a4c12; border-color:#247a4c; }
+:root[data-scheme=light] .diff-line.removed { background:#a52d4210; border-color:#a52d42; }
+:root[data-scheme=light] .diff-line.meta { color:var(--lime); }
+:root[data-scheme=light] .chat-error-panel { background:#fbebed; border-color:#e9c9d1; }
+:root[data-scheme=light] .tool-button { background:transparent; }
+:root[data-scheme=light] .tool-button:hover { background:var(--hover); }
+:root[data-scheme=light] .music-controls button[aria-pressed=true] { background:var(--lime); color:#ffffff; }
+:root[data-scheme=light] .island { box-shadow:0 16px 44px #18233122,0 2px 8px #18233114; }
+:root[data-scheme=light] .island::after { background:transparent; }
+:root[data-scheme=light] #update-progress::-webkit-progress-bar { background:var(--hover); }
+:root[data-scheme=light] #update-progress::-webkit-progress-value { background:var(--lime); }
+:root[data-scheme=light] #update-badge { background:var(--lime); color:#ffffff; }
+:root[data-scheme=light] .tour-dots .is-current { background:var(--lime); }
+:root[data-scheme=light] #preview-desktop { fill:var(--sidebar); }
+:root[data-scheme=light] *::-webkit-scrollbar-thumb { background:color-mix(in srgb,var(--muted) 70%,transparent); background-clip:padding-box; }
+:root[data-scheme=light] *::-webkit-scrollbar-thumb:hover { background:var(--muted); background-clip:padding-box; }
+:root[data-scheme=light] *::-webkit-scrollbar-thumb:active { background:var(--lime); background-clip:padding-box; }

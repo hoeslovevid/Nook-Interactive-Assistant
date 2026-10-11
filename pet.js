@@ -78,7 +78,7 @@ window.nook.onPet((mode) => {
 });
 window.nook.onState((state) => {
   latestState = state;
-  window.NookCompanion.apply(seed, state.features?.companion);
+  window.NookCompanion.apply(seed, state.features?.companion, state.features?.previewOutfit);
   if (state.celebrate && seenCelebrate !== state.celebrate) {
     seenCelebrate = state.celebrate;
     celebrationUntil = Date.now() + 1200;

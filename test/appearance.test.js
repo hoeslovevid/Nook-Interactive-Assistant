@@ -1,6 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { normalizeLook, lookToCss, DEFAULT_LOOK } = require("../lib/appearance");
+const { normalizeLook, lookToCss, DEFAULT_LOOK, isLightTheme, appBackground } = require("../lib/appearance");
 
 test("bad colors fall back to the default look", () => {
   const look = normalizeLook({ accent: "red", radius: 2, islandTop: "#112233" });
@@ -37,4 +37,30 @@ test('black defaults apply to the app and notch; legacy default colors upgrade w
   const explicit = normalizeLook({ theme: 'graphite', islandTop: '#20242e', islandBottom: '#13161c' });
   assert.equal(explicit.theme, 'graphite'); assert.equal(explicit.islandTop, '#20242e');
   assert.doesNotThrow(() => normalizeLook({ islandTop: { toLowerCase: 'invalid' }, islandBottom: 12 }));
+});
+
+test('light presets survive saved-settings normalization and retain custom colors and layout', () => {
+  for (const theme of ['pearl', 'sand', 'mint']) {
+    const preset = normalizeLook({ theme });
+    assert.equal(isLightTheme(theme), true);
+    assert.deepEqual(normalizeLook(JSON.parse(JSON.stringify(preset))), preset);
+    const custom = normalizeLook({ ...preset, islandTop: '#e6e8ed', accent: '#123456', density: 'compact', motion: 'economy', notchWidth: 760 });
+    assert.equal(custom.islandTop, '#e6e8ed'); assert.equal(custom.accent, '#123456');
+    assert.equal(custom.density, 'compact'); assert.equal(custom.motion, 'economy'); assert.equal(custom.notchWidth, 760);
+    assert.match(lookToCss(custom), /color-scheme: light/);
+  }
+  assert.equal(isLightTheme('black'), false);
+  assert.equal(isLightTheme('__proto__'), false);
+  assert.match(lookToCss({ theme: 'bad' }), /color-scheme: dark/);
+});
+
+test('settings browser and desktop use the same validated theme presets', () => {
+  const vm = require('node:vm'), fs = require('node:fs');
+  const browser = vm.createContext({});
+  vm.runInContext(fs.readFileSync(require.resolve('../lib/appearance'), 'utf8'), browser);
+  for (const theme of ['pearl', 'sand', 'mint', 'black', 'invalid']) {
+    assert.deepEqual(JSON.parse(JSON.stringify(browser.NookAppearance.normalizeLook({ theme }))), normalizeLook({ theme }));
+    assert.equal(browser.NookAppearance.isLightTheme(theme), isLightTheme(theme));
+    assert.equal(browser.NookAppearance.appBackground({ theme }), appBackground({ theme }));
+  }
 });

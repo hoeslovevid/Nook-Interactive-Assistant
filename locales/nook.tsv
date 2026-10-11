@@ -1,0 +1,122 @@
+# English|zh-Hans|hi|es|ar|fr|bn|pt-BR|ru|id
+Appearance|外观|रूप|Apariencia|المظهر|Apparence|চেহারা|Aparência|Оформление|Tampilan
+Models & connections|模型与连接|मॉडल और कनेक्शन|Modelos y conexiones|النماذج والاتصالات|Modèles et connexions|মডেল ও সংযোগ|Modelos e conexões|Модели и подключения|Model dan koneksi
+Companion & devices|伙伴与设备|साथी और उपकरण|Compañero y dispositivos|الرفيق والأجهزة|Compagnon et appareils|সঙ্গী ও ডিভাইস|Companheiro e dispositivos|Компаньон и устройства|Teman dan perangkat
+Workspace & alerts|工作区与提醒|कार्यस्थान और सूचनाएँ|Espacio de trabajo y avisos|مساحة العمل والتنبيهات|Espace de travail et alertes|কর্মক্ষেত্র ও সতর্কতা|Espaço de trabalho e alertas|Рабочее пространство и уведомления|Ruang kerja dan pemberitahuan
+Workspace companion|工作区伙伴|कार्यस्थान का साथी|Compañero de trabajo|رفيق مساحة العمل|Compagnon de travail|কর্মক্ষেত্রের সঙ্গী|Companheiro de trabalho|Компаньон рабочего пространства|Teman ruang kerja
+Personal workspace|个人工作区|निजी कार्यस्थान|Espacio personal|مساحة العمل الشخصية|Espace personnel|ব্যক্তিগত কর্মক্ষেত্র|Espaço pessoal|Личное пространство|Ruang kerja pribadi
+Local workspace|本地工作区|स्थानीय कार्यस्थान|Espacio local|مساحة عمل محلية|Espace local|স্থানীয় কর্মক্ষেত্র|Espaço local|Локальное пространство|Ruang kerja lokal
+Open notch|打开灵动岛|नॉच खोलें|Abrir isla|فتح الجزيرة|Ouvrir l’îlot|নচ খুলুন|Abrir ilha|Открыть островок|Buka notch
+Theme|主题|थीम|Tema|السمة|Thème|থিম|Tema|Тема|Tema
+Dark|深色|गहरा|Oscuro|داكن|Sombre|গাঢ়|Escuro|Тёмные|Gelap
+Light|浅色|हल्का|Claro|فاتح|Clair|হালকা|Claro|Светлые|Terang
+Black (default)|黑色（默认）|काला (डिफ़ॉल्ट)|Negro (predeterminado)|أسود (افتراضي)|Noir (par défaut)|কালো (ডিফল্ট)|Preto (padrão)|Чёрная (по умолчанию)|Hitam (bawaan)
+Graphite|石墨|ग्रेफाइट|Grafito|جرافيت|Graphite|গ্রাফাইট|Grafite|Графит|Grafit
+Midnight|午夜|आधी रात|Medianoche|منتصف الليل|Minuit|মধ্যরাত|Meia-noite|Полночь|Tengah malam
+Forest|森林|वन|Bosque|غابة|Forêt|বন|Floresta|Лес|Hutan
+Pearl|珍珠|मोती|Perla|لؤلؤ|Perle|মুক্তা|Pérola|Жемчуг|Mutiara
+Sand|沙色|रेत|Arena|رمل|Sable|বালু|Areia|Песок|Pasir
+Mint|薄荷|पुदीना|Menta|نعناع|Menthe|পুদিনা|Menta|Мята|Mint
+cool white|冷白|ठंडा सफेद|blanco frío|أبيض بارد|blanc froid|শীতল সাদা|branco frio|холодный белый|putih sejuk
+warm cream|暖奶油色|गर्म क्रीम|crema cálida|كريمي دافئ|crème chaud|উষ্ণ ক্রিম|creme quente|тёплый кремовый|krem hangat
+soft green|柔绿色|हल्का हरा|verde suave|أخضر ناعم|vert doux|কোমল সবুজ|verde suave|нежный зелёный|hijau lembut
+Spacing|间距|अंतर|Espaciado|التباعد|Espacement|ব্যবধান|Espaçamento|Интервалы|Jarak
+Comfortable|宽松|आरामदायक|Cómodo|مريح|Confortable|আরামদায়ক|Confortável|Свободно|Nyaman
+Compact|紧凑|सघन|Compacto|مدمج|Compact|সংক্ষিপ্ত|Compacto|Компактно|Ringkas
+Animation|动画|एनीमेशन|Animación|الحركة|Animation|অ্যানিমেশন|Animação|Анимация|Animasi
+Full|完整|पूर्ण|Completa|كاملة|Complète|পূর্ণ|Completa|Полная|Penuh
+Economy|节能|किफ़ायती|Ahorro|اقتصادية|Économie|সাশ্রয়ী|Economia|Экономная|Hemat
+Reduced|减少|कम|Reducida|محدودة|Réduite|হ্রাসকৃত|Reduzida|Уменьшенная|Dikurangi
+still companion|静态伙伴|स्थिर साथी|compañero inmóvil|رفيق ثابت|compagnon immobile|স্থির সঙ্গী|companheiro imóvel|неподвижный компаньон|teman diam
+Expanded notch width|展开宽度|खुले नॉच की चौड़ाई|Ancho de isla|عرض الجزيرة الموسعة|Largeur de l’îlot|বিস্তৃত নচের প্রস্থ|Largura da ilha|Ширина островка|Lebar notch terbuka
+Accent|强调色|मुख्य रंग|Acento|لون التمييز|Accent|প্রধান রং|Destaque|Акцент|Aksen
+Island top|顶部颜色|नॉच का ऊपरी रंग|Parte superior|أعلى الجزيرة|Haut de l’îlot|নচের উপরের রং|Parte superior|Верх островка|Bagian atas
+Island bottom|底部颜色|नॉच का निचला रंग|Parte inferior|أسفل الجزيرة|Bas de l’îlot|নচের নিচের রং|Parte inferior|Низ островка|Bagian bawah
+Text|文字|पाठ|Texto|النص|Texte|লেখা|Texto|Текст|Teks
+Character|角色|पात्र|Personaje|الشخصية|Personnage|চরিত্র|Personagem|Персонаж|Karakter
+Corner roundness|圆角|कोनों की गोलाई|Redondez|استدارة الزوايا|Arrondi des angles|কোণার গোলাকৃতি|Arredondamento|Скругление углов|Kelengkungan sudut
+Reset look|重置外观|रूप रीसेट करें|Restablecer aspecto|إعادة ضبط المظهر|Réinitialiser l’apparence|চেহারা রিসেট করুন|Restaurar aparência|Сбросить оформление|Atur ulang tampilan
+Models|模型|मॉडल|Modelos|النماذج|Modèles|মডেল|Modelos|Модели|Model
+Cloud AI|云端 AI|क्लाउड AI|IA en la nube|ذكاء سحابي|IA cloud|ক্লাউড AI|IA na nuvem|Облачный ИИ|AI cloud
+Local & custom|本地与自定义|स्थानीय और कस्टम|Local y personalizado|محلي ومخصص|Local et personnalisé|স্থানীয় ও কাস্টম|Local e personalizado|Локальные и свои|Lokal dan khusus
+Integrations|集成|एकीकरण|Integraciones|التكاملات|Intégrations|সংযুক্ত সেবা|Integrações|Интеграции|Integrasi
+Key saved|密钥已保存|कुंजी सहेजी गई|Clave guardada|تم حفظ المفتاح|Clé enregistrée|কী সংরক্ষিত|Chave salva|Ключ сохранён|Kunci tersimpan
+Needs key|需要密钥|कुंजी चाहिए|Necesita clave|يلزم مفتاح|Clé nécessaire|কী প্রয়োজন|Precisa de chave|Нужен ключ|Perlu kunci
+Optional key|可选密钥|वैकल्पिक कुंजी|Clave opcional|مفتاح اختياري|Clé facultative|ঐচ্ছিক কী|Chave opcional|Необязательный ключ|Kunci opsional
+Get an API key ↗|获取 API 密钥 ↗|API कुंजी लें ↗|Obtener clave API ↗|الحصول على مفتاح API ↗|Obtenir une clé API ↗|API কী নিন ↗|Obter chave API ↗|Получить ключ API ↗|Dapatkan kunci API ↗
+Show|显示|दिखाएँ|Mostrar|إظهار|Afficher|দেখান|Mostrar|Показать|Tampilkan
+Hide|隐藏|छिपाएँ|Ocultar|إخفاء|Masquer|লুকান|Ocultar|Скрыть|Sembunyikan
+Search available models…|搜索可用模型…|उपलब्ध मॉडल खोजें…|Buscar modelos…|البحث عن النماذج…|Chercher des modèles…|উপলব্ধ মডেল খুঁজুন…|Buscar modelos…|Поиск моделей…|Cari model tersedia…
+Choose an available model|选择可用模型|उपलब्ध मॉडल चुनें|Elegir modelo|اختر نموذجًا متاحًا|Choisir un modèle|উপলব্ধ মডেল বাছুন|Escolher modelo|Выбрать модель|Pilih model tersedia
+Switch model…|切换模型…|मॉडल बदलें…|Cambiar modelo…|تبديل النموذج…|Changer de modèle…|মডেল বদলান…|Trocar modelo…|Сменить модель…|Ganti model…
+Available models|可用模型|उपलब्ध मॉडल|Modelos disponibles|النماذج المتاحة|Modèles disponibles|উপলব্ধ মডেল|Modelos disponíveis|Доступные модели|Model tersedia
+Continue with another AI|用其他 AI 继续|दूसरे AI से जारी रखें|Continuar con otra IA|المتابعة مع ذكاء آخر|Continuer avec une autre IA|অন্য AI দিয়ে চালিয়ে যান|Continuar com outra IA|Продолжить с другим ИИ|Lanjutkan dengan AI lain
+Start copied chat|开始复制的聊天|कॉपी की गई चैट शुरू करें|Iniciar chat copiado|بدء الدردشة المنسوخة|Ouvrir la copie|কপি করা চ্যাট শুরু করুন|Iniciar chat copiado|Начать скопированный чат|Mulai obrolan salinan
+Restore previous chat|恢复原聊天|पिछली चैट लौटाएँ|Restaurar chat anterior|استعادة الدردشة السابقة|Restaurer la conversation|আগের চ্যাট ফেরান|Restaurar chat anterior|Вернуть предыдущий чат|Pulihkan obrolan sebelumnya
+Copy code|复制代码|कोड कॉपी करें|Copiar código|نسخ الكود|Copier le code|কোড কপি করুন|Copiar código|Скопировать код|Salin kode
+Sound studio|声音设置|ध्वनि स्टूडियो|Estudio de sonido|إعدادات الصوت|Studio sonore|সাউন্ড স্টুডিও|Estúdio de som|Звуковая студия|Studio suara
+Volume|音量|आवाज़|Volumen|مستوى الصوت|Volume|শব্দমাত্রা|Volume|Громкость|Volume
+Greeting|问候|अभिवादन|Saludo|الترحيب|Accueil|অভিবাদন|Saudação|Приветствие|Sapaan
+Approval or question|审批或问题|अनुमति या प्रश्न|Permiso o pregunta|إذن أو سؤال|Permission ou question|অনুমতি বা প্রশ্ন|Permissão ou pergunta|Разрешение или вопрос|Izin atau pertanyaan
+Task completed|任务完成|काम पूरा हुआ|Tarea completada|اكتملت المهمة|Tâche terminée|কাজ শেষ|Tarefa concluída|Задача завершена|Tugas selesai
+Chat error|聊天错误|चैट त्रुटि|Error de chat|خطأ في الدردشة|Erreur de chat|চ্যাট ত্রুটি|Erro no chat|Ошибка чата|Kesalahan obrolan
+Pet interaction|伙伴互动|साथी से बातचीत|Interacción del compañero|تفاعل الرفيق|Interaction du compagnon|সঙ্গীর প্রতিক্রিয়া|Interação do companheiro|Взаимодействие с питомцем|Interaksi teman
+Preview|预览|पूर्वावलोकन|Vista previa|معاينة|Aperçu|পূর্বরূপ|Prévia|Просмотр|Pratinjau
+Choose sound|选择声音|ध्वनि चुनें|Elegir sonido|اختر صوتًا|Choisir un son|শব্দ বাছুন|Escolher som|Выбрать звук|Pilih suara
+Use default|使用默认|डिफ़ॉल्ट रखें|Usar predeterminado|استخدام الافتراضي|Utiliser le son par défaut|ডিফল্ট ব্যবহার করুন|Usar padrão|Использовать стандартный|Gunakan bawaan
+Default tone|默认音效|डिफ़ॉल्ट ध्वनि|Tono predeterminado|النغمة الافتراضية|Son par défaut|ডিফল্ট শব্দ|Som padrão|Стандартный звук|Nada bawaan
+Sound saved.|声音已保存。|ध्वनि सहेजी गई।|Sonido guardado.|تم حفظ الصوت.|Son enregistré.|শব্দ সংরক্ষিত।|Som salvo.|Звук сохранён.|Suara tersimpan.
+Linked terminals|关联终端|जुड़े टर्मिनल|Terminales vinculados|الطرفيات المرتبطة|Terminaux liés|যুক্ত টার্মিনাল|Terminais vinculados|Связанные терминалы|Terminal tertaut
+Show terminal helper|显示终端助手|टर्मिनल सहायक दिखाएँ|Mostrar ayudante|إظهار مساعد الطرفية|Afficher l’assistant|টার্মিনাল সহায়ক দেখান|Mostrar auxiliar|Показать помощник|Tampilkan pembantu
+Open linked Windows Terminal|打开关联 Windows Terminal|जुड़ा Windows Terminal खोलें|Abrir Windows Terminal vinculado|فتح Windows Terminal مرتبط|Ouvrir Windows Terminal lié|যুক্ত Windows Terminal খুলুন|Abrir Windows Terminal vinculado|Открыть связанный Windows Terminal|Buka Windows Terminal tertaut
+Connected|已连接|जुड़ा हुआ|Conectado|متصل|Connecté|সংযুক্ত|Conectado|Подключено|Terhubung
+Needs attention|需要注意|ध्यान चाहिए|Requiere atención|يحتاج إلى انتباه|À vérifier|মনোযোগ প্রয়োজন|Precisa de atenção|Требует внимания|Perlu perhatian
+Review requested|需要审查|समीक्षा चाहिए|Revisión solicitada|مطلوب مراجعة|Révision demandée|পর্যালোচনা প্রয়োজন|Revisão solicitada|Запрошена проверка|Peninjauan diminta
+System language|系统语言|सिस्टम भाषा|Idioma del sistema|لغة النظام|Langue du système|সিস্টেমের ভাষা|Idioma do sistema|Язык системы|Bahasa sistem
+Settings|设置|सेटिंग्स|Configuración|الإعدادات|Réglages|সেটিংস|Configurações|Настройки|Pengaturan
+Updates|更新|अपडेट|Actualizaciones|التحديثات|Mises à jour|আপডেট|Atualizações|Обновления|Pembaruan
+Check for updates|检查更新|अपडेट देखें|Buscar actualizaciones|البحث عن تحديثات|Rechercher des mises à jour|আপডেট দেখুন|Verificar atualizações|Проверить обновления|Periksa pembaruan
+Download update|下载更新|अपडेट डाउनलोड करें|Descargar actualización|تنزيل التحديث|Télécharger la mise à jour|আপডেট ডাউনলোড করুন|Baixar atualização|Скачать обновление|Unduh pembaruan
+Restart and install|重启并安装|रीस्टार्ट कर इंस्टॉल करें|Reiniciar e instalar|إعادة التشغيل والتثبيت|Redémarrer et installer|পুনরায় চালু করে ইনস্টল করুন|Reiniciar e instalar|Перезапустить и установить|Mulai ulang dan instal
+Optional GitHub access|可选 GitHub 访问|वैकल्पिक GitHub पहुँच|Acceso opcional a GitHub|وصول GitHub اختياري|Accès GitHub facultatif|ঐচ্ছিক GitHub প্রবেশাধিকার|Acesso opcional ao GitHub|Необязательный доступ GitHub|Akses GitHub opsional
+Search history|搜索历史|इतिहास खोजें|Buscar historial|البحث في السجل|Rechercher l’historique|ইতিহাস খুঁজুন|Buscar histórico|Поиск по истории|Cari riwayat
+Clear history|清除历史|इतिहास मिटाएँ|Borrar historial|مسح السجل|Effacer l’historique|ইতিহাস মুছুন|Limpar histórico|Очистить историю|Hapus riwayat
+Save preferences|保存偏好|पसंद सहेजें|Guardar preferencias|حفظ التفضيلات|Enregistrer les préférences|পছন্দ সংরক্ষণ করুন|Salvar preferências|Сохранить настройки|Simpan preferensi
+Service details|服务详情|सेवा विवरण|Detalles del servicio|تفاصيل الخدمة|Détails du service|সেবার বিবরণ|Detalhes do serviço|Сведения о сервисе|Detail layanan
+Refresh details|刷新详情|विवरण ताज़ा करें|Actualizar detalles|تحديث التفاصيل|Actualiser les détails|বিবরণ হালনাগাদ করুন|Atualizar detalhes|Обновить сведения|Perbarui detail
+Quiet hours|免打扰时段|शांत समय|Horario silencioso|ساعات الهدوء|Heures silencieuses|নীরব সময়|Horário silencioso|Тихие часы|Jam tenang
+From|从|से|Desde|من|De|থেকে|De|С|Dari
+Until|直到|तक|Hasta|حتى|Jusqu’à|পর্যন্ত|Até|До|Hingga
+All|全部|सभी|Todo|الكل|Tout|সব|Tudo|Все|Semua
+Local|本地|स्थानीय|Local|محلي|Local|স্থানীয়|Local|Локально|Lokal
+Changes|更改|बदलाव|Cambios|التغييرات|Modifications|পরিবর্তন|Alterações|Изменения|Perubahan
+Restore defaults|恢复默认|डिफ़ॉल्ट लौटाएँ|Restaurar valores|استعادة الافتراضيات|Restaurer les valeurs|ডিফল্ট ফেরান|Restaurar padrões|Восстановить стандартные|Pulihkan bawaan
+Shortcut saved.|快捷键已保存。|शॉर्टकट सहेजा गया।|Atajo guardado.|تم حفظ الاختصار.|Raccourci enregistré.|শর্টকাট সংরক্ষিত।|Atalho salvo.|Сочетание сохранено.|Pintasan tersimpan.
+Could not save this shortcut. Try again.|无法保存快捷键，请重试。|शॉर्टकट नहीं सहेजा जा सका। फिर कोशिश करें।|No se pudo guardar. Inténtalo de nuevo.|تعذر حفظ الاختصار. حاول مجددًا.|Impossible d’enregistrer. Réessayez.|শর্টকাট সংরক্ষণ করা যায়নি। আবার চেষ্টা করুন।|Não foi possível salvar. Tente novamente.|Не удалось сохранить. Повторите попытку.|Pintasan gagal disimpan. Coba lagi.
+Paste a key first.|请先粘贴密钥。|पहले कुंजी पेस्ट करें।|Pega una clave primero.|الصق مفتاحًا أولًا.|Collez d’abord une clé.|আগে একটি কী পেস্ট করুন।|Cole uma chave primeiro.|Сначала вставьте ключ.|Tempel kunci terlebih dahulu.
+Write a message first.|请先输入消息。|पहले संदेश लिखें।|Escribe un mensaje primero.|اكتب رسالة أولًا.|Écrivez d’abord un message.|আগে একটি বার্তা লিখুন।|Escreva uma mensagem primeiro.|Сначала напишите сообщение.|Tulis pesan terlebih dahulu.
+This model is still responding.|模型仍在回复。|मॉडल अभी जवाब दे रहा है।|El modelo sigue respondiendo.|النموذج ما زال يجيب.|Le modèle répond encore.|মডেল এখনও উত্তর দিচ্ছে।|O modelo ainda está respondendo.|Модель ещё отвечает.|Model masih menjawab.
+Save a {provider} API key first.|请先保存 {provider} API 密钥。|पहले {provider} API कुंजी सहेजें।|Guarda primero una clave API de {provider}.|احفظ مفتاح API لـ {provider} أولًا.|Enregistrez une clé API {provider}.|আগে {provider} API কী সংরক্ষণ করুন।|Salve primeiro uma chave API de {provider}.|Сначала сохраните API-ключ {provider}.|Simpan kunci API {provider} terlebih dahulu.
+{count} connections|{count} 个连接|{count} कनेक्शन|{count} conexiones|{count} اتصالات|{count} connexions|{count} সংযোগ|{count} conexões|{count} подключений|{count} koneksi
+{count} active agents|{count} 个活动代理|{count} सक्रिय एजेंट|{count} agentes activos|{count} وكلاء نشطين|{count} agents actifs|{count} সক্রিয় এজেন্ট|{count} agentes ativos|{count} активных агентов|{count} agen aktif
+No active agents|没有活动代理|कोई सक्रिय एजेंट नहीं|Sin agentes activos|لا وكلاء نشطين|Aucun agent actif|কোনো সক্রিয় এজেন্ট নেই|Nenhum agente ativo|Нет активных агентов|Tidak ada agen aktif
+Ready when you are|随时待命|जब चाहें तैयार|Listo cuando quieras|جاهز عندما تكون جاهزًا|Prêt quand vous l’êtes|আপনি প্রস্তুত হলেই প্রস্তুত|Pronto quando você estiver|Готов, когда вы готовы|Siap kapan pun
+Voice input|语音输入|आवाज़ इनपुट|Entrada de voz|الإدخال الصوتي|Saisie vocale|কণ্ঠ ইনপুট|Entrada de voz|Голосовой ввод|Masukan suara
+Phone sharing|手机共享|फ़ोन साझा करना|Compartir con el teléfono|المشاركة مع الهاتف|Partage avec le téléphone|ফোনে শেয়ার|Compartilhar com o telefone|Обмен с телефоном|Berbagi dengan ponsel
+Phone draft inbox|手机草稿箱|फ़ोन ड्राफ़्ट इनबॉक्स|Borradores del teléfono|مسودات الهاتف|Brouillons du téléphone|ফোনের খসড়া ইনবক্স|Rascunhos do telefone|Черновики с телефона|Kotak draf ponsel
+Enable phone access|启用手机访问|फ़ोन पहुँच चालू करें|Activar acceso telefónico|تفعيل وصول الهاتف|Activer l’accès du téléphone|ফোনের প্রবেশাধিকার চালু করুন|Ativar acesso do telefone|Включить доступ телефона|Aktifkan akses ponsel
+Disable|停用|बंद करें|Desactivar|تعطيل|Désactiver|বন্ধ করুন|Desativar|Отключить|Nonaktifkan
+Revoke & new code|撤销并生成新代码|पहुँच हटाएँ और नया कोड लें|Revocar y crear código|إلغاء الوصول ورمز جديد|Révoquer et nouveau code|প্রত্যাহার ও নতুন কোড|Revogar e novo código|Отозвать и новый код|Cabut dan buat kode baru
+Copy address|复制地址|पता कॉपी करें|Copiar dirección|نسخ العنوان|Copier l’adresse|ঠিকানা কপি করুন|Copiar endereço|Скопировать адрес|Salin alamat
+Companion & notifications|伙伴与通知|साथी और सूचनाएँ|Compañero y notificaciones|الرفيق والإشعارات|Compagnon et notifications|সঙ্গী ও বিজ্ঞপ্তি|Companheiro e notificações|Компаньон и уведомления|Teman dan notifikasi
+Approvals & questions|审批与问题|अनुमतियाँ और प्रश्न|Permisos y preguntas|الأذونات والأسئلة|Permissions et questions|অনুমতি ও প্রশ্ন|Permissões e perguntas|Разрешения и вопросы|Izin dan pertanyaan
+Completed sessions|已完成会话|पूरे हुए सत्र|Sesiones completadas|الجلسات المكتملة|Sessions terminées|সমাপ্ত সেশন|Sessões concluídas|Завершённые сеансы|Sesi selesai
+Local session history|本地会话历史|स्थानीय सत्र इतिहास|Historial local|سجل الجلسات المحلي|Historique local|স্থানীয় সেশনের ইতিহাস|Histórico local|Локальная история сеансов|Riwayat sesi lokal
+Connected service actions|服务操作|जुड़ी सेवा कार्रवाइयाँ|Acciones de servicios|إجراءات الخدمات المتصلة|Actions des services|যুক্ত সেবার কাজ|Ações dos serviços|Действия сервисов|Tindakan layanan terhubung
+Native iPhone notifications|iPhone 原生通知|iPhone सूचनाएँ|Notificaciones de iPhone|إشعارات iPhone الأصلية|Notifications iPhone natives|iPhone বিজ্ঞপ্তি|Notificações nativas do iPhone|Уведомления iPhone|Notifikasi iPhone native
+Push relay access|推送中继访问|पुश रिले पहुँच|Acceso al relé|وصول مرحل الإشعارات|Accès au relais|পুশ রিলের প্রবেশাধিকার|Acesso ao retransmissor|Доступ к ретранслятору|Akses relay push
+Relay address|中继地址|रिले पता|Dirección del relé|عنوان المرحل|Adresse du relais|রিলের ঠিকানা|Endereço do retransmissor|Адрес ретранслятора|Alamat relay
+Relay access token|中继访问令牌|रिले टोकन|Token del relé|رمز وصول المرحل|Jeton du relais|রিলের টোকেন|Token do retransmissor|Токен ретранслятора|Token akses relay
+Save relay token|保存中继令牌|रिले टोकन सहेजें|Guardar token del relé|حفظ رمز المرحل|Enregistrer le jeton|রিলের টোকেন সংরক্ষণ করুন|Salvar token|Сохранить токен|Simpan token relay
+Remove token|删除令牌|टोकन हटाएँ|Eliminar token|إزالة الرمز|Supprimer le jeton|টোকেন সরান|Remover token|Удалить токен|Hapus token
+Revoke native phone devices|撤销手机设备|फ़ोन उपकरणों की पहुँच हटाएँ|Revocar dispositivos|إلغاء وصول أجهزة الهاتف|Révoquer les appareils|ফোনের প্রবেশাধিকার প্রত্যাহার করুন|Revogar dispositivos|Отозвать устройства|Cabut akses perangkat ponsel

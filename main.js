@@ -38,7 +38,21 @@ const { createRelay } = require("./lib/relay");
 const { createModelDiscovery } = require('./lib/model-discovery');
 const modelDiscovery = createModelDiscovery();
 const providerGuides = require('./lib/provider-guides');
-const { normalizeLook, lookToCss } = require("./lib/appearance");
+const { normalizeLook, lookToCss, appBackground } = require("./lib/appearance");
+const { previewHandoff, copyHandoff } = require('./lib/chat-handoff');
+const handoffUndo = new Map();
+const terminalLinks = new Map();
+const locale = require('./lib/locale');
+function makeMenu(items) { return Menu.buildFromTemplate(locale.menu(items, readPrefs().resolvedLanguage)); }
+function localDialog(method, ...args) {
+  const options = { ...args.pop() }, language = readPrefs().resolvedLanguage;
+  for (const key of ['title', 'message', 'detail', 'buttonLabel']) if (options[key]) options[key] = locale.t(options[key], language);
+  if (options.buttons) options.buttons = options.buttons.map(label => locale.t(label, language));
+  if (options.filters) options.filters = options.filters.map(filter => ({ ...filter, name: locale.t(filter.name, language) }));
+  return dialog[method](...args, options);
+}
+let soundKit = null;
+let credentialKit = null;
 const {
   SERVICES,
   cleanServiceUrl,
@@ -72,7 +86,7 @@ let updateKit = null;
 let demoStep = 0;
 let demoAnswered = false;
 let featureKit = null;
-let workspaceKit = null, serviceDetails = null, pushBridge = null;
+let workspaceKit = null, serviceDetails = null, pushBridge = null, customAgents = null;
 const { createWorkspace } = require('./lib/workspace');
 const { createServiceDetails } = require('./lib/service-details');
 const { springProgress } = require("./lib/motion");
@@ -334,10 +348,10 @@ function openApp() {
     minWidth: 780,
     minHeight: 560,
     title: "Nook",
-    backgroundColor: "#101114",
+    backgroundColor: appBackground(readLook()),
     autoHideMenuBar: true,
     center: true,
-    show: true,
+    show: false,
     icon: path.join(__dirname, "assets", "icon.png"),
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
@@ -347,21 +361,20 @@ function openApp() {
       backgroundThrottling: false,
     },
   });
-  appWin.once("ready-to-show", () => {
-    if (appWin && !appWin.isDestroyed()) {
-      appWin.show();
-    }
-  });
   appWin.on("closed", () => {
     appWin = null;
   });
-  appWin.webContents.on("did-finish-load", () => {
+  appWin.webContents.on("did-finish-load", async () => {
+    const target = appWin;
     broadcast();
-    applyLook(appWin);
-  applyLook(pet);
-    applyColors(appWin);
+    // Reveal the app after applying its saved theme to avoid a dark launch flash.
+    await applyLook(target).catch(() => {});
+    if (!target || target.isDestroyed()) return;
+    target.show();
+    applyLook(pet);
+    applyColors(target);
     if (openWeek) {
-      appWin.webContents.send("nook:show-week");
+      target.webContents.send("nook:show-week");
       openWeek = false;
     }
   });
@@ -382,7 +395,7 @@ function refreshTray() {
     return;
   }
   tray.setContextMenu(
-    Menu.buildFromTemplate([
+    makeMenu([
       { label: "Open Nook", click: openApp },
       { label: "Show the notch", click: showNook },
       { label: 'Check for updates', click: () => { navigateSettings('updates'); updateKit?.check(); } },
@@ -721,7 +734,9 @@ async function applyLook(target) {
   }
   const request = (lookRequests.get(target.id) || 0) + 1;
   lookRequests.set(target.id, request);
-  const key = await target.webContents.insertCSS(lookToCss(readLook()));
+  const currentLook = readLook();
+  if (target === appWin) target.setBackgroundColor(appBackground(currentLook));
+  const key = await target.webContents.insertCSS(lookToCss(currentLook));
   if (target.isDestroyed()) return;
   if (lookRequests.get(target.id) !== request) {
     await target.webContents.removeInsertedCSS(key).catch(() => {});
@@ -744,7 +759,7 @@ function keysPath() {
   return path.join(app.getPath("userData"), "provider-keys.json");
 }
 
-function readKeys() {
+function readLegacyKeys() {
   let raw = {};
   try {
     raw = JSON.parse(fs.readFileSync(keysPath(), "utf8"));
@@ -768,40 +783,19 @@ function readKeys() {
 }
 
 function knownSecret(provider) {
-  return Boolean(PROVIDERS[provider]) || SERVICES.includes(provider) || provider === 'update-access' || provider === 'phone-relay';
+  return Object.hasOwn(PROVIDERS, provider) || SERVICES.includes(provider) || provider === 'update-access' || provider === 'phone-relay';
 }
 
-function saveKey(provider, key) {
-  if (!knownSecret(provider)) {
-    throw new Error("Unknown key.");
-  }
-  if (!safeStorage.isEncryptionAvailable()) {
-    throw new Error("Windows could not encrypt the key.");
-  }
-  const current = {};
-  try {
-    Object.assign(current, JSON.parse(fs.readFileSync(keysPath(), "utf8")));
-  } catch (_error) {
-    // A missing file just means this is the first saved key.
-  }
-  current[provider] = safeStorage.encryptString(key).toString("base64");
-  fs.mkdirSync(path.dirname(keysPath()), { recursive: true });
-  fs.writeFileSync(keysPath(), `${JSON.stringify(current)}\n`, "utf8");
+function readKeys() { return { ...(credentialKit?.status().ready ? {} : readLegacyKeys()), ...(credentialKit?.snapshot() || {}) }; }
+async function saveKey(provider, key) {
+  if (!knownSecret(provider)) throw new Error('Unknown key.');
+  if (!credentialKit) throw new Error('Credential Manager is not ready.');
+  await credentialKit.set(provider, key);
 }
-
-function clearKey(provider) {
-  if (!knownSecret(provider)) {
-    throw new Error("Unknown key.");
-  }
-  const current = {};
-  try {
-    Object.assign(current, JSON.parse(fs.readFileSync(keysPath(), "utf8")));
-  } catch (_error) {
-    return;
-  }
-  delete current[provider];
-  fs.mkdirSync(path.dirname(keysPath()), { recursive: true });
-  fs.writeFileSync(keysPath(), `${JSON.stringify(current)}\n`, "utf8");
+async function clearKey(provider) {
+  if (!knownSecret(provider)) throw new Error('Unknown key.');
+  if (!credentialKit) throw new Error('Credential Manager is not ready.');
+  await credentialKit.remove(provider);
 }
 
 function modelsPath() {
@@ -877,7 +871,8 @@ function readPrefs() {
     colors[name] = /^#[0-9a-fA-F]{6}$/.test(value) ? value : fallback;
   }
   return {
-    language: LANGUAGES.includes(saved.language) ? saved.language : "en",
+    language: [...LANGUAGES, "system"].includes(saved.language) ? saved.language : "system",
+    resolvedLanguage: locale.resolveLanguage(saved.language || "system", app.getLocale()),
     muted: Boolean(saved.muted),
     shortcuts,
     colors,
@@ -907,7 +902,7 @@ function shortcutAllowed(value) {
 function writePrefs(patch) {
   const next = readPrefs();
   const source = patch && typeof patch === "object" ? patch : {};
-  if (LANGUAGES.includes(source.language)) {
+  if ([...LANGUAGES, "system"].includes(source.language)) {
     next.language = source.language;
   }
   if (typeof source.muted === "boolean") {
@@ -1204,7 +1199,7 @@ async function refreshServices() {
   }
   if (keys.cal && pillAllowed("cal")) {
     jobs.push(
-      getJson(`${prefs.calUrl}/v2/bookings?status=upcoming`, { Authorization: `Bearer ${keys.cal}` }).then((payload) =>
+      getJson(`${prefs.calUrl}/v2/bookings?status=upcoming&limit=20`, { Authorization: `Bearer ${keys.cal}`, "cal-api-version": "2026-05-01" }).then((payload) =>
         pills.push(calSummary(payload)),
       ),
     );
@@ -1381,8 +1376,9 @@ function stopDemo() {
 function currentState() {
   const first = pending[0] || null;
   const latest = activity[0] || null;
-  const prefs = readPrefs(), keys = readKeys();
-  const strings = translate(prefs.language);
+  const prefs = { ...readPrefs() }, keys = readKeys();
+  prefs.colors = { ...prefs.colors, ...Object.fromEntries((customAgents?.list() || []).map(profile => [profile.id, profile.color])) };
+  const strings = translate(prefs.resolvedLanguage);
   let status = strings.quiet;
   let hint = "Hover the top edge, or ask a model.";
   if (first) {
@@ -1443,6 +1439,10 @@ function currentState() {
     messages: recentMessages(messages),
     chatBusy: chatBusyProviders.size > 0,
     chatBusyProviders: [...chatBusyProviders],
+    handoffUndo: [...handoffUndo.keys()],
+    customAgents: customAgents?.list() || [],
+    sounds: soundKit?.snapshot(),
+    keyStorage: credentialKit?.status(),
   };
   if (!demoOn) return result;
   const sample = demoState(result, demoStep, demoAnswered);
@@ -1495,9 +1495,10 @@ function finalLine(payload) {
   }
 }
 
-function rememberSession(agent, payload, pid) {
+function rememberSession(agent, payload, pid, terminal) {
   const turn = describeTurn(agent, payload);
   const key = `${agent}:${turn.sessionId}`;
+  const link = require('./lib/terminal').terminalLink(terminal); if (link) terminalLinks.set(key, link);
   const previous = sessions.get(key);
   if (sessions.has(key)) {
     sessions.delete(key);
@@ -1514,6 +1515,7 @@ function rememberSession(agent, payload, pid) {
   while (sessions.size > 6) {
     const oldest = sessions.keys().next().value;
     sessions.delete(oldest);
+    terminalLinks.delete(oldest);
   }
   if (turn.finished) {
     celebrate = Date.now();
@@ -1522,11 +1524,15 @@ function rememberSession(agent, payload, pid) {
 }
 
 function rememberActivity(msg) {
+  if (msg.payload?.nook_custom_agent) {
+    const profile = customAgents?.find(msg.agent); if (!profile || msg.payload.nook_custom_agent !== profile.id) return;
+    msg.payload.nook_agent = profile.name;
+  }
   lastTouch = Date.now();
   maybeMonday();
   const summary = present(msg.agent, msg.payload || {}, false);
   const turn = describeTurn(msg.agent, msg.payload || {});
-  rememberSession(msg.agent, msg.payload || {}, msg.pid);
+  rememberSession(msg.agent, msg.payload || {}, msg.pid, msg.terminal);
   const project = turn.cwd ? path.basename(turn.cwd).slice(0, 80) : "";
   appendHistory({
     t: Date.now(),
@@ -1559,7 +1565,7 @@ function rememberApproval(msg) {
   if (demoOn) stopDemo();
   lastTouch = Date.now();
   const summary = present(msg.agent, msg.payload || {}, true);
-  rememberSession(msg.agent, msg.payload || {}, msg.pid);
+  rememberSession(msg.agent, msg.payload || {}, msg.pid, msg.terminal);
   pending.push({
     id: msg.id,
     agent: msg.agent,
@@ -1587,29 +1593,33 @@ app.on("second-instance", () => {
 
 if (gotLock) {
   app.whenReady().then(async () => {
+    credentialKit = require('./lib/credential-store').createCredentialStore({ directory: app.getPath('userData'), providers: [...Object.keys(PROVIDERS), ...SERVICES, 'update-access', 'phone-relay'], decrypt: value => safeStorage.decryptString(Buffer.from(value, 'base64')) });
+    await credentialKit.init();
+    customAgents = require("./lib/custom-agents").createCustomAgents(app.getPath("userData"));
+    soundKit = require("./lib/sound-settings").createSoundSettings(app.getPath("userData"));
     workspaceKit = createWorkspace({ directory: app.getPath('userData'),
       encrypt: text => { if (!safeStorage.isEncryptionAvailable()) throw new Error('Encryption unavailable'); return safeStorage.encryptString(text).toString('base64'); },
       decrypt: text => safeStorage.decryptString(Buffer.from(text, 'base64')),
       notify(event) {
         if (!Notification.isSupported()) return;
-        const notice = new Notification({ title: 'Nook · ' + event.title, body: event.agent ? event.agent + ' · Click to review in Nook' : 'Click to review in Nook', icon: path.join(__dirname, 'assets', 'icon.png'), silent: readPrefs().muted });
+        const notice = new Notification({ title: 'Nook · ' + locale.t(event.title, readPrefs().resolvedLanguage), body: event.agent ? event.agent + ' · ' + locale.t('Click to review in Nook', readPrefs().resolvedLanguage) : locale.t('Click to review in Nook', readPrefs().resolvedLanguage), icon: path.join(__dirname, 'assets', 'icon.png'), silent: readPrefs().muted });
         notice.on('click', () => { if (event.kind === 'ci') { openServicePage('github'); return; } showNook(); attention(); if (event.sessionId) win?.webContents.send('nook:command', 'session:' + event.sessionId); });
         notice.show();
       },
     });
     serviceDetails = createServiceDetails({ getKeys: readKeys, getPrefs: readPrefs, getGithub: () => github,
       actionsEnabled: () => !demoOn && workspaceKit.snapshot().settings.serviceActions,
-      async confirm(plan) { const answer = await dialog.showMessageBox(appWin || win, { type: 'question', title: plan.label, message: plan.label + '?', detail: plan.title + '\nThis changes your ' + plan.service + ' service.', buttons: ['Cancel', plan.label], defaultId: 0, cancelId: 0 }); return answer.response === 1; },
+      async confirm(plan) { const answer = await localDialog('showMessageBox', appWin || win, { type: 'question', title: plan.label, message: plan.label + '?', detail: (plan.summary || plan.title) + '\nThis changes your ' + plan.service + ' service.', buttons: ['Cancel', plan.label], defaultId: 0, cancelId: 0 }); return answer.response === 1; },
     });
     pushBridge = require('./lib/phone-push').createPushBridge({ directory: app.getPath('userData'), getSettings: () => workspaceKit.snapshot().settings, getSecret: () => readKeys()['phone-relay'],
       encrypt: text => { if (!safeStorage.isEncryptionAvailable()) throw new Error(); return safeStorage.encryptString(text).toString('base64'); }, decrypt: text => safeStorage.decryptString(Buffer.from(text, 'base64')) });
     powerMonitor.on('lock-screen', () => { pushBridge.lock(true); broadcast(); }); powerMonitor.on('unlock-screen', () => { pushBridge.lock(false); broadcast(); });
-    featureKit = installFeatures({ app, ipcMain, desktopCapturer, clipboard, getState: currentState, readVoiceKey: () => readKeys().chatgpt, decide: handleDecision, broadcast, setAttachment: (file) => { attachment = file; }, onDraft: () => navigateSettings('companion'), serviceDetail: readServiceDetail, serviceAction: id => serviceDetails.act(id), registerDevice: input => pushBridge.register(input), revokeDevices: () => pushBridge.revoke(), historySearch: query => workspaceKit.search(query), historyDetail: id => workspaceKit.detail(id) });
+    featureKit = installFeatures({ app, ipcMain, desktopCapturer, clipboard, getState: currentState, readVoiceKey: () => readKeys().chatgpt, decide: handleDecision, broadcast, setAttachment: (file) => { attachment = file; }, onDraft: () => navigateSettings('companion'), serviceDetail: readServiceDetail, serviceAction: (id, input) => serviceDetails.act(id, input), registerDevice: input => pushBridge.register(input), revokeDevices: () => pushBridge.revoke(), historySearch: query => workspaceKit.search(query), historyDetail: id => workspaceKit.detail(id) });
     updateKit = createUpdateController({app, updater: app.isPackaged && process.platform === 'win32' ? require('electron-updater').autoUpdater : null, onChange: broadcast, getToken: () => readKeys()['update-access'] || '',
       async confirmRestart() {
         const busy = pending.length || chatBusyProviders.size || [...sessions.values()].some(session => !session.finished);
         if (!busy) return true;
-        const result = await dialog.showMessageBox({type:'question', title:'Restart Nook to update?', message:'Some agents are still working or waiting for you.', detail:'Restarting disconnects Nook briefly. Your agents stay in their terminals. Finish any waiting approval first, or restart when you are ready.', buttons:['Restart and install','Keep working'], defaultId:1, cancelId:1});
+        const result = await localDialog('showMessageBox', {type:'question', title:'Restart Nook to update?', message:'Some agents are still working or waiting for you.', detail:'Restarting disconnects Nook briefly. Your agents stay in their terminals. Finish any waiting approval first, or restart when you are ready.', buttons:['Restart and install','Keep working'], defaultId:1, cancelId:1});
         return result.response === 0;
       }
     });
@@ -1744,9 +1754,9 @@ ipcMain.handle("nook:save-look", (_event, look) => {
   return next;
 });
 
-ipcMain.handle("nook:clear-key", (_event, provider) => {
+ipcMain.handle("nook:clear-key", async (_event, provider) => {
   try {
-    clearKey(provider);
+    await clearKey(provider);
     modelDiscovery.clear();
     broadcast();
     return { ok: true };
@@ -1856,7 +1866,7 @@ function attachPath(filePath) {
 }
 ipcMain.handle('nook:attach-path', (_event, filePath) => attachPath(filePath));
 ipcMain.handle('nook:pick-file', async () => {
-  const result = await dialog.showOpenDialog(win, { title: 'Add context to chat', properties: ['openFile'] });
+  const result = await localDialog('showOpenDialog', win, { title: 'Add context to chat', properties: ['openFile'] });
   return result.canceled ? { ok: false, cancelled: true } : attachPath(result.filePaths[0]);
 });
 ipcMain.handle("nook:attach-file", (_event, file) => {
@@ -1876,7 +1886,7 @@ ipcMain.handle("nook:clear-file", () => {
   return { ok: true };
 });
 
-ipcMain.handle("nook:save-key", (_event, input) => {
+ipcMain.handle("nook:save-key", async (_event, input) => {
   const provider = input && input.provider;
   const key = input && typeof input.key === "string" ? input.key.trim() : "";
   if (!key) {
@@ -1884,7 +1894,7 @@ ipcMain.handle("nook:save-key", (_event, input) => {
   }
   if (key.length > 500 || /\s/.test(key)) return { ok: false, error: "Paste a single API key without spaces (up to 500 characters)." };
   try {
-    saveKey(provider, key);
+    await saveKey(provider, key);
     modelDiscovery.clear();
     broadcast();
     return { ok: true };
@@ -1896,7 +1906,7 @@ ipcMain.handle("nook:save-key", (_event, input) => {
 ipcMain.handle("nook:chat", async (_event, input) => {
   const provider = input && input.provider;
   const text = input && typeof input.text === "string" ? input.text.trim().slice(0, 2000) : "";
-  if (!PROVIDERS[provider]) {
+  if (!Object.hasOwn(PROVIDERS, provider)) {
     return { ok: false, error: "Unknown chat provider." };
   }
   if (!text) {
@@ -1916,6 +1926,7 @@ ipcMain.handle("nook:chat", async (_event, input) => {
   }
   if (chatBusyProviders.has(provider)) return { ok: false, error: "This model is still responding." };
   chatBusyProviders.add(provider);
+  handoffUndo.delete(provider);
   const models = readModels();
   const file = attachment;
   const content = file ? `${text}\n\n[${file.name} attached]` : text;
@@ -1959,6 +1970,27 @@ ipcMain.handle("nook:chat", async (_event, input) => {
   }
 });
 
+ipcMain.handle('nook:handoff', (_event, input) => {
+  if (demoOn) return { ok: false, error: 'Leave the walkthrough to copy a real conversation.' };
+  const from = input?.from, to = input?.to;
+  try {
+    if (input?.action === 'preview' && Object.hasOwn(PROVIDERS, from)) return { ok: true, ...previewHandoff(messages, from) };
+    if (!Object.hasOwn(PROVIDERS, to) || chatBusyProviders.has(to) || chatBusyProviders.has(from)) throw new Error('Wait for the conversation to finish.');
+    if (input.action === 'copy') {
+      const copied = copyHandoff(messages, input, PROVIDERS);
+      handoffUndo.set(to, messages.filter(row => row.provider === to));
+      messages.splice(0, messages.length, ...recentMessages([...messages.filter(row => row.provider !== to), ...copied]));
+    } else if (input.action === 'undo' && handoffUndo.has(to)) {
+      messages.splice(0, messages.length, ...recentMessages([...messages.filter(row => row.provider !== to), ...handoffUndo.get(to)])); handoffUndo.delete(to);
+    } else throw new Error('There is no chat to restore.');
+    broadcast(); return { ok: true, provider: to };
+  } catch (error) { return { ok: false, error: error.message }; }
+});
+ipcMain.handle('nook:chat-url', async (_event, value) => {
+  const url = require('./lib/rich-markdown').webUrl(value);
+  if (!url) return { ok: false };
+  try { await shell.openExternal(url); return { ok: true }; } catch { return { ok: false }; }
+});
 ipcMain.handle("nook:save-prefs", (_event, patch) => {
   const previous = readPrefs();
   let next = writePrefs(patch);
@@ -1967,6 +1999,7 @@ ipcMain.handle("nook:save-prefs", (_event, patch) => {
   if (shortcutErrors.length) { next = writePrefs({ shortcuts: previous.shortcuts }); registerShortcuts(); }
   applyColors(win);
   applyColors(appWin);
+  refreshTray();
   if (win && !win.isDestroyed() && !anim) {
     applyBounds(targetBounds(mode));
     clipIsland(mode);
@@ -1992,60 +2025,27 @@ ipcMain.handle("nook:open-sounds", () => {
   return shell.openPath(dir);
 });
 
-ipcMain.handle("nook:read-sound", (_event, kind) => {
-  if (kind !== "hi" && kind !== "ask" && kind !== "finish") {
-    return "";
-  }
-  const dir = path.join(app.getPath("userData"), "sounds");
-  for (const ext of ["wav", "mp3", "ogg"]) {
-    const file = path.join(dir, `${kind}.${ext}`);
-    try {
-      const stat = fs.statSync(file);
-      if (stat.size > 2000000) {
-        return "";
-      }
-      const mime = ext === "mp3" ? "audio/mpeg" : ext === "ogg" ? "audio/ogg" : "audio/wav";
-      return `data:${mime};base64,${fs.readFileSync(file).toString("base64")}`;
-    } catch (_error) {
-      // Try the next extension.
-    }
-  }
-  return "";
+ipcMain.handle("nook:read-sound", (_event, kind) => soundKit?.read(kind) || "");
+ipcMain.handle('nook:sounds', async (_event, { action, value } = {}) => {
+  if (!soundKit) return { ok: false, error: 'Sound settings are not ready.' };
+  try {
+    if (action === 'save') soundKit.save(value);
+    else if (action === 'remove') soundKit.remove(value);
+    else if (action === 'import') {
+      if (!require('./lib/sound-settings').EVENTS.includes(value)) return { ok: false, error: 'Unknown sound event.' };
+      const picked = await localDialog('showOpenDialog', appWin || win, { title: 'Choose sound', filters: [{ name: 'Audio under 2 MB', extensions: ['wav', 'mp3', 'ogg', 'm4a'] }], properties: ['openFile'] });
+      if (picked.canceled || !picked.filePaths[0]) return { ok: false, cancelled: true };
+      soundKit.import(value, picked.filePaths[0]);
+    } else if (action !== 'snapshot') return { ok: false, error: 'Unknown sound action.' };
+    broadcast(); return { ok: true, ...soundKit.snapshot() };
+  } catch (error) { return { ok: false, error: error.message }; }
 });
 
-function parentChain(pid) {
-  const chain = [];
-  const next = (current, left) =>
-    new Promise((resolve) => {
-      const id = Number(current);
-      if (!Number.isInteger(id) || id <= 0 || left <= 0) {
-        resolve(chain);
-        return;
-      }
-      execFile(
-        "wmic",
-        ["process", "where", `ProcessId=${id}`, "get", "Name,ParentProcessId", "/format:csv"],
-        { windowsHide: true, timeout: 1500 },
-        (error, stdout) => {
-          if (error || !stdout) {
-            resolve(chain);
-            return;
-          }
-          const line = String(stdout)
-            .split(/\r?\n/)
-            .map((row) => row.trim())
-            .find((row) => row && !row.startsWith("Node") && row.includes(","));
-          if (!line) {
-            resolve(chain);
-            return;
-          }
-          const parts = line.split(",");
-          chain.push({ name: parts[1] || "", pid: id });
-          next(Number(parts[2]) || 0, left - 1).then(resolve);
-        },
-      );
-    });
-  return next(pid, 8);
+async function parentChain(pid) {
+  const id = Number(pid);
+  if (!Number.isInteger(id) || id <= 0) return [];
+  const result = await require('./lib/native').runScript('windows-process-chain.ps1', ['-ProcessId', String(id)], 6000);
+  return result.chain || [];
 }
 
 function focusPid(pid) {
@@ -2063,25 +2063,55 @@ ipcMain.handle("nook:open-terminal", async (_event, sessionId) => {
   if (!session) {
     return { ok: false };
   }
+  const link = terminalLinks.get(session.id);
+  if (link?.host === 'editor' && await require('./lib/terminal-focus').focusLinkedTerminal(link)) {
+    const picked = link.pid ? {pid:link.pid} : pickTerminal(await parentChain(session.pid));
+    if (picked.pid) focusPid(picked.pid); return { ok: true, exact: true };
+  }
+  if (link?.host === 'wt') {
+    const result = await require('./lib/native').runScript('windows-terminal-focus.ps1', ['-TabTitle', link.title], 6000);
+    if (result.ok) return result;
+  }
   const picked = pickTerminal(await parentChain(session.pid));
   if (picked.kind === "window" && picked.pid) {
     focusPid(picked.pid);
     return { ok: true };
   }
   if (session.cwd) {
-    execFile("code", [session.cwd], { windowsHide: true });
-    return { ok: true, folder: true };
+    return openInEditor(session.cwd);
   }
   return { ok: false };
 });
+async function openInEditor(target) {
+  const candidates = [
+    path.join(app.getPath('home'), 'AppData', 'Local', 'Programs', 'Microsoft VS Code', 'Code.exe'),
+    path.join(app.getPath('home'), 'AppData', 'Local', 'Programs', 'cursor', 'Cursor.exe'),
+    path.join(process.env.ProgramFiles || 'C:\\Program Files', 'Microsoft VS Code', 'Code.exe'),
+  ];
+  const executable = candidates.find(file => fs.existsSync(file));
+  if (executable) return new Promise(resolve => {
+    const child = spawn(executable, [target], {windowsHide:true,stdio:'ignore'});
+    child.once('error', () => resolve({ok:false,folder:true}));
+    child.once('spawn', () => { child.unref(); resolve({ok:true,folder:true}); });
+  });
+  const error = await shell.openPath(target); return {ok:!error,folder:true};
+}
 
-ipcMain.handle("nook:open-file", (_event, file) => {
+ipcMain.handle('nook:terminal-setup', async (_event, action) => {
+  if (action === 'helper') { shell.showItemInFolder(path.join(__dirname, 'assets', 'terminal-helper.vsix')); return { ok: true }; }
+  if (action !== 'linked-wt') return { ok: false };
+  const selected = await localDialog('showOpenDialog', appWin || win, { title: 'Choose a project folder', properties: ['openDirectory'] });
+  const folder = selected.filePaths?.[0]; if (selected.canceled || !folder) return { ok: false, cancelled: true };
+  if (/[;\r\n]/.test(folder)) return { ok: false, error: 'Choose a folder without semicolons or line breaks.' };
+  const title = 'Nook · ' + require('crypto').randomBytes(6).toString('hex');
+  return new Promise(resolve => execFile('wt.exe', ['new-tab', '--title', title, '--suppressApplicationTitle', '-d', folder, 'powershell.exe', '-NoExit', '-Command', "$env:NOOK_TERMINAL_TITLE='" + title + "'"], { windowsHide: true }, error => resolve(error ? { ok: false, error: 'Install Windows Terminal to open a linked tab.' } : { ok: true })));
+});
+ipcMain.handle("nook:open-file", async (_event, file) => {
   const target = typeof file === "string" ? file : "";
   if (!target || target.includes("\0") || !path.isAbsolute(target)) {
     return { ok: false };
   }
-  execFile("code", [target], { windowsHide: true });
-  return { ok: true };
+  return openInEditor(target);
 });
 
 ipcMain.handle("nook:open-url", (_event, url) => {
@@ -2147,12 +2177,12 @@ ipcMain.handle('nook:workspace', async (_event, { action, value } = {}) => {
     if (action === 'save') { const next = workspaceKit.save(value); broadcast(); return { ok: true, ...next }; }
     if (action === 'remove') { workspaceKit.remove(value); broadcast(); return { ok: true }; }
     if (action === 'clear') {
-      const answer = await dialog.showMessageBox(appWin || win, { type: 'question', title: 'Clear session history?', message: 'Delete all saved sessions and decisions?', detail: 'This removes Nook’s local session archive.', buttons: ['Keep history', 'Delete history'], defaultId: 0, cancelId: 0 });
+      const answer = await localDialog('showMessageBox', appWin || win, { type: 'question', title: 'Clear session history?', message: 'Delete all saved sessions and decisions?', detail: 'This removes Nook’s local session archive.', buttons: ['Keep history', 'Delete history'], defaultId: 0, cancelId: 0 });
       if (answer.response !== 1) return { ok: false, cancelled: true }; workspaceKit.clear(); broadcast(); return { ok: true };
     }
     if (action === 'relay-token') {
-      if (value === '') clearKey('phone-relay');
-      else if (typeof value === 'string' && /^[A-Za-z0-9_\-]{32,500}$/.test(value)) saveKey('phone-relay', value);
+      if (value === '') await clearKey('phone-relay');
+      else if (typeof value === 'string' && /^[A-Za-z0-9_\-]{32,500}$/.test(value)) await saveKey('phone-relay', value);
       else return { ok: false, error: 'Use a relay token of 32–500 letters, digits, hyphens, or underscores.' };
       broadcast(); return { ok: true };
     }
@@ -2162,19 +2192,35 @@ ipcMain.handle('nook:workspace', async (_event, { action, value } = {}) => {
 });
 function readServiceDetail(service) { if (demoOn) return Promise.resolve({ ok: true, service, time: Date.now(), items: [{ id: 'demo-service', title: 'Walkthrough sample', detail: 'Sample service status · no account used', url: '', actions: [] }] }); return serviceDetails.detail(service); }
 ipcMain.handle('nook:service-detail', (_event, service) => readServiceDetail(service));
-function openServicePage(service) { if (!['github', 'vercel', 'n8n'].includes(service)) return; openApp(); const send = () => appWin?.webContents.send('nook:command', 'service:' + service); if (appWin.webContents.isLoading()) appWin.webContents.once('did-finish-load', send); else send(); }
+function openServicePage(service) { if (!SERVICES.includes(service)) return; openApp(); const send = () => appWin?.webContents.send('nook:command', 'service:' + service); if (appWin.webContents.isLoading()) appWin.webContents.once('did-finish-load', send); else send(); }
 ipcMain.on('nook:open-service', (_event, service) => openServicePage(service));
-ipcMain.handle('nook:service-action', (_event, id) => serviceDetails.act(id));
+ipcMain.handle('nook:custom-agent', async (_event, { action, value } = {}) => {
+  try {
+    if (action === 'preview') return { ok: true, payload: customAgents.adapt(value.profile, value.sample) };
+    if (action === 'save') { const profile = customAgents.save(value); broadcast(); return { ok: true, profile }; }
+    if (action === 'remove') { customAgents.remove(value); broadcast(); return { ok: true }; }
+    if (action === 'export') {
+      const profile = customAgents.find(value); if (!profile) throw new Error('Save the agent first.');
+      const result = await localDialog('showSaveDialog', appWin || win, { title: 'Export agent hook profile', defaultPath: profile.id + '-nook.json', filters: [{ name: 'JSON profile', extensions: ['json'] }] });
+      if (result.canceled || !result.filePath) return { ok: false, cancelled: true };
+      fs.writeFileSync(result.filePath, JSON.stringify(profile, null, 2));
+      const command = require('./lib/custom-agents').hookCommand(process.execPath, path.join(__dirname, 'hooks', 'nook-custom-hook.js'), result.filePath);
+      return { ok: true, command };
+    }
+    throw new Error('Choose a custom-agent action.');
+  } catch (error) { return { ok: false, error: error.message }; }
+});
+ipcMain.handle('nook:service-action' , (_event, value) => serviceDetails.act(typeof value === 'string' ? value : value?.id, value?.input));
 ipcMain.handle('nook:service-url', (_event, value) => {
   try {
     const url = new URL(value), host = url.hostname;
-    const approved = host === 'github.com' || host === 'vercel.com' || host.endsWith('.vercel.app') || (cleanServiceUrl(readPrefs().n8nUrl) && url.origin === cleanServiceUrl(readPrefs().n8nUrl));
+    const approved = host === 'github.com' || host === 'vercel.com' || host.endsWith('.vercel.app') || host === 'notion.so' || host.endsWith('.notion.so') || host.endsWith('.notion.site') || (cleanServiceUrl(readPrefs().n8nUrl) && url.origin === cleanServiceUrl(readPrefs().n8nUrl));
     if (!approved || !['https:', 'http:'].includes(url.protocol) || url.username || url.password || (url.protocol === 'http:' && !['localhost', '127.0.0.1'].includes(host))) return { ok: false };
     shell.openExternal(url.href); return { ok: true };
   } catch { return { ok: false }; }
 });
 ipcMain.handle('nook:recap-png', async () => {
-  const target = await dialog.showSaveDialog(appWin || win, { title: 'Save weekly recap', defaultPath: path.join(app.getPath('pictures'), 'Nook weekly recap.png'), filters: [{ name: 'PNG image', extensions: ['png'] }] });
+  const target = await localDialog('showSaveDialog', appWin || win, { title: 'Save weekly recap', defaultPath: path.join(app.getPath('pictures'), 'Nook weekly recap.png'), filters: [{ name: 'PNG image', extensions: ['png'] }] });
   if (target.canceled || !target.filePath) return { ok: false, cancelled: true };
   const svg = recapSvg(summarizeHistory(readHistoryTail(), Date.now()), { hideProject: readPrefs().hideProject, logo: 'data:image/svg+xml;base64,' + fs.readFileSync(path.join(__dirname, 'assets/logo.svg')).toString('base64') });
   const preview = new BrowserWindow({ show: false, width: 1080, height: 1920, useContentSize: true, webPreferences: { sandbox: true, nodeIntegration: false, contextIsolation: true } });
@@ -2206,11 +2252,11 @@ ipcMain.handle('nook:update', (_event, input) => {
   if (['check','download','install'].includes(input?.action)) return updateKit[input.action]();
   return updateKit.snapshot();
 });
-ipcMain.handle('nook:update-access', (_event, input) => {
+ipcMain.handle('nook:update-access', async (_event, input) => {
   if (['checking','downloading'].includes(updateKit?.snapshot().phase)) return {ok:false,error:'Wait for the current update operation to finish.'};
   try {
-    if (input?.action === 'clear') clearKey('update-access');
-    else if (input?.action === 'save' && typeof input.token === 'string' && /^[A-Za-z0-9_]{20,500}$/.test(input.token.trim())) saveKey('update-access',input.token.trim());
+    if (input?.action === 'clear') await clearKey('update-access');
+    else if (input?.action === 'save' && typeof input.token === 'string' && /^[A-Za-z0-9_]{20,500}$/.test(input.token.trim())) await saveKey('update-access',input.token.trim());
     else return {ok:false,error:'Enter a valid GitHub access token.'};
     const state = updateKit?.refreshAccess(); broadcast(); return {ok:true,...state};
   } catch (_) { return {ok:false,error:'Windows could not save the encrypted token.'}; }
@@ -2223,8 +2269,8 @@ ipcMain.handle('nook:pet-menu', (event) => {
   const target = BrowserWindow.fromWebContents(event.sender);
   if (![win, pet].includes(target) || !featureKit) return;
   const settings = featureKit.snapshot().companion;
-  const labels = { none: 'Original', cap: 'Day off', glasses: 'Bookworm', headphones: 'Headphones', scarf: 'Cozy scarf', winter: 'Winter', crown: 'Little monarch', bow: 'Blush bow', raincoat: 'Rainy day' };
-  const menu = Menu.buildFromTemplate([
+  const labels = { none: 'Original', cap: 'Day off', glasses: 'Bookworm', headphones: 'Headphones', scarf: 'Cozy scarf', winter: 'Winter', crown: 'Little monarch', bow: 'Blush bow', raincoat: 'Rainy day', sunvisor: 'Summer breeze', wizard: 'Moon wizard', festive: 'Holiday' };
+  const menu = makeMenu([
     { label: 'Open chat', click: () => { showNook(); win.webContents.send('nook:open-chat'); } },
     { label: 'Wardrobe', submenu: [...Object.entries(labels).map(([outfit, label]) => ({ label, type: 'radio', checked: !settings.seasonal && settings.outfit === outfit, click: () => featureKit.saveSettings({outfit, seasonal: false}) })), { label: 'Seasonal', type: 'radio', checked: settings.seasonal, click: () => featureKit.saveSettings({seasonal: true}) }] },
     { label: readPrefs().muted ? 'Unmute sounds' : 'Mute sounds', click: () => { writePrefs({muted: !readPrefs().muted}); broadcast(); } },

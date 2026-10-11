@@ -1,0 +1,178 @@
+{
+  "Agents": {
+    "es": "Agentes",
+    "fr": "Agents",
+    "pt-BR": "Agentes",
+    "zh-Hans": "代理",
+    "hi": "एजेंट",
+    "ar": "الوكلاء",
+    "bn": "এজেন্ট",
+    "ru": "Агенты",
+    "id": "Agen"
+  },
+  "Chat": {
+    "es": "Chat",
+    "fr": "Chat",
+    "pt-BR": "Chat",
+    "zh-Hans": "聊天",
+    "hi": "चैट",
+    "ar": "دردشة",
+    "bn": "চ্যাট",
+    "ru": "Чат",
+    "id": "Obrolan"
+  },
+  "Allow": {
+    "es": "Permitir",
+    "fr": "Autoriser",
+    "pt-BR": "Permitir",
+    "zh-Hans": "允许",
+    "hi": "अनुमति",
+    "ar": "سماح",
+    "bn": "অনুমতি",
+    "ru": "Разрешить",
+    "id": "Izinkan"
+  },
+  "Deny": {
+    "es": "Denegar",
+    "fr": "Refuser",
+    "pt-BR": "Negar",
+    "zh-Hans": "拒绝",
+    "hi": "मना",
+    "ar": "رفض",
+    "bn": "প্রত্যাখ্যান",
+    "ru": "Отклонить",
+    "id": "Tolak"
+  },
+  "Always": {
+    "es": "Siempre",
+    "fr": "Toujours",
+    "pt-BR": "Sempre",
+    "zh-Hans": "始终",
+    "hi": "हमेशा",
+    "ar": "دائمًا",
+    "bn": "সবসময়",
+    "ru": "Всегда",
+    "id": "Selalu"
+  },
+  "Reply in terminal": {
+    "es": "Responder en la terminal",
+    "fr": "Répondre dans le terminal",
+    "pt-BR": "Responder no terminal",
+    "zh-Hans": "在终端回复",
+    "hi": "टर्मिनल में जवाब",
+    "ar": "الرد في الطرفية",
+    "bn": "টার্মিনালে উত্তর",
+    "ru": "Ответить в терминале",
+    "id": "Jawab di terminal"
+  },
+  "Answer": {
+    "es": "Responder",
+    "fr": "Répondre",
+    "pt-BR": "Responder",
+    "zh-Hans": "回答",
+    "hi": "जवाब",
+    "ar": "إجابة",
+    "bn": "উত্তর",
+    "ru": "Ответить",
+    "id": "Jawab"
+  },
+  "Quiet": {
+    "es": "En calma",
+    "fr": "Calme",
+    "pt-BR": "Quieto",
+    "zh-Hans": "安静",
+    "hi": "शांत",
+    "ar": "هادئ",
+    "bn": "শান্ত",
+    "ru": "Тихо",
+    "id": "Tenang"
+  },
+  "Needs you": {
+    "es": "Te necesita",
+    "fr": "A besoin de toi",
+    "pt-BR": "Precisa de você",
+    "zh-Hans": "需要你",
+    "hi": "आपकी ज़रूरत है",
+    "ar": "يحتاجك",
+    "bn": "তোমাকে দরকার",
+    "ru": "Нуждается в вас",
+    "id": "Butuh kamu"
+  },
+  "Hi": {
+    "es": "Hola",
+    "fr": "Salut",
+    "pt-BR": "Olá",
+    "zh-Hans": "你好",
+    "hi": "नमस्ते",
+    "ar": "مرحبًا",
+    "bn": "হ্যালো",
+    "ru": "Привет",
+    "id": "Halo"
+  },
+  "Review hook changes": {
+    "es": "Revisar cambios",
+    "fr": "Voir les changements",
+    "pt-BR": "Rever mudanças",
+    "zh-Hans": "查看更改",
+    "hi": "बदलाव देखें",
+    "ar": "مراجعة التغييرات",
+    "bn": "পরিবর্তন দেখুন",
+    "ru": "Смотреть изменения",
+    "id": "Tinjau perubahan"
+  },
+  "Install these hooks": {
+    "es": "Instalar estos hooks",
+    "fr": "Installer ces hooks",
+    "pt-BR": "Instalar estes hooks",
+    "zh-Hans": "安装这些钩子",
+    "hi": "ये हुक लगाएँ",
+    "ar": "تثبيت هذه الخطافات",
+    "bn": "এই হুক বসান",
+    "ru": "Установить хуки",
+    "id": "Pasang hook ini"
+  },
+  "Customize": {
+    "es": "Personalizar",
+    "fr": "Personnaliser",
+    "pt-BR": "Personalizar",
+    "zh-Hans": "自定义",
+    "hi": "रूप बदलें",
+    "ar": "تخصيص",
+    "bn": "সাজান",
+    "ru": "Внешний вид",
+    "id": "Sesuaikan"
+  },
+  "Pin open": {
+    "es": "Fijar abierto",
+    "fr": "Garder ouvert",
+    "pt-BR": "Fixar aberto",
+    "zh-Hans": "保持打开",
+    "hi": "खुला रखें",
+    "ar": "إبقاء مفتوحًا",
+    "bn": "খোলা রাখুন",
+    "ru": "Держать открытым",
+    "id": "Tetap terbuka"
+  },
+  "Unpin": {
+    "es": "Soltar",
+    "fr": "Relâcher",
+    "pt-BR": "Soltar",
+    "zh-Hans": "取消固定",
+    "hi": "हटाएँ",
+    "ar": "إلغاء التثبيت",
+    "bn": "খুলুন",
+    "ru": "Открепить",
+    "id": "Lepas"
+  },
+  "Quit": {
+    "es": "Salir",
+    "fr": "Quitter",
+    "pt-BR": "Sair",
+    "zh-Hans": "退出",
+    "hi": "बंद करें",
+    "ar": "خروج",
+    "bn": "বন্ধ",
+    "ru": "Выход",
+    "id": "Keluar"
+  }
+}

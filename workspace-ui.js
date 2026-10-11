@@ -46,7 +46,7 @@
   async function showDetail(id) {
     const result = await window.nook.workspace('detail', id), item = result.item; if (!item) return;
     const area = $('history-detail'); area.replaceChildren(card(item.label || item.agent, new Date(item.time).toLocaleString())); area.hidden = false;
-    if (item.final) area.append(card('Completed answer', item.final));
+    if (item.final) { const final=card('Completed answer',item.final);final.querySelector('h3').dataset.localize='true';area.append(final); }
     for (const decision of item.decisions || []) area.append(card(decision.action, decision.detail));
     for (const step of item.steps || []) { const node = card(step.title || step.task, step.detail); if (step.diff) { const details = document.createElement('details'), summary = document.createElement('summary'), code = document.createElement('pre'); summary.textContent = 'View diff'; code.textContent = step.diff; details.append(summary, code); node.append(details); } area.append(node); }
     area.append(button('Close', () => { area.hidden = true; }), button('Delete entry', async () => { await window.nook.workspace('remove', id); area.hidden = true; search(); }));
@@ -55,6 +55,15 @@
   for (const id of ['history-query', 'history-agent']) $(id).addEventListener('input', () => { clearTimeout(historyTimer); historyTimer = setTimeout(search, 200); });
   $('history-search').addEventListener('click', search);
   $('history-clear').addEventListener('click', async () => { const result = await window.nook.workspace('clear'); if (result.ok) { $('history-detail').hidden = true; await search(); } });
+  function reviewText(title, summary) {
+    return new Promise(resolve => {
+      const dialog = document.createElement('dialog'); dialog.className = 'usage-dialog';
+      const heading = document.createElement('h2'), note = document.createElement('p'), text = document.createElement('textarea'); heading.textContent = title; note.textContent = summary; text.maxLength = 4000; text.rows = 6; text.style.width = '100%'; text.setAttribute('aria-label', 'Review comment');
+      let answer = null; const submit = button('Review on PC', () => { if (!text.value.trim()) { text.focus(); return; } answer = text.value.trim(); dialog.close(); });
+      dialog.append(heading, note, text, button('Cancel', () => dialog.close()), submit); document.body.append(dialog);
+      dialog.addEventListener('close', () => { dialog.remove(); resolve(answer); }, { once: true }); dialog.showModal(); text.focus();
+    });
+  }
   async function service() {
     const request = ++serviceRequest, service = $('service-choice').value; message('service-status', 'Loading service details…'); $('service-refresh').disabled = true;
     try {
@@ -63,12 +72,20 @@
       for (const item of result.items || []) {
         const node = card(item.title, item.detail);
         if (item.url) node.append(button('Open in browser', () => window.nook.openServiceUrl(item.url)));
-        for (const action of item.actions || []) node.append(button(action.label, async event => { event.target.disabled = true; const answer = await window.nook.serviceAction(action.id); message('service-status', answer.ok ? 'Action completed. Refresh to see the latest status.' : answer.cancelled ? 'Cancelled.' : answer.error); }));
+        for (const action of item.actions || []) node.append(button(action.label, async event => {
+          const target = event.currentTarget; target.disabled = true;
+          try {
+            let input;
+            if (action.needsText) { const text = await reviewText(action.label, action.summary); if (text == null) { target.disabled = false; return; } input = { text }; }
+            const answer = await window.nook.serviceAction(action.id, input);
+            message('service-status', answer.ok ? 'Action completed. Refresh to see the latest status.' : answer.cancelled ? 'Cancelled.' : answer.error);
+          } catch { target.disabled = false; message('service-status', 'Could not complete the action. Refresh the service.'); }
+        }));
         $('service-items').append(node);
       }
     } catch { message('service-status', 'Could not load service details.'); } finally { if (request === serviceRequest) $('service-refresh').disabled = false; }
   }
   $('service-refresh').addEventListener('click', service); $('service-choice').addEventListener('change', service);
-  window.nook.onCommand(action => { if (!action.startsWith('service:')) return; const id = action.slice(8); if (!['github', 'vercel', 'n8n'].includes(id)) return; showPage('workspace'); $('service-choice').value = id; service(); });
+  window.nook.onCommand(action => { if (!action.startsWith('service:')) return; const id = action.slice(8); if (!['github', 'vercel', 'n8n', 'stripe', 'resend', 'notion', 'cal'].includes(id)) return; showPage('workspace'); $('service-choice').value = id; service(); });
   $('save-recap-png').addEventListener('click', async () => { await window.nook.saveRecapPng(); });
 })();

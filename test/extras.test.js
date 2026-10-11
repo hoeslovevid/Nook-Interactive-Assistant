@@ -22,7 +22,7 @@ test("github and stripe summaries stay short", () => {
   assert.match(github.detail, /2 open/);
   assert.match(github.detail, /1 review/);
   assert.match(github.detail, /1 failing/);
-  assert.equal(stripeSummary({ available: [{ amount: 1250, currency: "usd" }] }).detail, "12.50 usd");
+  assert.equal(stripeSummary({ available: [{ amount: 1250, currency: "usd" }] }).detail, "12.50 USD");
   assert.equal(cleanServiceUrl("http://evil.test"), "");
   assert.match(cleanServiceUrl("https://n8n.example.com/api"), /n8n\.example\.com/);
 });

@@ -10,7 +10,12 @@
     <link rel="icon" href="assets/favicon.ico" sizes="any" />
     <link rel="stylesheet" href="styles.css" />
     <link rel="stylesheet" href="notch-modern.css" />
-  </head>
+    <link rel="stylesheet" href="light-theme.css" />
+    <link rel="stylesheet" href="localization.css" />
+    <link rel="stylesheet" href="rich-chat.css" />
+    <link rel="stylesheet" href="service-cards.css" />
+  <link rel="stylesheet" href="companion-extras.css">
+</head>
   <body>
     <div class="island" role="region" aria-label="Nook">
       <header class="top">
@@ -66,6 +71,13 @@
             <select id="provider"></select>
           </label>
           <button type="button" id="chat-choose-model" class="text-button">Switch model…</button>
+          <button type="button" id="chat-handoff" class="text-button">Continue with another AI</button>
+          <button type="button" id="handoff-undo" class="text-button" hidden>Restore previous chat</button>
+          <div id="handoff-panel" class="handoff-panel" hidden>
+            <strong>Continue with another AI</strong><p class="hint">Choose the messages to copy. Files and images stay out. This replaces the target chat; restore it until you send a new message. Nothing is sent yet.</p>
+            <select id="handoff-provider" aria-label="Target AI provider"></select><div id="handoff-messages" class="handoff-messages"></div>
+            <div class="choices"><button type="button" id="handoff-confirm" class="choice allow">Start copied chat</button><button type="button" id="handoff-cancel" class="text-button">Cancel</button></div><p id="handoff-note" class="hint" role="status"></p>
+          </div>
           <div id="chat-model-picker" class="chat-model-picker" hidden>
             <div class="chat-heading"><strong>Available models</strong><button type="button" id="chat-model-close" class="text-button">Close</button></div>
             <input type="search" id="chat-model-search" placeholder="Search models…" aria-label="Search available chat models" />
@@ -109,14 +121,23 @@
       </section>
     </div>
     <script src="lib/markdown.js"></script>
+    <script src="lib/rich-markdown.js"></script>
     <script src="lib/workbench.js"></script>
     <script src="lib/ui-icons.js"></script>
+    <script src="lib/locale-catalog.js"></script>
+    <script src="lib/locale.js"></script>
     <script src="lib/motion.js"></script>
     <script src="lib/companion.js"></script>
     <script src="lib/audio.js"></script>
+    <script src="lib/sound-player.js"></script>
     <script src="lib/alert-policy.js"></script>
+    <script src="lib/appearance.js"></script>
     <script src="lib/seed.js"></script>
+    <script src="lib/service-cards.js"></script>
     <script src="renderer.js"></script>
     <script src="companion-ui.js"></script>
-  </body>
+    <script src="chat-handoff-ui.js"></script>
+  <script src="usage-ui.js"></script>
+<script src="voice-language-ui.js"></script>
+</body>
 </html>

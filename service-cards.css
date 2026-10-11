@@ -1,0 +1,8 @@
+#extras { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin-top:14px; }
+.service-card { display:flex;align-items:center;gap:11px;min-width:0;text-align:start;padding:13px;border:1px solid var(--line);border-radius:17px;background:color-mix(in srgb,var(--paper) 3%,transparent);color:var(--paper);font:inherit; }
+button.service-card { cursor:pointer;transition:background .18s,border-color .18s; }button.service-card:hover { background:color-mix(in srgb,var(--lime) 7%,transparent);border-color:color-mix(in srgb,var(--lime) 35%,var(--line)); }
+.service-pet { width:40px;height:40px;flex:none; }.service-card-copy { display:flex;flex-direction:column;gap:5px;min-width:0; }
+.service-card-copy strong { font-size:11px; }.service-card-copy>span { font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
+.service-card-copy small { font-size:9px;color:var(--muted); }.service-card[data-tone=error] small { color:#eb98a4; }.service-card[data-tone=warning] small { color:#e5ba75; }
+:root[data-scheme=light] .service-card[data-tone=error] small { color:#a52d42; }:root[data-scheme=light] .service-card[data-tone=warning] small { color:#845410; }
+@media(max-width:560px) { #extras { grid-template-columns:1fr; } }

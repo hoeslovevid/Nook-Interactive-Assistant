@@ -1,12 +1,14 @@
 import SwiftUI
 import UIKit
 import UserNotifications
+import CoreSpotlight
 
 @MainActor final class NookAppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate {
     func application(_ application: UIApplication, didFinishLaunchingWithOptions options: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
         let center = UNUserNotificationCenter.current(); center.delegate = self
         let actions = [UNNotificationAction(identifier: "ALLOW", title: "Allow", options: [.foreground, .authenticationRequired]), UNNotificationAction(identifier: "REVIEW", title: "Review", options: [.foreground]), UNNotificationAction(identifier: "DENY", title: "Deny", options: [.foreground, .destructive])]
         center.setNotificationCategories([UNNotificationCategory(identifier: "NOOK_REVIEW", actions: actions, intentIdentifiers: [])])
+        NookStore.shared.beginSystemIntegration()
         return true
     }
     func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken token: Data) { NookStore.shared.deviceToken = token.map { String(format: "%02x", $0) }.joined(); Task { await NookStore.shared.registerDevice() } }
@@ -28,12 +30,14 @@ import UserNotifications
     @UIApplicationDelegateAdaptor(NookAppDelegate.self) var delegate
     @StateObject private var store = NookStore.shared
     @Environment(\.scenePhase) private var phase
+    @AppStorage("phoneTheme") private var theme = "dark"
     var body: some Scene {
         WindowGroup {
-            NookRootView().environmentObject(store).tint(NookShared.accent).preferredColorScheme(.dark)
+            NookRootView().environmentObject(store).tint(NookShared.accent).preferredColorScheme(theme == "system" ? nil : theme == "light" ? .light : .dark)
                 .onOpenURL { store.open($0) }
-                .onChange(of: phase) { _, next in if next == .active { store.startPolling() } else { store.stopPolling() } }
-                .task { store.startPolling() }
+                .onContinueUserActivity(CSSearchableItemActionType) { store.openSearch($0) }
+                .onChange(of: phase) { _, next in if next == .active { store.beginSystemIntegration(); store.startPolling() } else { store.stopPolling() } }
+                .task { store.beginSystemIntegration(); store.startPolling() }
         }
     }
 }
