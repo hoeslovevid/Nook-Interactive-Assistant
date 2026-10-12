@@ -84,7 +84,7 @@ function waiting() {
 }
 
 function shellMode() {
-  if (waiting() || pinned || held || expanded || welcome || chatting || document.querySelector("dialog[open],.voice-language-picker:not([hidden])")) {
+  if (waiting() || pinned || held || expanded || welcome || chatting || document.activeElement?.matches('input,textarea,select,[contenteditable=true]') || document.body.classList.contains('is-recording') || document.querySelector("dialog[open],.voice-language-picker:not([hidden])")) {
     return "open";
   }
   if (hovering && state && (state.prefs?.openOnHover || state.everyday?.settings?.hoverDashboard)) {
@@ -872,7 +872,8 @@ window.addEventListener("keydown", (event) => {
     return;
   }
   if (event.target.matches("input, textarea, select, [contenteditable=true]")) {
-    if (event.ctrlKey && event.key === "Enter") {
+    if (event.target === chatInput && event.ctrlKey && event.key === "Enter") {
+      event.preventDefault();
       chatForm.requestSubmit();
     }
     return;
@@ -915,21 +916,22 @@ fileChip.addEventListener("click", () => {
 chatInput.addEventListener("focus", () => {
   chatting = true;
   renderShell();
+  window.nook.focusWindow();
 });
 
-chatInput.addEventListener("blur", () => {
-  chatting = false;
-  renderShell();
+document.addEventListener('pointerdown', event => {
+  if (event.target.closest('input,textarea,select,button,[contenteditable=true]')) window.nook.focusWindow();
 });
 
 async function runChatAction(action, text, messageId) {
   if(sending)return;const originalProvider=provider;
+  const retryText=action==='retry'?state?.messages?.findLast(m=>m.provider===originalProvider&&m.role==='user')?.prompt:text;
   const sendButton=chatForm.querySelector('button[type="submit"]');sending=true;providerSelect.disabled=true;sendButton.disabled=true;sendButton.textContent='…';chatError='';renderShell();
   try {
     const result=action==='send'?await window.nook.sendChat(originalProvider,text):await window.nook.chatControl(action,{provider:originalProvider,text,messageId});
-    if(!result.ok){chatError=result.error||'Could not send this request.';if(action==='send')chatInput.value=text;playSound('error');}
+    if(!result.ok){chatError=result.error||'Could not send this request.';if(['send','retry'].includes(action)&&!chatInput.value)chatInput.value=retryText||'';playSound('error');}
     else if(!result.stopped)celebrateCompanion();
-  }catch{chatError='Could not connect. Please try again.';if(action==='send')chatInput.value=text;playSound('error');}
+  }catch{chatError='Could not connect. Please try again.';if(['send','retry'].includes(action)&&!chatInput.value)chatInput.value=retryText||'';playSound('error');}
   finally{sending=false;providerSelect.disabled=false;sendButton.disabled=false;sendButton.textContent='↑';paint();window.NookChatControls?.paint(state);}
 }
 chatForm.addEventListener('submit',event=>{event.preventDefault();const text=chatInput.value.trim();if(!text||sending)return;chatInput.value='';runChatAction('send',text);});
@@ -957,7 +959,7 @@ document.querySelector("#open-diff").addEventListener("click", (event) => {
 });
 
 window.nook.onCommand((action) => {
-  if(action.startsWith('provider:')){const id=action.slice(9);if(PROVIDER_NAMES.includes(id)){provider=id;providerSelect.value=id;showCard('chat');held=true;expanded=true;paint();chatInput.focus();}return;}
+  if(action.startsWith('provider:')){const id=action.slice(9);if(PROVIDER_NAMES.includes(id)){provider=id;providerSelect.value=id;showCard('chat');held=true;expanded=true;paint();window.nook.focusWindow();chatInput.focus();}return;}
   if(action.startsWith('service:')){window.nook.openService(action.slice(8));return;}
   if (action === 'home') { showCard('session'); held = true; welcome = false; expanded = true; renderShell(); return; }
   if (action.startsWith('session:')) {
@@ -990,6 +992,7 @@ window.nook.onOpenChat(() => {
   expanded = true;
   welcome = false;
   renderShell();
+  window.nook.focusWindow();
   chatInput.focus();
 });
 
@@ -1031,7 +1034,11 @@ document.querySelector('#notch-home').addEventListener('click', () => { showCard
 document.querySelector('#notch-chat').addEventListener('click', () => { showCard('chat'); held = true; welcome = false; expanded = true; renderShell(); chatInput.focus(); });
 document.querySelector('#notch-settings').addEventListener('click', () => window.nook.openApp());
 document.querySelector('#notch-sound').addEventListener('click', () => window.nook.savePrefs({ muted: !state?.prefs?.muted }));
-document.querySelector('#chat-retry').addEventListener('click', () => runChatAction('retry'));
+document.querySelector('#chat-retry').addEventListener('click', () => {
+  const text=chatInput.value.trim();
+  const latestUser=state?.messages?.findLast(m=>m.provider===provider&&m.role==='user');
+  if(text){chatInput.value='';runChatAction(latestUser?.prompt===text?'retry':'send',text);}else runChatAction('retry');
+});
 document.querySelector('#notch-attach').addEventListener('click', async () => {
   const button = document.querySelector('#notch-attach'); button.disabled = true;
   held = true; expanded = true; welcome = false; renderShell();

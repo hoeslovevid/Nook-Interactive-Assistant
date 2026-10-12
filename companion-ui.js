@@ -13,7 +13,32 @@ let musicState = {},
   voiceFrames = [],
   voiceTimeout = 0,
   voiceAnimation = 0,
-  voiceTranscribing = false;
+  voiceTranscribing = false,
+  voiceStarting = false,
+  voiceGeneration = 0;
+const microphoneSelect = featureNode('voice-device');
+let microphoneId = '';
+try { microphoneId = localStorage.getItem('nook-microphone') || ''; } catch {}
+function microphoneOptions(devices) {
+  microphoneSelect.replaceChildren(new Option('Windows default', ''));
+  for (const device of devices.filter(d => d.kind === 'audioinput' && d.deviceId && d.deviceId !== 'default')) {
+    microphoneSelect.append(new Option(device.label || 'Microphone ' + microphoneSelect.options.length, device.deviceId));
+  }
+  if (microphoneId && !devices.some(d => d.deviceId === microphoneId)) microphoneSelect.append(new Option('Saved microphone · unavailable', microphoneId));
+  microphoneSelect.value = microphoneId;
+}
+async function refreshMicrophones() {
+  try { microphoneOptions(await navigator.mediaDevices.enumerateDevices()); }
+  catch { featureMessage('Could not list microphones. Check Windows microphone permissions, then retry.'); }
+}
+microphoneSelect.addEventListener('change', () => {
+  microphoneId = microphoneSelect.value;
+  try { localStorage.setItem('nook-microphone', microphoneId); } catch {}
+});
+featureNode('voice-devices-refresh').addEventListener('click', refreshMicrophones);
+featureNode('voice-configure').addEventListener('click', () => window.nook.openApp('companion'));
+navigator.mediaDevices?.addEventListener('devicechange', refreshMicrophones);
+refreshMicrophones();
 function paintMusic(next) {
   musicState = next || {};
   featureNode("music-card").hidden = !musicState.available;
@@ -163,41 +188,31 @@ function waveform() {
   voiceAnimation = requestAnimationFrame(waveform);
 }
 async function stopVoice(cancel = false) {
+  if (voiceStarting && !recording) { voiceGeneration++; return; }
   if (!recording) return;
   recording = false;
+  voiceTranscribing = true;
+  featureNode('voice-button').disabled = true;
   clearTimeout(voiceTimeout);
   cancelAnimationFrame(voiceAnimation);
   const rate = voiceContext.sampleRate;
-  voiceProcessor.onaudioprocess = null;
-  voiceProcessor.disconnect();
-  voiceSource.disconnect();
-  voiceStream.getTracks().forEach((track) => track.stop());
-  await voiceContext.close();
+  const context = voiceContext, frames = voiceFrames;
+  voiceFrames = [];
+  releaseVoiceResources();
   voiceContext = null;
   seed._nookReaction = null;
+  document.body.classList.remove('is-recording');
   featureNode("voice-wave").hidden = true;
   featureNode("voice-button").textContent = "◉ Dictate";
   featureNode("voice-button").setAttribute("aria-label", "Start dictation");
-  if (cancel) {
-    voiceFrames = [];
-    return;
-  }
-  const count = voiceFrames.reduce((sum, frame) => sum + frame.length, 0),
-    samples = new Float32Array(count);
-  let offset = 0;
-  for (const frame of voiceFrames) {
-    samples.set(frame, offset);
-    offset += frame.length;
-  }
-  voiceFrames = [];
-  if (count < rate * 0.25) {
-    featureMessage("Recording too short. Try again.");
-    return;
-  }
-  voiceTranscribing = true;
-  featureNode("voice-button").disabled = true;
-  featureMessage("Transcribing…");
   try {
+    await context.close().catch(() => {});
+    if (cancel) return;
+    const count = frames.reduce((sum, frame) => sum + frame.length, 0), samples = new Float32Array(count);
+    let offset = 0;
+    for (const frame of frames) { samples.set(frame, offset); offset += frame.length; }
+    if (count < rate * 0.25) { featureMessage("Recording too short. Try again."); return; }
+    featureMessage("Transcribing…");
     const result = await window.nook.transcribe(
       window.NookAudio.encodeWav(samples, rate),
     );
@@ -215,21 +230,41 @@ async function stopVoice(cancel = false) {
   } finally {
     voiceTranscribing = false;
     featureNode("voice-button").disabled = false;
+    microphoneSelect.disabled = false;
     renderShell();
   }
 }
+function releaseVoiceResources() {
+  if (voiceProcessor) {voiceProcessor.onaudioprocess = null;try {voiceProcessor.disconnect();} catch {}}
+  try {voiceSource?.disconnect(); voiceAnalyser?.disconnect();} catch {}
+  voiceStream?.getTracks().forEach(track => {track.onended = null; track.stop();});
+  voiceProcessor = voiceSource = voiceAnalyser = null;
+}
 async function startVoice() {
-  if (voiceTranscribing) return;
-  if(recording)return;
+  if (voiceTranscribing || voiceStarting || recording) return;
+  voiceStarting = true;
+  const generation = ++voiceGeneration;
+  let processing = false;
   const button = featureNode("voice-button");
   button.disabled = true;
+  microphoneSelect.disabled = true;
+  featureMessage('Starting microphone…');
+  window.nook.focusWindow();
   try {
-    voiceStream = await navigator.mediaDevices.getUserMedia({
-      audio: { echoCancellation: true, noiseSuppression: true },
-      video: false,
-    });
-    voiceContext = new AudioContext();
+    // Speech setup is independent of microphone hardware. Diagnose it before recording.
+    const companion = state?.features?.companion || {};
+    if (companion.voice !== 'openai') {
+      const speech = await window.nook.speechLanguages();
+      if (!speech.ok || !speech.languages?.length) throw Object.assign(new Error(speech.error || 'Windows dictation is not installed. Add a Windows speech language, or choose OpenAI dictation in Companion & devices.'), {name:'SpeechSetupError'});
+      if (companion.voiceLanguage && companion.voiceLanguage !== 'auto' && !speech.languages.some(language => language.id === companion.voiceLanguage)) throw Object.assign(new Error('Your dictation language is not installed. Choose an installed language or Automatic in Companion & devices.'), {name:'SpeechSetupError'});
+    } else if (!state?.keys?.chatgpt) throw Object.assign(new Error('OpenAI dictation needs an OpenAI API key. Save it in Models & connections, or choose Windows dictation in Companion & devices.'), {name:'SpeechSetupError'});
+    if (generation !== voiceGeneration) return;
+    voiceStream = await window.NookAudio.openMicrophone(navigator.mediaDevices, microphoneId);
+    if (generation !== voiceGeneration) {releaseVoiceResources();return;}
+    processing = true;
+    voiceContext = new AudioContext({sampleRate:16000});
     await voiceContext.resume();
+    if (generation !== voiceGeneration) {releaseVoiceResources();await voiceContext.close().catch(()=>{});voiceContext=null;return;}
     voiceSource = voiceContext.createMediaStreamSource(voiceStream);
     voiceProcessor = voiceContext.createScriptProcessor(4096, 1, 1);
     voiceAnalyser = voiceContext.createAnalyser();
@@ -246,6 +281,8 @@ async function startVoice() {
         voiceFrames.push(new Float32Array(event.inputBuffer.getChannelData(0)));
     };
     recording = true;
+    document.body.classList.add('is-recording');
+    for (const track of voiceStream.getAudioTracks()) track.onended = async () => {await stopVoice(true);featureMessage('The microphone disconnected. Choose a connected input and retry.');};
     button.textContent = "■ Stop";
     button.setAttribute("aria-label", "Stop dictation");
     featureNode("voice-wave").hidden = false;
@@ -257,29 +294,40 @@ async function startVoice() {
     );
     voiceTimeout = setTimeout(() => stopVoice(), 45000);
     waveform();
-  } catch (_) {
-    voiceStream?.getTracks().forEach((track) => track.stop());
-    if (voiceContext) voiceContext.close().catch(() => {});
-    featureMessage(
-      "Microphone unavailable. Check Windows microphone permissions.",
-    );
+    renderShell();
+    refreshMicrophones();
+  } catch (error) {
+    releaseVoiceResources();
+    if (voiceContext) await voiceContext.close().catch(() => {});
+    voiceContext = null;
+    recording = false;
+    clearTimeout(voiceTimeout); cancelAnimationFrame(voiceAnimation);
+    seed._nookReaction = null;
+    document.body.classList.remove('is-recording');
+    featureNode('voice-wave').hidden = true;
+    button.textContent = '◉ Dictate'; button.setAttribute('aria-label','Start dictation');
+    featureMessage(error.name === 'SpeechSetupError' ? error.message : window.NookAudio.microphoneError(error, processing));
   } finally {
+    voiceStarting = false;
     button.disabled = false;
+    microphoneSelect.disabled = recording || voiceTranscribing;
+    renderShell();
   }
 }
 featureNode('voice-button').addEventListener('click',()=>recording?stopVoice():startVoice());
 let talkHolding=false;
 const talk=featureNode('voice-talk');
-async function holdTalk(event){event.preventDefault();if(voiceTranscribing||talkHolding)return;talkHolding=true;talk.setAttribute('aria-pressed','true');window.nook.speechOutput('stop');if(event.pointerId!=null)talk.setPointerCapture(event.pointerId);await startVoice();if(!talkHolding&&recording)await stopVoice(true);}
+async function holdTalk(event){event.preventDefault();if(voiceTranscribing||voiceStarting||recording||talkHolding)return;talkHolding=true;talk.setAttribute('aria-pressed','true');window.nook.speechOutput('stop').catch(()=>{});if(event.pointerId!=null)talk.setPointerCapture(event.pointerId);await startVoice();if(!talkHolding&&recording)await stopVoice(true);}
 function releaseTalk(cancel=false){talkHolding=false;talk.setAttribute('aria-pressed','false');if(recording)stopVoice(cancel);}
 talk.addEventListener('pointerdown',event=>{if(event.button===0)holdTalk(event);});talk.addEventListener('pointerup',()=>releaseTalk());talk.addEventListener('pointercancel',()=>releaseTalk(true));
 talk.addEventListener('keydown',event=>{if([' ','Enter'].includes(event.key)&&!event.repeat)holdTalk(event);});talk.addEventListener('keyup',event=>{if([' ','Enter'].includes(event.key)){event.preventDefault();releaseTalk();}});talk.addEventListener('blur',()=>{if(talkHolding)releaseTalk(true);});
 window.addEventListener("keydown", (event) => {
-  if (event.key === "Escape" && recording) {
+  if (event.key === "Escape" && (recording || voiceStarting)) {
     stopVoice(true);
     featureMessage("Dictation canceled.");
   }
 });
 window.addEventListener("beforeunload", () => {
-  voiceStream?.getTracks().forEach((track) => track.stop());
+  voiceGeneration++;
+  releaseVoiceResources();
 });

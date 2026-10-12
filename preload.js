@@ -8,6 +8,7 @@ contextBridge.exposeInMainWorld("nook", {
   quit() {
     ipcRenderer.send("nook:quit");
   },
+  focusWindow() { ipcRenderer.send('nook:focus-window'); },
   onWelcome(callback) {
     ipcRenderer.on("nook:welcome", () => {
       callback();

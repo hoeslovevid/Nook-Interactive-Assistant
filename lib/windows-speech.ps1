@@ -1,5 +1,6 @@
 param([string]$WaveFile, [ValidateSet('transcribe','languages')][string]$Action = 'transcribe', [string]$Language = 'auto')
 $ErrorActionPreference = 'Stop'
+[Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false)
 $engine = $null
 try {
   Add-Type -AssemblyName System.Speech

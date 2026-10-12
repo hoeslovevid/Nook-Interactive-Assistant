@@ -73,6 +73,8 @@ The latest source UI has a compact toolbar, animated task companion, line-number
 
 Run `npm run smoke:workspace` on Windows to check session selection, typed-only questions, approval queues, unsaved preferences, narrow layouts, appearance persistence, notch sizing, hidden/reduced animation, key setup, searchable model selection, transcript preservation, history, phone revocation, and recap export without changing your real app data or sending real service actions.
 
+Run `npm run smoke:chat` to verify actual keyboard entry and streamed replies through a local HTTP test server, plus dictation with Chromium's synthetic microphone. It checks microphone startup, cancellation, permission errors, failed audio setup, resource cleanup, and the expanded chat window without recording your microphone or using API credentials. In chat, choose your microphone from the input selector and use **Refresh** after connecting a headset. Windows must allow microphone access for desktop apps. Dictation creates a draft for you to review and send.
+
 ## Install on Windows
 
 Download the latest **Nook-Setup-…-x64.exe** from [GitHub Releases](https://github.com/hoeslovevid/Nook-Interactive-Assistant/releases/latest). Run the setup wizard to choose an install location and create shortcuts. Supports Windows 10 and 11 on 64-bit Intel/AMD PCs. No Node.js installation is needed.

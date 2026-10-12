@@ -19,7 +19,7 @@ test('outfit previews never save settings, stale hover exits cannot clear a newe
   const kit = installFeatures({ app: { getPath: () => directory }, ipcMain: { handle: (id, fn) => handlers.set(id, fn) }, desktopCapturer: {}, clipboard: {}, getState: () => ({ sessions: [] }), readVoiceKey: () => '', decide: () => {}, broadcast: () => {}, setAttachment: () => {}, speechRunner: async (_script, args) => { calls.push(args); return args.includes('languages') ? { ok: true, languages: [{ id: 'fr-FR', name: 'French' }] } : { ok: true, text: 'bonjour', language: 'fr-FR' }; } });
   const invoke = (id, value) => handlers.get('nook:' + id)(null, value);
   try {
-    invoke('companion-save', { outfit: 'glasses', voiceLanguage: 'fr-FR' }); const saved = fs.readFileSync(path.join(directory, 'companion.json'), 'utf8');
+    assert.equal(invoke('companion-save', { outfit: 'glasses', voiceLanguage: 'fr-FR' }).voiceLanguage,'fr-FR'); const saved = fs.readFileSync(path.join(directory, 'companion.json'), 'utf8');
     invoke('outfit-preview', { outfit: 'wizard' }); invoke('outfit-preview', { outfit: 'festive' }); invoke('outfit-preview', { outfit: null, previous: 'wizard' }); assert.equal(kit.snapshot().previewOutfit, 'festive');
     assert.equal(fs.readFileSync(path.join(directory, 'companion.json'), 'utf8'), saved); invoke('outfit-preview', { outfit: null, previous: 'festive' }); assert.equal(kit.snapshot().previewOutfit, null);
     invoke('outfit-preview', { outfit: 'wizard' }); invoke('companion-save', { outfit: 'wizard' }); assert.equal(kit.snapshot().previewOutfit, null);
@@ -27,6 +27,7 @@ test('outfit previews never save settings, stale hover exits cannot clear a newe
     const bytes = encodeWav(new Float32Array(16000), 16000); const result = await invoke('transcribe', { bytes }); assert.equal(result.text, 'bonjour'); assert.deepEqual(calls[1].slice(-2), ['-Language', 'fr-FR']);
     assert.equal(fs.readdirSync(directory).some(name => name.endsWith('.wav')), false);
     assert.equal((await invoke('transcribe', { bytes: [] })).ok, false);
+    assert.equal((await invoke('transcribe', { bytes: {invalid:true} })).ok, false);
   } finally { await kit.stop(); fs.rmSync(directory, { recursive: true, force: true }); }
 });
 

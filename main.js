@@ -1774,7 +1774,7 @@ ipcMain.on("nook:set-open", (_event, open, height, reducedMotion) => {
     }
   }
   if (win && !win.isDestroyed()) {
-    win.setFocusable(next === "open");
+    if (win.isFocusable() !== (next === 'open')) win.setFocusable(next === "open");
   }
   if (next === mode) {
     if (resized) {
@@ -1783,6 +1783,14 @@ ipcMain.on("nook:set-open", (_event, open, height, reducedMotion) => {
     return;
   }
   animateTo(next);
+});
+
+// Activate only after an explicit interaction, never because the notch was hovered.
+ipcMain.on('nook:focus-window', event => {
+  const target = BrowserWindow.fromWebContents(event.sender);
+  if (!target || ![win, appWin, chatWin].includes(target) || target.isDestroyed()) return;
+  if (!target.isFocusable()) target.setFocusable(true);
+  if (!target.isFocused()) target.focus();
 });
 
 ipcMain.on("nook:quit", () => {
@@ -2436,7 +2444,7 @@ ipcMain.handle('nook:everyday',async(event,{action,value}={})=>{
       const command=voiceCommand(value);if(!command)throw new Error('That command is not recognized.');
       if(command.action.startsWith('focus-'))everydayKit.focus(command.action.slice(6));
       else if(command.action==='mute'||command.action==='unmute'){writePrefs({muted:command.action==='mute'});if(command.action==='mute')speechKit?.stop();refreshTray();}
-      else{showNook();win?.webContents.send('nook:command',command.action==='chat'?'provider:chatgpt':command.action==='requests'?'home':'widget:'+command.action);}
+      else{showNook();if(command.action==='chat')win?.webContents.send('nook:open-chat');else win?.webContents.send('nook:command',command.action==='requests'?'home':'widget:'+command.action);}
     }
     else throw new Error('Unknown workspace action.');
     broadcast();return {ok:true,...everydayKit.snapshot()};
