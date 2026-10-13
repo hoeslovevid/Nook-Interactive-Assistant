@@ -119,6 +119,8 @@ Model discovery follows the providers' APIs, including [OpenAI's model list](htt
 
 Supported connections: OpenAI, Gemini, Claude, OpenRouter, DeepSeek, Mistral, Groq, Grok, Ollama, LM Studio, and a custom OpenAI-compatible endpoint. OpenRouter provides access to additional model families with one key. API access requires the provider's API credentials; chat website subscriptions do not configure API access.
 
+Chat errors distinguish known API credit, spending/usage-limit, key, model-access, and temporary rate-limit failures. OpenAI account errors include links to the relevant API billing or limit settings. A bare 429 without provider details remains ambiguous. When the server specifies a retry delay, Nook shows a countdown and prevents early requests to that provider; other providers stay available. There are no automatic chat retries, and provider error messages that might echo prompts or credentials are excluded from diagnostics.
+
 Ollama and LM Studio connect to a running server on this PC without a key. Custom endpoints accept HTTPS remote servers or loopback HTTP, with an optional encrypted API key. Enter the full chat/completions endpoint URL.
 
 ## Chat formatting and continuing with another AI

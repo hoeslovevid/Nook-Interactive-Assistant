@@ -15,7 +15,7 @@ relay.createRelay = (_pipe, options) => originalRelay('\\\\.\\pipe\\nook-chat-qa
 const credentials = require('../lib/credential-store'), originalCredentials = credentials.createCredentialStore;
 credentials.createCredentialStore = options => originalCredentials({...options, adapter:{read:async()=>({}),write:async()=>{},delete:async()=>{}}});
 Notification.prototype.show = function() {};
-let transcriptions = 0, requests = [], focusChanges = 0, failNext = false;
+let transcriptions = 0, requests = [], focusChanges = 0, failNext = false, nextFailure = null;
 const native = require('../lib/native'), originalScript = native.runScript;
 native.runScript = async (script, args, timeout) => {
   if (script !== 'windows-speech.ps1') return originalScript(script, args, timeout);
@@ -27,7 +27,7 @@ native.runScript = async (script, args, timeout) => {
 const originalFocusable = BrowserWindow.prototype.setFocusable;
 BrowserWindow.prototype.setFocusable = function(value) {focusChanges++; return originalFocusable.call(this,value);};
 const realFetch = global.fetch;
-global.fetch = (url, options) => String(url).startsWith('http://127.0.0.1:') ? realFetch(url,options) : Promise.resolve(new Response('{}',{status:503}));
+global.fetch = (url, options) => String(url)==='https://api.openai.com/v1/chat/completions' ? realFetch(`http://127.0.0.1:${server.address().port}/v1/chat/completions`,options) : String(url).startsWith('http://127.0.0.1:') ? realFetch(url,options) : Promise.resolve(new Response('{}',{status:503}));
 const errors = [];
 app.on('web-contents-created', (_event, contents) => contents.on('console-message',(_event,level,message)=>{if(level>=3)errors.push(message);}));
 const server = http.createServer(async (req,res) => {
@@ -35,6 +35,7 @@ const server = http.createServer(async (req,res) => {
   if(req.url.endsWith('/models')) {res.setHeader('Content-Type','application/json');res.end(JSON.stringify({data:[{id:'test-model'}]}));return;}
   requests.push(JSON.parse(body));
   if(failNext){failNext=false;res.writeHead(401,{'Content-Type':'application/json'});res.end('{"error":{"message":"Invalid test credentials"}}');return;}
+  if(nextFailure){const failure=nextFailure;nextFailure=null;res.writeHead(429,{'Content-Type':'application/json',...(failure.wait?{'Retry-After':failure.wait}:{})});res.end(JSON.stringify({error:failure.error}));return;}
   res.writeHead(200, {'Content-Type':'text/event-stream'});
   res.end('data: {"choices":[{"delta":{"content":"Hello from the local model"}}]}\n\ndata: [DONE]\n\n');
 });
@@ -80,6 +81,26 @@ server.listen(0,'127.0.0.1',()=>{
       await until(run,'!sending && !chatError');
       assert.equal(await run('state.messages.length'),count);
       assert.equal(await run('chatInput.value'),'');findings.errorRetry=true;
+      // Exercise the OpenAI recovery UI through real transport against the local server.
+      await run('window.nook.saveKey("chatgpt","fake-test-key")');
+      await run('window.NookChatControls.selectProvider("chatgpt")');
+      nextFailure={error:{code:'credit_balance_exhausted',type:'insufficient_quota',message:'Do not display this private provider text'}};
+      await run('chatInput.value="Quota failure";chatForm.requestSubmit()');await until(run,'!sending && Boolean(chatError)');
+      assert.equal(await run('document.querySelector("#chat-error-title").textContent'),'API quota needs attention');
+      assert.equal(await run('document.querySelector("#chat-error-account").hidden'),false);
+      assert.equal(await run('document.querySelector("#chat-error-account").textContent'),'Check API billing');
+      assert.ok(await run('document.querySelector("#chat-error-copy").textContent.includes("prepaid API credits")'));
+      await delay(200);assert.ok(await run('document.querySelector("#chat-error-account").getBoundingClientRect().bottom < innerHeight'));
+      fs.writeFileSync(path.join(output,'api-quota.png'),(await notch.webContents.capturePage()).toPNG());
+      nextFailure={error:{code:'slow_down',type:'rate_limit_error'},wait:'2'};
+      await run('document.querySelector("#chat-retry").click()');await until(run,'!sending && chatFailure?.kind==="rate-limit"');
+      const beforeCooldown=requests.length;
+      assert.equal(await run('document.querySelector("#chat-retry").disabled'),true);
+      const cooldown=await run('window.nook.sendChat("chatgpt","Too soon")');assert.equal(cooldown.ok,false);assert.equal(requests.length,beforeCooldown);
+      await until(run,'!document.querySelector("#chat-retry").disabled');
+      await run('document.querySelector("#chat-retry").click()');await until(run,'!sending && !chatError');
+      findings.quotaGuidance=true;findings.rateLimitCooldown=true;
+      await run('window.NookChatControls.selectProvider("ollama");paint()');
       const sentBefore=requests.length;
       await run(`chatInput.value='Keep this draft';document.querySelector('#chat-edit-panel').hidden=false;
         document.querySelector('#chat-edit-text').focus();document.querySelector('#chat-edit-text').dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',ctrlKey:true,bubbles:true}));`);
@@ -144,6 +165,11 @@ server.listen(0,'127.0.0.1',()=>{
       await delay(150);
       fs.writeFileSync(path.join(output,'expanded-chat.png'),(await detached.webContents.capturePage()).toPNG());
       const fits=await dr('document.querySelector("#voice-device").getBoundingClientRect().bottom < innerHeight');assert.ok(fits);
+      nextFailure={error:{code:'project_spend_limit_exceeded',type:'insufficient_quota'}};
+      await dr('window.NookChatControls.selectProvider("chatgpt");chatInput.value="Project limit";chatForm.requestSubmit()');
+      await until(dr,'!sending && chatFailure?.kind==="quota"');
+      assert.equal(await dr('document.querySelector("#chat-error-account").textContent'),'Check project settings');
+      findings.expandedQuotaGuidance=true;
       findings.appTyping=true; findings.expandedVoice=true;
       assert.equal(findings.focusChangesWhilePainting,0);
       assert.deepEqual(errors,[]);

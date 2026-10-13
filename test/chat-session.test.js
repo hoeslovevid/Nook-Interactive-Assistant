@@ -8,6 +8,16 @@ test('independent providers can stream together and completion of one does not u
 
 test('optional recent-model storage failures cannot leave a provider permanently busy',async()=>{const messages=[];const session=createChatSession({messages,getSettings:settings,onSent(){throw new Error('Read-only storage');},complete:async()=> 'OK'});assert.equal((await session.send('custom','Hello')).ok,true);assert.equal(session.busy('custom'),false);});
 
+test('server cooldowns block repeat sends and retries without deleting turns; other providers remain available',async()=>{
+  const {providerError}=require('../lib/provider-errors');const messages=[];let time=1000,calls=0;
+  const session=createChatSession({messages,getSettings:settings,now:()=>time,complete:async()=>{if(++calls===1)throw providerError('custom','Test provider',429,{error:{code:'slow_down'}},'5',time);return 'OK';}});
+  const first=await session.send('custom','Hello');assert.equal(first.failure.kind,'rate-limit');assert.equal(messages.at(-1).failure.retryAt,6000);
+  assert.equal((await session.send('custom','',{action:'retry'})).ok,false);assert.equal(messages.length,2);assert.equal(calls,1);
+  assert.equal((await session.send('custom','Another message')).ok,false);assert.equal(calls,1);
+  assert.equal((await session.send('ollama','Other provider')).ok,true);
+  time=6000;assert.equal((await session.send('custom','',{action:'retry'})).ok,true);assert.equal(messages.filter(m=>m.provider==='custom').length,2);
+});
+
 test('view and completion bookkeeping failures cannot fail a valid reply or leave generation busy',async()=>{
   const messages=[];let calls=0;
   const session=createChatSession({messages,getSettings:settings,onChange(){throw new Error('View unavailable');},onDone(){throw new Error('Notification unavailable');},complete:async(_p,_k,_h,_o,delta)=>{calls++;delta('Partial');return 'Complete';}});

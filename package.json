@@ -1,6 +1,6 @@
 {
   "name": "nook",
-  "version": "0.7.1",
+  "version": "0.7.2",
   "private": true,
   "description": "A companion window that lives at the top of the screen.",
   "author": "Nook contributors",

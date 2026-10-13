@@ -41,6 +41,8 @@ let leanTimer = 0;
 let provider = "chatgpt";
 let state = null;
 let chatError = "";
+let chatFailure = null;
+let chatRetryTimer = 0;
 let selectedSession = "";
 let seenCelebrate = 0;
 let greeted = false;
@@ -588,8 +590,7 @@ function paint() {
     chatError ||
     (local ? `${label} uses the server on this PC.` : provider === "custom" ? "Custom server · API key is optional; use Models to configure it." : keys[provider] ? `${label} key saved` : `Add the ${label} key in the Nook app.`);
   if (state?.demo) keyStatus.textContent = 'Sample chat · replies stay on this PC · no API charges';
-  document.querySelector('#chat-error-panel').hidden = !chatError;
-  document.querySelector('#chat-error-copy').textContent = chatError;
+  paintChatRecovery();
 
   const chatMessages = (state?.messages || []).filter(message => message.provider === provider);
   const nextTranscript = JSON.stringify([provider, label, sending, state?.chatBusyProviders?.includes(provider), chatMessages]);
@@ -828,7 +829,7 @@ modelOptions.addEventListener('change', async () => {
 });
 providerSelect.addEventListener("change", () => {
   provider = providerSelect.value;
-  chatError = ""; closeModelPicker();
+  chatError = ""; chatFailure = null; closeModelPicker();
   paint();
 });
 
@@ -926,15 +927,33 @@ document.addEventListener('pointerdown', event => {
 async function runChatAction(action, text, messageId) {
   if(sending)return;const originalProvider=provider;
   const retryText=action==='retry'?state?.messages?.findLast(m=>m.provider===originalProvider&&m.role==='user')?.prompt:text;
-  const sendButton=chatForm.querySelector('button[type="submit"]');sending=true;providerSelect.disabled=true;sendButton.disabled=true;sendButton.textContent='…';chatError='';renderShell();
+  const sendButton=chatForm.querySelector('button[type="submit"]');sending=true;providerSelect.disabled=true;sendButton.disabled=true;sendButton.textContent='…';chatError='';chatFailure=null;renderShell();
   try {
     const result=action==='send'?await window.nook.sendChat(originalProvider,text):await window.nook.chatControl(action,{provider:originalProvider,text,messageId});
-    if(!result.ok){chatError=result.error||'Could not send this request.';if(['send','retry'].includes(action)&&!chatInput.value)chatInput.value=retryText||'';playSound('error');}
+    if(!result.ok){chatError=result.error||'Could not send this request.';chatFailure=result.failure?{...result.failure,provider:originalProvider}:null;if(['send','retry'].includes(action)&&!chatInput.value)chatInput.value=retryText||'';playSound('error');}
     else if(!result.stopped)celebrateCompanion();
   }catch{chatError='Could not connect. Please try again.';if(['send','retry'].includes(action)&&!chatInput.value)chatInput.value=retryText||'';playSound('error');}
-  finally{sending=false;providerSelect.disabled=false;sendButton.disabled=false;sendButton.textContent='↑';paint();window.NookChatControls?.paint(state);}
+  finally{sending=false;providerSelect.disabled=false;sendButton.disabled=false;sendButton.textContent='↑';paint();window.NookChatControls?.paint(state);if(chatError)document.querySelector('#chat-error-panel').scrollIntoView({block:'nearest'});}
 }
 chatForm.addEventListener('submit',event=>{event.preventDefault();const text=chatInput.value.trim();if(!text||sending)return;chatInput.value='';runChatAction('send',text);});
+
+const API_RECOVERY = {
+  billing:{label:'Check API billing',url:'https://platform.openai.com/settings/organization/billing'},
+  limits:{label:'Check API limits',url:'https://platform.openai.com/settings/organization/limits'},
+  project:{label:'Check project settings',url:'https://platform.openai.com/settings/'},
+};
+function paintChatRecovery() {
+  window.clearTimeout(chatRetryTimer);
+  const failure=chatFailure?.provider===provider?chatFailure:null;
+  const panel=document.querySelector('#chat-error-panel');panel.hidden=!chatError;
+  document.querySelector('#chat-error-copy').textContent=chatError;
+  document.querySelector('#chat-error-title').textContent=failure?.kind==='quota'?'API quota needs attention':failure?.kind==='rate-limit'?'API rate limit reached':failure?.kind==='limit'?'API limit reached':'Request could not complete';
+  const action=provider==='chatgpt'?API_RECOVERY[failure?.action]:null;
+  const account=document.querySelector('#chat-error-account');account.hidden=!action;account.textContent=action?.label||'Check API account';
+  const retry=document.querySelector('#chat-retry'),wait=Math.max(0,Math.ceil(((failure?.retryAt||0)-Date.now())/1000));
+  retry.disabled=sending||wait>0;retry.textContent=wait?`Retry in ${wait}s`:'Retry request';
+  if(chatError&&wait)chatRetryTimer=window.setTimeout(paintChatRecovery,1000);
+}
 
 document.querySelector("#tuck").addEventListener("click", (event) => {
   event.stopPropagation();
@@ -959,7 +978,7 @@ document.querySelector("#open-diff").addEventListener("click", (event) => {
 });
 
 window.nook.onCommand((action) => {
-  if(action.startsWith('provider:')){const id=action.slice(9);if(PROVIDER_NAMES.includes(id)){provider=id;providerSelect.value=id;showCard('chat');held=true;expanded=true;paint();window.nook.focusWindow();chatInput.focus();}return;}
+  if(action.startsWith('provider:')){const id=action.slice(9);if(PROVIDER_NAMES.includes(id)){if(provider!==id){chatError='';chatFailure=null;}provider=id;providerSelect.value=id;showCard('chat');held=true;expanded=true;paint();window.nook.focusWindow();chatInput.focus();}return;}
   if(action.startsWith('service:')){window.nook.openService(action.slice(8));return;}
   if (action === 'home') { showCard('session'); held = true; welcome = false; expanded = true; renderShell(); return; }
   if (action.startsWith('session:')) {
@@ -1038,6 +1057,11 @@ document.querySelector('#chat-retry').addEventListener('click', () => {
   const text=chatInput.value.trim();
   const latestUser=state?.messages?.findLast(m=>m.provider===provider&&m.role==='user');
   if(text){chatInput.value='';runChatAction(latestUser?.prompt===text?'retry':'send',text);}else runChatAction('retry');
+});
+document.querySelector('#chat-error-settings').addEventListener('click',()=>window.nook.openApp('keys'));
+document.querySelector('#chat-error-account').addEventListener('click',()=>{
+  const action=provider==='chatgpt'&&chatFailure?.provider===provider?API_RECOVERY[chatFailure.action]:null;
+  if(action)window.nook.openChatUrl(action.url);
 });
 document.querySelector('#notch-attach').addEventListener('click', async () => {
   const button = document.querySelector('#notch-attach'); button.disabled = true;

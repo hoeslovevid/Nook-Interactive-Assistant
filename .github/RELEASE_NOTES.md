@@ -1,24 +1,23 @@
-## Install Nook 0.7.1 on Windows
+## Install Nook 0.7.2 on Windows
 
-Download **Nook-Setup-0.7.1-x64.exe** below and follow the setup wizard. Windows 10 and 11 on 64-bit Intel/AMD PCs are supported. Existing settings and provider credentials are retained.
+Download **Nook-Setup-0.7.2-x64.exe** below and follow the setup wizard. Existing settings and provider credentials are retained. Windows 10 and 11 on 64-bit Intel/AMD PCs are supported.
 
 Existing installations can use **Updates → Check for updates → Download update → Restart and install**. Public updates do not require a GitHub token. Versions 0.1.0–0.2.0 need one manual installer upgrade.
 
-## Fixed in 0.7.1
+## Fixed in 0.7.2
 
-- **Chat typing:** opening chat from the app now activates the notch for keyboard input. Repeated view updates no longer reset the window's focus setting. Chat controls retain the chat view while you interact with them.
-- **Microphone startup:** choose your input device in either chat window, refresh the device list after connecting a headset, and retry without audio processing when a Windows driver cannot initialize it. Overlapping starts, cancellation during startup, disconnected devices, and failed audio setup release microphone resources correctly.
-- **Voice setup and errors:** missing Windows dictation languages and missing OpenAI dictation keys are checked before recording. Permission, device, and audio-processing failures have specific recovery instructions. The compact notch keeps these messages visible and includes a Voice settings shortcut.
-- **Chat recovery:** retry restores a rejected request without duplicating its turn; failed sends preserve newer drafts. Ctrl+Enter in another editing field no longer sends the chat composer accidentally. Optional view/notification bookkeeping failures cannot turn a successful reply into an error or leave generation busy.
-- **Companion settings:** saving preferences returns the saved settings even when music is disabled. Malformed audio input returns a normal error, and Windows speech output uses UTF-8 for dictation text.
-- **Voice commands:** “Open my chat” retains the selected provider.
+- **Clear API errors:** Nook no longer discards the provider's error code and displays only “returned 429.” Known credit-balance, quota, project/organization spending, usage-limit, authentication, model-access, and temporary rate-limit failures now have specific recovery guidance. A 429 without sufficient provider details remains explicitly ambiguous.
+- **Account shortcuts:** OpenAI API failures offer the relevant billing, usage-limit, or project-settings link, alongside Models & connections. Recovery controls work in compact notch chat and the expanded window, and scroll into view when needed.
+- **Respectful retries:** when a provider supplies Retry-After, Nook shows a countdown and prevents requests to that provider until the delay expires. Other providers remain available. Existing conversation turns are retained during cooldown, and retries replace the failed turn without duplication. No automatic chat retries are made.
+- **Safer diagnostics:** error bodies are read within a 64 KB limit. Provider messages that could echo keys, private prompts, or account identifiers are excluded. Known errors inside streamed responses use the same recovery guidance.
+- **Provider switching:** changing providers clears the previous provider's recovery message and actions.
 
-Dictation creates a draft for review before sending. Windows dictation requires an installed Windows speech recognizer; OpenAI dictation requires an OpenAI API key and sends the recording to OpenAI when stopped. Windows must permit microphone access for desktop apps.
+Credit, billing, or quota failures require changes to the relevant API account; repeatedly retrying cannot restore API credits. API access is separate from chat website subscriptions.
 
 ## Validation and platform notes
 
-**148 automated tests** pass. Four isolated desktop checks cover keyboard input, streamed chat over a local HTTP server, retries, synthetic microphone capture, permission/setup failures, cancellation, app settings, expanded chat, approvals, hover widgets, conversations, and existing workflows. Packaged startup, bundled hooks, resources, and native integrations also pass. Tests do not record the user's physical microphone or make paid AI requests; physical microphone and voice quality remain dependent on the user's devices and Windows configuration.
+**154 automated tests** pass, including quota classification, rate limits, cooldowns, bounded error parsing, streamed errors, and credential/privacy checks. Isolated desktop checks cover recovery controls in both chat windows, streamed replies through a local HTTP server, keyboard input, and synthetic dictation. Packaged startup, native integrations, resources, and bundled hooks also pass. These checks use fake credentials and responses, with no paid AI requests or recording of the user's microphone.
 
-Installer update metadata, SHA-512 integrity, block map, and SHA-256 checksums are verified. **SHA256SUMS.txt**, **latest.yml**, and the **.blockmap** are included for installer verification and in-app updates. Windows installers remain unsigned.
+Installer update metadata, SHA-512 integrity, block map, and SHA-256 checksums are verified before publication. **SHA256SUMS.txt**, **latest.yml**, and the **.blockmap** are included for installer verification and in-app updates. Windows installers remain unsigned.
 
 The iPhone app, widgets, Live Activities, and relay remain available as source. Apple signing, provisioning, push credentials, relay deployment, and physical-device validation require owner setup; the Mac workflow checks simulator compilation and tests.
