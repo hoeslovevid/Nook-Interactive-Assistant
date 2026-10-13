@@ -43,6 +43,7 @@ contextBridge.exposeInMainWorld("nook", {
   },
   chatControl(action, value) { return ipcRenderer.invoke('nook:chat-control', {action,...value}); },
   experience(action, value) { return ipcRenderer.invoke('nook:experience', {action,value}); },
+  studio(action,value) { return ipcRenderer.invoke('nook:studio',{action,value}); },
   performance() { return ipcRenderer.invoke('nook:performance'); },
   everyday(action, value) { return ipcRenderer.invoke('nook:everyday',{action,value}); },
   speechOutput(action, value) { return ipcRenderer.invoke('nook:speech-output',{action,value}); },

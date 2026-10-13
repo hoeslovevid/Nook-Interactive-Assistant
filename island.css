@@ -1,0 +1,73 @@
+/* Coucou-inspired proportions, implemented with Nook's own artwork and controls. */
+:root[data-notch-style=island]{--island-card:color-mix(in srgb,var(--island-bottom) 89%,var(--paper))}
+:root[data-notch-style=island] .island{border:0;box-shadow:0 16px 36px #0005;background:var(--island-bottom);border-radius:0 0 32px 32px}
+:root[data-notch-style=island] .island::before{display:none}
+:root[data-notch-style=island] .island::after{height:0;background:none}
+:root[data-notch-style=island] body.is-open .top{height:62px;padding:14px 16px 0;gap:12px}
+:root[data-notch-style=island] body.is-open .top>.seed{display:none}
+:root[data-notch-style=island] body.is-open .notch-nav{order:-1;gap:3px}
+:root[data-notch-style=island] body.is-open .titles{position:absolute;top:8px;left:50%;transform:translateX(-50%);max-width:35%;justify-content:center;font-size:10px}
+:root[data-notch-style=island] body.is-open .titles:before{content:'';width:6px;height:6px;border-radius:50%;background:color-mix(in srgb,var(--paper) 10%,transparent);flex:none}
+:root[data-notch-style=island] body.is-open .titles #word{display:none}
+:root[data-notch-style=island] body.is-open .chrome-tools{margin-left:auto;padding:0;border:0}
+:root[data-notch-style=island] .chrome-button{width:38px;height:34px;border-radius:999px}
+:root[data-notch-style=island] .chrome-button[aria-pressed=true]{background:color-mix(in srgb,var(--paper) 11%,transparent)}
+:root[data-notch-style=island] .details{padding:10px 14px 14px;scrollbar-gutter:stable}
+:root[data-notch-style=island] #card-session{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;align-items:stretch}
+:root[data-notch-style=island] #card-session[hidden]{display:none}
+:root[data-notch-style=island] .session-focus{grid-row:span 2;display:flex;align-items:center;padding:20px 16px;gap:14px;background:var(--island-card);border:1px solid var(--line);border-radius:26px;margin:0;min-width:0}
+:root[data-notch-style=island] .focus-pet{width:76px;height:76px;flex:none}
+:root[data-notch-style=island] .focus-copy{min-width:0}
+:root[data-notch-style=island] .section-kicker{font-size:9px;letter-spacing:.8px;color:var(--muted)}
+:root[data-notch-style=island] .status{font-size:16px;font-weight:600;letter-spacing:-.3px}
+:root[data-notch-style=island] #card-session>.pills,:root[data-notch-style=island] #extras{padding:14px;background:var(--island-card);border:1px solid var(--line);border-radius:26px;margin:0;align-content:center}
+:root[data-notch-style=island] #extras:empty{display:none}
+:root[data-notch-style=island] .pill{border-radius:999px;background:transparent;padding:8px 12px;font-size:11px;min-height:34px}
+:root[data-notch-style=island] #ticker,:root[data-notch-style=island] #open-terminal,:root[data-notch-style=island] #github-list,:root[data-notch-style=island] #music-card{grid-column:1/-1}
+:root[data-notch-style=island] #open-terminal{justify-self:start}
+:root[data-notch-style=island] #card-chat{background:var(--island-card);border-radius:26px;padding:18px 18px 12px;position:relative}
+:root[data-notch-style=island] .chat-heading{display:none}
+:root[data-notch-style=island] .chat-model-picker .chat-heading{display:flex}
+:root[data-notch-style=island] .model-row{font-size:0;margin-left:86px;margin-bottom:12px}
+:root[data-notch-style=island] .model-row select{max-width:100%;font-size:12px;padding:7px 13px;background:color-mix(in srgb,var(--paper) 8%,transparent);border:0}
+:root[data-notch-style=island] .transcript{margin-left:86px;min-height:100px;max-height:300px}
+:root[data-notch-style=island] .bubble{font-size:12px;line-height:1.7;animation:island-content 220ms ease-out}
+:root[data-notch-style=island] .bubble[data-role=user]{border:0;border-radius:999px;background:color-mix(in srgb,var(--paper) 9%,transparent);padding:8px 14px}
+:root[data-notch-style=island] #chat-form{clear:both;border:0;background:color-mix(in srgb,var(--paper) 8%,transparent);padding:6px 6px 6px 16px;margin:12px 0 0}
+:root[data-notch-style=island] #chat-form .choice{background:var(--paper);color:var(--island-bottom);width:32px;height:32px}
+:root[data-notch-style=island] #chat-input{font-size:13px}
+:root[data-notch-style=island] .chat-more{clear:both;margin:8px 0 12px}
+:root[data-notch-style=island] .chat-tools{gap:2px;flex-wrap:wrap;margin:10px 0 0}
+:root[data-notch-style=island] .chat-error-panel{clear:both;border-radius:24px;background:radial-gradient(at 15% 50%,#693a513d,transparent 80%),var(--island-card);padding:18px;border:1px solid var(--line)}
+:root[data-notch-style=island] #card-approval{padding:22px;background:var(--island-card);border:1px solid var(--line);border-radius:28px}
+:root[data-notch-style=island] .approval-title{font-size:18px;letter-spacing:-.35px;margin:10px 0;font-weight:600}
+:root[data-notch-style=island] .approval-detail{font-size:12px;line-height:1.7}
+:root[data-notch-style=island] #card-approval .choices{clear:both;gap:12px;margin-top:18px}
+:root[data-notch-style=island] #card-approval .choices button{border-radius:999px;padding:13px 20px;min-height:44px;font-size:16px;font-weight:600}
+:root[data-notch-style=island][data-scheme=dark] #card-approval .allow{background:#25cc61;color:#071d0e}
+:root[data-notch-style=island] #card-approval .deny{background:#aa40362c;color:#eeaaaa}
+:root[data-notch-style=island] .workbench{border-radius:28px;background:var(--island-card);gap:20px;padding:20px}
+:root[data-notch-style=island] .task-rail{flex-basis:110px}
+:root[data-notch-style=island] .task-pet{width:88px;height:88px}
+:root[data-notch-style=island] .editor-panel{border-radius:20px}
+:root[data-notch-style=island] .hover-widget-grid{gap:10px}
+:root[data-notch-style=island] .hover-widget{background:var(--island-card);border-radius:24px;padding:18px;border:1px solid var(--line);transition:transform 180ms,background 180ms}
+:root[data-notch-style=island] .hover-widget:hover{transform:translateY(-2px);background:color-mix(in srgb,var(--island-card) 94%,var(--paper))}
+:root[data-notch-style=island] .hover-widget:active{transform:scale(.98)}
+:root[data-notch-style=island] #card-widgets h2{font-size:15px;letter-spacing:-.3px}
+@keyframes island-content{from{opacity:.2;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+@media(max-width:560px){:root[data-notch-style=island] #card-session{grid-template-columns:1fr}:root[data-notch-style=island] .session-focus{grid-row:auto}:root[data-notch-style=island] .model-row,:root[data-notch-style=island] .transcript{margin-left:58px}:root[data-notch-style=island] .focus-pet{width:62px;height:62px}:root[data-notch-style=island] .workbench{gap:12px;padding:14px}:root[data-notch-style=island] .task-rail{flex-basis:78px}:root[data-notch-style=island] .task-pet{width:64px;height:64px}}
+@media(prefers-reduced-motion:reduce){:root[data-notch-style=island] .bubble{animation:none}:root[data-notch-style=island] .hover-widget{transition:none}}
+:root[data-motion=reduced] .bubble{animation:none}:root[data-motion=reduced] .hover-widget{transition:none}
+:root[data-notch-style=island] .details:has(#card-chat:not([hidden])){min-height:0;max-height:480px}
+:root[data-notch-style=island] #card-chat{display:grid;grid-template-columns:72px minmax(0,1fr);gap:0 14px;height:auto;min-height:240px;max-height:none;overflow:visible}
+:root[data-notch-style=island] #card-chat>*{grid-column:1/-1}
+:root[data-notch-style=island] #card-chat>.chat-hero-pet{grid-column:1;grid-row:2/span 3;align-self:end;float:none;margin:0 0 8px;width:72px;height:72px}
+:root[data-notch-style=island] #card-chat>.model-row{grid-column:2;margin:0 0 8px;align-self:start}
+:root[data-notch-style=island] #card-chat>.chat-more{grid-column:2;margin:0 0 8px}
+:root[data-notch-style=island] #card-chat>.chat-more[open]{grid-column:1/-1}
+:root[data-notch-style=island] #card-chat>.transcript{grid-column:2;margin:0;min-height:100px;max-height:220px;overflow-y:auto}
+:root[data-notch-style=island] #card-chat>#chat-form{grid-column:2;position:static;margin-top:12px;padding:6px 6px 6px 16px}
+:root[data-notch-style=island] #card-chat>.chat-context-meter{grid-column:2;font-size:9px}
+:root[data-notch-style=classic] .chat-hero-pet{display:none}
+@media(max-width:560px){:root[data-notch-style=island] #card-chat{grid-template-columns:48px minmax(0,1fr);gap:0 10px}:root[data-notch-style=island] #card-chat>.chat-hero-pet{width:48px;height:48px}}

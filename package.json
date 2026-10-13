@@ -1,6 +1,6 @@
 {
   "name": "nook",
-  "version": "0.7.2",
+  "version": "0.8.0",
   "private": true,
   "description": "A companion window that lives at the top of the screen.",
   "author": "Nook contributors",
@@ -19,6 +19,7 @@
     "smoke:packaged": "node scripts/smoke-packaged.cjs",
     "smoke:experience": "electron scripts/smoke-experience.cjs",
     "smoke:everyday": "electron scripts/smoke-everyday.cjs",
+    "smoke:studio": "electron scripts/smoke-studio.cjs",
     "smoke:chat": "electron scripts/smoke-chat.cjs"
   },
   "devDependencies": {
@@ -26,6 +27,8 @@
     "electron-builder": "26.15.3"
   },
   "dependencies": {
-    "electron-updater": "6.8.9"
+    "electron-updater": "6.8.9",
+    "qrcode": "1.5.4",
+    "selfsigned": "5.5.0"
   }
 }

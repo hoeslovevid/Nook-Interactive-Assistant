@@ -9,3 +9,8 @@ ios/build/
 *.p8
 .env
 push-relay/.env
+android/.gradle/
+android/local.properties
+android/**/build/
+*.jks
+*.keystore

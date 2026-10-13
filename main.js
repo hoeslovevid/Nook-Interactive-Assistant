@@ -86,7 +86,7 @@ const { command: voiceCommand } = require('./lib/everyday');
 const attachmentTray = require('./lib/attachment-tray').createAttachmentTray();
 let everydayKit, chatWin, focusTimer, fullscreenWatcher, fullscreenDisplay = '', fullscreenOverride = false;
 let comparison = {busy:false,results:[]}, comparisonAbort;
-let experienceKit, speechKit, suspended = false, startupMs = null;
+let experienceKit, speechKit, studioKit, suspended = false, startupMs = null;
 const startupAt = Date.now(), settingsCache = new Map();
 let backgroundTimer;
 function readCachedSettings(file) {
@@ -144,7 +144,7 @@ const chatBusyProviders = new Set();
 const chatSession = createChatSession({messages,complete:completeChat,getSettings(provider){
   if(!Object.hasOwn(PROVIDERS,provider))throw new Error('Unknown chat provider.');
   const spec=PROVIDERS[provider],key=readKeys()[provider];if(['bearer','anthropic'].includes(spec.auth)&&!key)throw new Error('Save a '+spec.label+' API key first.');
-  const models=readModels();return {key,model:models[provider],url:provider==='ollama'?models.ollamaUrl:provider==='lmstudio'?models.lmstudioUrl:models.customUrl,greeting:displayName};
+  const models=readModels();return {key,model:models[provider],url:provider==='ollama'?models.ollamaUrl:provider==='lmstudio'?models.lmstudioUrl:models.customUrl,greeting:displayName,context:studioKit?.context(provider)};
 },onChange(){chatBusyProviders.clear();for(const id of chatSession.busyProviders())chatBusyProviders.add(id);if(!chatBusyProviders.size)everydayKit?.checkpoint(messages);broadcast();},onSent(provider,model){handoffUndo.delete(provider);experienceKit?.recent(provider,model);},onDone(reply){
   celebrate++;
   everydayKit?.notice({kind:'chat',id:reply.id,title:PROVIDERS[reply.provider].label+' replied',agent:reply.provider});
@@ -225,6 +225,7 @@ function displayUnderCursor() {
 }
 
 function chosenDisplay() {
+  if(studioKit?.snapshot().settings.followMonitor)return displayUnderCursor();
   const prefs = readPrefs();
   if (prefs.displayMode === "main") {
     return screen.getPrimaryDisplay();
@@ -1479,7 +1480,7 @@ function currentState() {
     github,
     githubBadge,
     paused,
-    experience: experienceKit?.snapshot(), everyday: everydayKit?.snapshot(), currentDisplay:String(chosenDisplay().id), comparison, runtime: runtimeMode(), speech: speechKit?.snapshot(),
+    experience: experienceKit?.snapshot(), everyday: everydayKit?.snapshot(), studio:studioKit?.snapshot(), currentDisplay:String(chosenDisplay().id), comparison, runtime: runtimeMode(), speech: speechKit?.snapshot(),
     greeting: displayName,
     recap: historyTail.recap(historyPath(), summarizeHistory),
     strings,
@@ -1648,7 +1649,7 @@ app.on("second-instance", () => {
 
 if (gotLock) {
   app.whenReady().then(async () => {
-    credentialKit = require('./lib/credential-store').createCredentialStore({ directory: app.getPath('userData'), providers: [...Object.keys(PROVIDERS), ...SERVICES, 'update-access', 'phone-relay'], decrypt: value => safeStorage.decryptString(Buffer.from(value, 'base64')) });
+    credentialKit = require('./lib/credential-store').createCredentialStore({ directory: app.getPath('userData'), providers: [...Object.keys(PROVIDERS), ...SERVICES, 'update-access', 'phone-relay', 'spotify-oauth'], decrypt: value => safeStorage.decryptString(Buffer.from(value, 'base64')) });
     await credentialKit.init();
     customAgents = require("./lib/custom-agents").createCustomAgents(app.getPath("userData"));
     soundKit = require("./lib/sound-settings").createSoundSettings(app.getPath("userData"));
@@ -1669,8 +1670,9 @@ if (gotLock) {
     });
     pushBridge = require('./lib/phone-push').createPushBridge({ directory: app.getPath('userData'), getSettings: () => workspaceKit.snapshot().settings, getSecret: () => readKeys()['phone-relay'],
       encrypt: text => { if (!safeStorage.isEncryptionAvailable()) throw new Error(); return safeStorage.encryptString(text).toString('base64'); }, decrypt: text => safeStorage.decryptString(Buffer.from(text, 'base64')) });
-    powerMonitor.on('lock-screen', () => { pushBridge.lock(true); broadcast(); }); powerMonitor.on('unlock-screen', () => { pushBridge.lock(false); broadcast(); });
-    featureKit = installFeatures({ app, ipcMain, desktopCapturer, clipboard, getState: currentState, getRuntime: runtimeMode, readVoiceKey: () => readKeys().chatgpt, decide: handleDecision, broadcast, setAttachment: addAttachment, onDraft: () => navigateSettings('companion'), serviceDetail: readServiceDetail, serviceAction: (id, input) => serviceDetails.act(id, input), registerDevice: input => pushBridge.register(input), revokeDevices: () => pushBridge.revoke(), historySearch: query => workspaceKit.search(query), historyDetail: id => workspaceKit.detail(id) });
+    powerMonitor.on('lock-screen', () => { studioKit?.suspend();pushBridge.lock(true); broadcast(); }); powerMonitor.on('unlock-screen', () => { studioKit?.resume();pushBridge.lock(false); broadcast(); });
+    const phoneCertificate=require('./lib/phone-certificate').createPhoneCertificate({directory:app.getPath('userData'),encrypt:value=>{if(!safeStorage.isEncryptionAvailable())throw new Error('Secure phone pairing requires Windows encryption.');return safeStorage.encryptString(value).toString('base64');},decrypt:value=>safeStorage.decryptString(Buffer.from(value,'base64'))});
+    featureKit = installFeatures({ app, ipcMain, desktopCapturer, clipboard, getState: currentState, getRuntime: runtimeMode, readVoiceKey: () => readKeys().chatgpt, decide: handleDecision, broadcast, setAttachment: addAttachment, onDraft: () => navigateSettings('companion'), serviceDetail: readServiceDetail, serviceAction: (id, input) => serviceDetails.act(id, input), registerDevice: input => pushBridge.register(input), revokeDevices: () => pushBridge.revoke(), historySearch: query => workspaceKit.search(query), historyDetail: id => workspaceKit.detail(id), phoneChat:(provider,text,device)=>studioKit?.phoneChat(provider,text,device),forgetPhone:device=>studioKit?.forgetPhone(device),getPhoneTls:()=>phoneCertificate.load() });
     updateKit = createUpdateController({app, updater: app.isPackaged && process.platform === 'win32' ? require('electron-updater').autoUpdater : null, onChange: broadcast, getToken: () => readKeys()['update-access'] || '',
       async confirmRestart() {
         const busy = pending.length || chatBusyProviders.size || [...sessions.values()].some(session => !session.finished);
@@ -1710,9 +1712,10 @@ if (gotLock) {
     focusTimer=setInterval(()=>{try{const expired=++retentionTicks%3600===0&&everydayKit.expire();if(everydayKit.tick()){celebrate++;broadcast();}else if(expired)broadcast();}catch{}},1000);focusTimer.unref();
     setupDisplayBehavior();
     speechKit = createSpeechOutput({onChange:broadcast});
+    studioKit=require('./lib/studio-main').installStudio({app,ipcMain,broadcast,getState:currentState,readKeys,readModels,writeModels,complete:completeChat,discover:(provider,refresh)=>modelDiscovery.discover(provider,readModels(),readKeys()[provider],refresh),messages,chatSession,everyday:everydayKit,experience:experienceKit,speech:speechKit,features:()=>featureKit.snapshot(),credential:credentialKit,encrypt:text=>{if(!safeStorage.isEncryptionAvailable())throw new Error('Windows encryption is unavailable.');return safeStorage.encryptString(text).toString('base64');},decrypt:text=>safeStorage.decryptString(Buffer.from(text,'base64')),openUrl:url=>shell.openExternal(url),showChat(provider,command){showNook();win?.webContents.send('nook:command','provider:'+provider);if(command)win?.webContents.send('nook:command',command);},showService:id=>{showNook();win?.webContents.send('nook:command','service:'+id);},applyProfile,followDisplay(){if(win?.isFocused()||currentState().pending)return String(screen.getDisplayMatching(win?.getBounds()||screen.getPrimaryDisplay().bounds).id);const desired=targetBounds(mode);if(!boundsNow||boundsNow.x!==desired.x||boundsNow.y!==desired.y)animateTo(mode);return String(chosenDisplay().id);},controlMedia:action=>featureKit.controlMedia(action),foreground:require('./lib/foreground').createForegroundWatcher()});
     for(const event of ['on-battery','on-ac'])powerMonitor.on(event,()=>{broadcast();refreshBackground();});
-    powerMonitor.on('suspend',()=>{suspended=true;speechKit.stop();broadcast();});
-    powerMonitor.on('resume',()=>{suspended=false;refreshBackground();broadcast();});
+    powerMonitor.on('suspend',()=>{suspended=true;speechKit.stop();studioKit?.suspend?.();broadcast();});
+    powerMonitor.on('resume',()=>{suspended=false;studioKit?.resume();refreshBackground();broadcast();});
     createWindow();
     createTray();
 
@@ -1798,7 +1801,7 @@ ipcMain.on("nook:quit", () => {
 });
 
 ipcMain.on("nook:open-app", (_event, page) => {
-  if (["home","keys","look","agents","workspace","companion","updates","performance","shortcuts","week","everyday"].includes(page)) navigateSettings(page);
+  if (["studio","home","keys","look","agents","workspace","companion","updates","performance","shortcuts","week","everyday"].includes(page)) navigateSettings(page);
   else openApp();
 });
 
@@ -1979,6 +1982,7 @@ ipcMain.handle("nook:chat", async (_event, input) => {
     broadcast();
     return { ok: true, reply: answer };
   }
+  if(studioKit?.snapshot().settings.actions&&require('./lib/studio').intent(text))return studioKit.prepare(text,provider).catch(error=>({ok:false,error:error.message}));
   const file=attachmentTray.take() || attachment;
   const work=chatSession.send(provider,text,{attachment:file});
   if(chatSession.busy(provider)){attachment=null;attachmentTray.clear();broadcast();}
@@ -2172,7 +2176,7 @@ ipcMain.handle("nook:models", async (_event, provider) => {
   return (await modelDiscovery.discover(provider, readModels(), readKeys()[provider])).models;
 });
 const connectionHealth = new Map();
-ipcMain.handle('nook:check-connection', async (_event, provider, refresh) => { const result=await modelDiscovery.discover(provider,readModels(),readKeys()[provider],Boolean(refresh));if(Object.hasOwn(PROVIDERS,provider)){connectionHealth.set(provider,{ok:result.ok,error:result.error,time:Date.now()});broadcast();}return result; });
+ipcMain.handle('nook:check-connection', async (_event, provider, refresh) => { const result=await modelDiscovery.discover(provider,readModels(),readKeys()[provider],Boolean(refresh));if(Object.hasOwn(PROVIDERS,provider)){connectionHealth.set(provider,{ok:result.ok,error:result.error,time:Date.now()});studioKit?.rememberModels(provider,result);broadcast();}return result; });
 ipcMain.handle('nook:provider-guide', async (_event, provider) => {
   const url = providerGuides[provider]?.url;
   if (!url) return { ok: false };
@@ -2325,7 +2329,7 @@ ipcMain.handle('nook:pet-drop', async (_event, point) => {
 });
 
 app.on("before-quit", () => {
-  chatSession.dispose();comparisonAbort?.abort();speechKit?.stop();clearTimeout(backgroundTimer);clearInterval(focusTimer);fullscreenWatcher?.stop();
+  studioKit?.stop();chatSession.dispose();comparisonAbort?.abort();speechKit?.stop();clearTimeout(backgroundTimer);clearInterval(focusTimer);fullscreenWatcher?.stop();
   workspaceKit?.stop();
   pushBridge?.stop();
   updateKit?.stop();
@@ -2343,6 +2347,12 @@ app.on("window-all-closed", () => {
   app.quit();
 });
 
+function applyProfile(id){
+  if(chatBusyProviders.size||pending.length)throw new Error('Finish the current reply or waiting approval before switching profiles.');
+  const profile=experienceKit.get(id);
+  writeLook(profile.look);writeModels(profile.models);writePrefs(profile.prefs);experienceKit.save(profile.experience);workspaceKit.save(profile.alerts);
+  experienceKit.activate(id);if(readPrefs().muted)speechKit?.stop();applyLookEverywhere();registerShortcuts();refreshTray();refreshBackground(false);animateTo(mode);broadcast();
+}
 ipcMain.handle('nook:experience',async (_event,input)=>{
   if(!experienceKit)return {ok:false,error:'Workspace settings are starting.'};
   try {
@@ -2350,10 +2360,7 @@ ipcMain.handle('nook:experience',async (_event,input)=>{
     else if(input?.action==='create-profile')experienceKit.create(input.value,currentState());
     else if(input?.action==='remove-profile')experienceKit.remove(input.value);
     else if(input?.action==='apply-profile') {
-      if(chatBusyProviders.size)return {ok:false,error:'Stop or finish the current reply before switching profiles.'};
-      const profile=experienceKit.get(input.value);
-      writeLook(profile.look);writeModels(profile.models);writePrefs(profile.prefs);experienceKit.save(profile.experience);workspaceKit.save(profile.alerts);
-      experienceKit.activate(input.value);if(readPrefs().muted)speechKit?.stop();applyLookEverywhere();registerShortcuts();refreshTray();refreshBackground(false);
+      applyProfile(input.value);
     }
     else if(input?.action==='detect-local') {
       const results=await Promise.all(['ollama','lmstudio'].map(async id=>({id,...await modelDiscovery.discover(id,readModels(),'',true)})));
@@ -2423,8 +2430,8 @@ ipcMain.handle('nook:everyday',async(event,{action,value}={})=>{
       if(demoOn)throw new Error('Leave the walkthrough to use saved chats.');
       if(['open','new','delete','clear'].includes(value?.action)&&chatBusyProviders.size)throw new Error('Stop or finish current replies before changing conversations.');
       if(value?.action==='export'){const entry=everydayKit.chat('detail',value);const result=await localDialog('showSaveDialog',chatWin||appWin||win,{title:'Export conversation',defaultPath:'Nook-conversation.md',filters:[{name:'Markdown',extensions:['md']}]});if(result.canceled)return {ok:false,cancelled:true};fs.writeFileSync(result.filePath,'# '+entry.name+'\n\n'+entry.messages.map(m=>'## '+(m.role==='user'?'You':PROVIDERS[entry.provider].label)+'\n\n'+m.content).join('\n\n'),'utf8');return {ok:true};}
-      if(value?.action==='delete')chatSession.forget(everydayKit.chat('detail',value).messages.map(m=>m.id));
-      if(value?.action==='clear')chatSession.forget();
+      if(value?.action==='delete'){const ids=everydayKit.chat('detail',value).messages.map(m=>m.id);chatSession.forget(ids);studioKit?.clearSummaries(ids);}
+      if(value?.action==='clear'){chatSession.forget();studioKit?.clearSummaries();}
       const before=everydayKit.snapshot().active,result=everydayKit.chat(value?.action,value);
       if(value?.action==='detail')return {ok:true,conversation:result};
       if(value?.action==='open'){messages.splice(0,messages.length,...messages.filter(m=>m.provider!==result.provider),...result.messages);handoffUndo.delete(result.provider);}

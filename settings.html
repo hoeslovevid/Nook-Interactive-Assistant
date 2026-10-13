@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'none'; style-src 'self'; script-src 'self'; img-src 'self'; media-src data:"
+      content="default-src 'none'; style-src 'self'; script-src 'self'; img-src 'self' data:; media-src data:"
     />
     <title>Nook</title>
     <link rel="icon" href="assets/favicon.ico" sizes="any" />
@@ -16,6 +16,7 @@
   <link rel="stylesheet" href="companion-extras.css">
 <link rel="stylesheet" href="experience.css" />
 <link rel="stylesheet" href="everyday.css" />
+<link rel="stylesheet" href="studio.css" />
 </head>
   <body>
     <aside>
@@ -48,6 +49,7 @@
         <button type="button" class="nav" data-page="updates">Updates <span id="update-badge" hidden>New</span></button>
         <button type="button" class="nav" data-page="workspace">Workspace & alerts</button>
         <button type="button" class="nav" data-page="performance">Performance</button>
+        <button type="button" class="nav" data-page="studio">Health & studio</button>
       </nav><div class="sidebar-footer"><span class="connection-dot"></span> Made for your flow<span class="version">Nook · Desktop</span></div>
     </aside>
     <main>
@@ -398,6 +400,7 @@
         <div class="settings-group"><h2>Search history</h2><div class="workspace-options"><input id="history-query" type="search" placeholder="Search projects, commands, diffs, or answers…" maxlength="200" aria-label="Search history"><input id="history-agent" placeholder="Filter by agent" maxlength="30" aria-label="Filter history by agent"></div><div class="settings-actions"><button type="button" id="history-search" class="ghost">Search</button><button type="button" id="history-clear" class="ghost">Clear history</button></div><p id="history-count" class="note" role="status"></p><div id="history-results"></div><div id="history-detail" hidden></div></div>
         <div class="settings-group"><h2>Service details</h2><div class="workspace-options"><select id="service-choice" aria-label="Service"><option value="github">GitHub</option><option value="vercel">Vercel</option><option value="n8n">n8n</option><option value="stripe">Stripe</option><option value="resend">Resend</option><option value="notion">Notion</option><option value="cal">Cal.com</option></select><button type="button" id="service-refresh" class="ghost">Refresh details</button></div><p id="service-status" class="note" role="status"></p><div id="service-items"></div></div>
       </section>
+      <section id="page-studio" hidden><header><p class="eyebrow">YOUR WORKSPACE, CONNECTED</p><h1>Connection health & studio</h1><p>Check your setup, choose models for each task, and shape your notch.</p></header><div id="studio-root"></div></section>
     </main>
     <script src="lib/locale-catalog.js"></script>
     <script src="lib/locale.js"></script>
@@ -431,5 +434,6 @@
 <script src="lib/rich-markdown.js"></script>
 <script src="everyday-ui.js"></script>
 <script src="personality-ui.js"></script>
+<script src="lib/audio.js"></script><script src="lib/studio.js"></script><script src="studio-ui.js"></script>
 </body>
 </html>

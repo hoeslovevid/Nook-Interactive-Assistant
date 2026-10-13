@@ -1,4 +1,5 @@
 const pages = {
+  studio:document.querySelector('#page-studio'),
   everyday: document.querySelector('#page-everyday'),
   home: document.querySelector("#page-home"),
   performance: document.querySelector("#page-performance"),

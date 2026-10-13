@@ -30,6 +30,7 @@ function run(command, args, options = {}, input = '') {
   for (const file of ['hooks/nook-hook.cmd', 'hooks/nook-hook.js', 'lib/windows-media.ps1', 'lib/windows-speech.ps1', 'phone/phone.html', 'assets/icon.png', 'assets/icon.svg', 'assets/logo.svg', 'assets/tray.png', 'assets/tray@2x.png', 'assets/tray@3x.png', 'assets/favicon.ico', 'assets/apple-touch-icon.png']) {
     assert.ok(fs.existsSync(path.join(appDir, file)), `Missing runtime resource: ${file}`);
   }
+  for(const file of ['studio-ui.js','studio.css','island.css','lib/studio.js','lib/studio-main.js','lib/studio-store.js','lib/wake-listener.js','lib/windows-wake.ps1','lib/windows-foreground.ps1','lib/foreground.js','lib/spotify.js','lib/phone-certificate.js'])assert.ok(fs.existsSync(path.join(appDir,file)),'Missing studio resource: '+file);
   assert.ok(!fs.existsSync(path.join(appDir, 'test')), 'Tests should not ship');
   for (const file of ['experience.css','experience-settings-ui.js','experience-notch-ui.js','model-setup-ui.js','notch-preview-ui.js','command-palette-ui.js','lib/experience-store.js','lib/chat-session.js','lib/lifelike.js','lib/speech-output.js','lib/windows-voice-output.ps1','notch-modern.css', 'app-modern.css', 'light-theme.css', 'app-modern.js', 'lib/appearance.js', 'lib/ui-icons.js', 'lib/workbench.js', 'lib/chat-transport.js', 'lib/attachments.js', 'lib/model-discovery.js', 'lib/provider-guides.js', 'lib/chat-memory.js', 'lib/history-tail.js']) assert.ok(fs.existsSync(path.join(appDir, file)), `Missing modern UI resource: ${file}`);
   assert.ok(!fs.existsSync(path.join(appDir, 'assets/previews')), 'Previews should not ship');
@@ -54,7 +55,7 @@ function run(command, args, options = {}, input = '') {
     process.on('uncaughtException', error => errors.push(error.stack));
     const relayModule = require('./lib/relay'), createRelay = relayModule.createRelay;
     relayModule.createRelay = (pipe, options) => createRelay(pipe + '-smoke-' + process.pid, options);
-    require('./main.js');
+    require('selfsigned');require('qrcode');require('./main.js');
     setTimeout(async () => {
       const windows = BrowserWindow.getAllWindows();
       const pages = await Promise.all(windows.map(window => window.webContents.executeJavaScript('({title: document.title, ready: document.readyState, text: document.body.innerText.length, brandCount: document.querySelectorAll(".brand-logo").length, images: [...document.querySelectorAll(".brand-logo")].every(image => image.complete && image.naturalWidth > 0)})').catch(error => { errors.push(error.message); return {}; })));

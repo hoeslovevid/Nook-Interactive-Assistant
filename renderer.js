@@ -95,6 +95,7 @@ function shellMode() {
   if (hovering) {
     return "peek";
   }
+  if(['starting','armed','listening'].includes(state?.studio?.wake?.phase))return 'peek';
   return "asleep";
 }
 
@@ -794,12 +795,14 @@ let availableChatModels = [], availableChatDetails = {}, modelLookup = 0;
 function closeModelPicker() { modelLookup++; modelPanel.hidden = true; renderShell(); }
 let modelOptionSignature='';
 function paintChatModelOptions() {
-  const signature=JSON.stringify([availableChatModels,availableChatDetails,provider,state?.experience?.settings?.favorites,state?.experience?.settings?.recents,modelSearch.value,sending]);
+  const capability=document.querySelector('#chat-capability-filter')?.value||'all',contextSize=Number(document.querySelector('#chat-context-filter')?.value||0);
+  const signature=JSON.stringify([availableChatModels,availableChatDetails,provider,state?.experience?.settings?.favorites,state?.experience?.settings?.recents,modelSearch.value,sending,capability,contextSize]);
   if(signature===modelOptionSignature)return;modelOptionSignature=signature;
   const chosen=modelOptions.value;
   modelOptions.replaceChildren();
   const placeholder = document.createElement('option'); placeholder.value = ''; placeholder.textContent = 'Choose a model'; modelOptions.append(placeholder);
-  for (const id of window.NookExperience.modelSort(availableChatModels,provider,state?.experience?.settings).filter(id => id.toLowerCase().includes(modelSearch.value.trim().toLowerCase()))) {
+  const filtered=window.NookStudio?window.NookStudio.filterModels(availableChatModels,availableChatDetails,capability,contextSize):availableChatModels;
+  for (const id of window.NookExperience.modelSort(filtered,provider,state?.experience?.settings).filter(id => id.toLowerCase().includes(modelSearch.value.trim().toLowerCase()))) {
     const option = document.createElement('option'); option.value = id; const info=availableChatDetails[id]||{},favorite=state?.experience?.settings?.favorites?.includes(provider+':'+id); option.textContent = (favorite?'★ ':'')+id+(info.vision===true?' · Images':'')+(info.contextWindow?' · '+Math.round(info.contextWindow/1000)+'k':''); modelOptions.append(option);
   }
   if([...modelOptions.options].some(o=>o.value===chosen))modelOptions.value=chosen;
@@ -931,6 +934,7 @@ async function runChatAction(action, text, messageId) {
   try {
     const result=action==='send'?await window.nook.sendChat(originalProvider,text):await window.nook.chatControl(action,{provider:originalProvider,text,messageId});
     if(!result.ok){chatError=result.error||'Could not send this request.';chatFailure=result.failure?{...result.failure,provider:originalProvider}:null;if(['send','retry'].includes(action)&&!chatInput.value)chatInput.value=retryText||'';playSound('error');}
+    else if(result.actionOffer)window.NookStudioUI?.reviewAction(result.actionOffer);
     else if(!result.stopped)celebrateCompanion();
   }catch{chatError='Could not connect. Please try again.';if(['send','retry'].includes(action)&&!chatInput.value)chatInput.value=retryText||'';playSound('error');}
   finally{sending=false;providerSelect.disabled=false;sendButton.disabled=false;sendButton.textContent='↑';paint();window.NookChatControls?.paint(state);if(chatError)document.querySelector('#chat-error-panel').scrollIntoView({block:'nearest'});}

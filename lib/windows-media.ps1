@@ -1,4 +1,4 @@
-param([ValidateSet('status','toggle','next','previous','seek','shuffle','repeat')][string]$Action = 'status', [long]$Position = 0)
+param([ValidateSet('status','toggle','play','pause','next','previous','seek','shuffle','repeat')][string]$Action = 'status', [long]$Position = 0)
 $ErrorActionPreference = 'Stop'
 try {
   Add-Type -AssemblyName System.Runtime.WindowsRuntime
@@ -17,6 +17,8 @@ try {
   $before = $session.GetPlaybackInfo()
   switch ($Action) {
     'toggle' { $changed = Await ($session.TryTogglePlayPauseAsync()) ([bool]) }
+    'play' { if ($before.PlaybackStatus.ToString() -ne 'Playing') { $changed = Await ($session.TryPlayAsync()) ([bool]) } }
+    'pause' { if ($before.PlaybackStatus.ToString() -eq 'Playing') { $changed = Await ($session.TryPauseAsync()) ([bool]) } }
     'next' { $changed = Await ($session.TrySkipNextAsync()) ([bool]) }
     'previous' { $changed = Await ($session.TrySkipPreviousAsync()) ([bool]) }
     'seek' { $changed = Await ($session.TryChangePlaybackPositionAsync([Math]::Max(0,$Position))) ([bool]) }

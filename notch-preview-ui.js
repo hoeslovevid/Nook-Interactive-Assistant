@@ -35,6 +35,6 @@
   }
   toggle.onclick=()=>{collapsed=!collapsed;paint();};
   const observer=new IntersectionObserver(entries=>{visible=entries[0].isIntersecting;schedule();});observer.observe(stage);document.addEventListener('visibilitychange',schedule);
-  window.nook.onState(next=>{lastState=next;const look=next.look||{};panel.style.width=Math.min(100,Math.max(60,(look.notchWidth||620)/8.2))+'%';window.NookCompanion.apply(canvas,next.features?.companion,next.features?.previewOutfit);});
+  window.nook.onState(next=>{lastState=next;const look=next.look||{};panel.dataset.notchStyle=next.studio?.settings?.notchStyle||'island';panel.style.width=Math.min(100,Math.max(60,(look.notchWidth||620)/8.2))+'%';window.NookCompanion.apply(canvas,next.features?.companion,next.features?.previewOutfit);});
   window.NookPreview={scene(id){if(Object.hasOwn(moods,id)){mode=id;collapsed=false;paint();}},canvas};paint();
 })();
