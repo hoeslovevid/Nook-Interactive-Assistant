@@ -86,7 +86,7 @@ const { command: voiceCommand } = require('./lib/everyday');
 const attachmentTray = require('./lib/attachment-tray').createAttachmentTray();
 let everydayKit, chatWin, focusTimer, fullscreenWatcher, fullscreenDisplay = '', fullscreenOverride = false;
 let comparison = {busy:false,results:[]}, comparisonAbort;
-let experienceKit, speechKit, studioKit, suspended = false, startupMs = null;
+let experienceKit, speechKit, studioKit, flowKit, suspended = false, startupMs = null;
 const startupAt = Date.now(), settingsCache = new Map();
 let backgroundTimer;
 function readCachedSettings(file) {
@@ -1480,7 +1480,7 @@ function currentState() {
     github,
     githubBadge,
     paused,
-    experience: experienceKit?.snapshot(), everyday: everydayKit?.snapshot(), studio:studioKit?.snapshot(), currentDisplay:String(chosenDisplay().id), comparison, runtime: runtimeMode(), speech: speechKit?.snapshot(),
+    experience: experienceKit?.snapshot(), everyday: everydayKit?.snapshot(), studio:studioKit?.snapshot(), flow:flowKit?.snapshot(), currentDisplay:String(chosenDisplay().id), comparison, runtime: runtimeMode(), speech: speechKit?.snapshot(),
     greeting: displayName,
     recap: historyTail.recap(historyPath(), summarizeHistory),
     strings,
@@ -1670,9 +1670,9 @@ if (gotLock) {
     });
     pushBridge = require('./lib/phone-push').createPushBridge({ directory: app.getPath('userData'), getSettings: () => workspaceKit.snapshot().settings, getSecret: () => readKeys()['phone-relay'],
       encrypt: text => { if (!safeStorage.isEncryptionAvailable()) throw new Error(); return safeStorage.encryptString(text).toString('base64'); }, decrypt: text => safeStorage.decryptString(Buffer.from(text, 'base64')) });
-    powerMonitor.on('lock-screen', () => { studioKit?.suspend();pushBridge.lock(true); broadcast(); }); powerMonitor.on('unlock-screen', () => { studioKit?.resume();pushBridge.lock(false); broadcast(); });
+    powerMonitor.on('lock-screen', () => { flowKit?.suspend();studioKit?.suspend();pushBridge.lock(true); broadcast(); }); powerMonitor.on('unlock-screen', () => { studioKit?.resume();flowKit?.resume();pushBridge.lock(false); broadcast(); });
     const phoneCertificate=require('./lib/phone-certificate').createPhoneCertificate({directory:app.getPath('userData'),encrypt:value=>{if(!safeStorage.isEncryptionAvailable())throw new Error('Secure phone pairing requires Windows encryption.');return safeStorage.encryptString(value).toString('base64');},decrypt:value=>safeStorage.decryptString(Buffer.from(value,'base64'))});
-    featureKit = installFeatures({ app, ipcMain, desktopCapturer, clipboard, getState: currentState, getRuntime: runtimeMode, readVoiceKey: () => readKeys().chatgpt, decide: handleDecision, broadcast, setAttachment: addAttachment, onDraft: () => navigateSettings('companion'), serviceDetail: readServiceDetail, serviceAction: (id, input) => serviceDetails.act(id, input), registerDevice: input => pushBridge.register(input), revokeDevices: () => pushBridge.revoke(), historySearch: query => workspaceKit.search(query), historyDetail: id => workspaceKit.detail(id), phoneChat:(provider,text,device)=>studioKit?.phoneChat(provider,text,device),forgetPhone:device=>studioKit?.forgetPhone(device),getPhoneTls:()=>phoneCertificate.load() });
+    featureKit = installFeatures({ app, ipcMain, desktopCapturer, clipboard, getState: currentState, getRuntime: runtimeMode, readVoiceKey: () => readKeys().chatgpt, decide: handleDecision, broadcast, setAttachment: addAttachment, onDraft: () => navigateSettings('companion'), serviceDetail: readServiceDetail, serviceAction: (id, input) => serviceDetails.act(id, input), registerDevice: input => pushBridge.register(input), revokeDevices: () => pushBridge.revoke(), historySearch: query => workspaceKit.search(query), historyDetail: id => workspaceKit.detail(id), phoneChat:(provider,text,device)=>studioKit?.phoneChat(provider,text,device),forgetPhone:device=>studioKit?.forgetPhone(device),getPhoneTls:()=>phoneCertificate.load(), transcribeOffline:bytes=>flowKit?.transcribeOffline(bytes) });
     updateKit = createUpdateController({app, updater: app.isPackaged && process.platform === 'win32' ? require('electron-updater').autoUpdater : null, onChange: broadcast, getToken: () => readKeys()['update-access'] || '',
       async confirmRestart() {
         const busy = pending.length || chatBusyProviders.size || [...sessions.values()].some(session => !session.finished);
@@ -1714,8 +1714,9 @@ if (gotLock) {
     speechKit = createSpeechOutput({onChange:broadcast});
     studioKit=require('./lib/studio-main').installStudio({app,ipcMain,broadcast,getState:currentState,readKeys,readModels,writeModels,complete:completeChat,discover:(provider,refresh)=>modelDiscovery.discover(provider,readModels(),readKeys()[provider],refresh),messages,chatSession,everyday:everydayKit,experience:experienceKit,speech:speechKit,features:()=>featureKit.snapshot(),credential:credentialKit,encrypt:text=>{if(!safeStorage.isEncryptionAvailable())throw new Error('Windows encryption is unavailable.');return safeStorage.encryptString(text).toString('base64');},decrypt:text=>safeStorage.decryptString(Buffer.from(text,'base64')),openUrl:url=>shell.openExternal(url),showChat(provider,command){showNook();win?.webContents.send('nook:command','provider:'+provider);if(command)win?.webContents.send('nook:command',command);},showService:id=>{showNook();win?.webContents.send('nook:command','service:'+id);},applyProfile,followDisplay(){if(win?.isFocused()||currentState().pending)return String(screen.getDisplayMatching(win?.getBounds()||screen.getPrimaryDisplay().bounds).id);const desired=targetBounds(mode);if(!boundsNow||boundsNow.x!==desired.x||boundsNow.y!==desired.y)animateTo(mode);return String(chosenDisplay().id);},controlMedia:action=>featureKit.controlMedia(action),foreground:require('./lib/foreground').createForegroundWatcher()});
     for(const event of ['on-battery','on-ac'])powerMonitor.on(event,()=>{broadcast();refreshBackground();});
-    powerMonitor.on('suspend',()=>{suspended=true;speechKit.stop();studioKit?.suspend?.();broadcast();});
-    powerMonitor.on('resume',()=>{suspended=false;studioKit?.resume();refreshBackground();broadcast();});
+    flowKit=require('./lib/flow-main').installFlow({app,ipcMain,BrowserWindow,screen,dialog,clipboard,broadcast,getState:currentState,complete:completeChat,chatOptions:provider=>({...readModels(),key:readKeys()[provider],model:readModels()[provider],url:provider==='ollama'?readModels().ollamaUrl:provider==='lmstudio'?readModels().lmstudioUrl:readModels().customUrl}),encrypt:text=>{if(!safeStorage.isEncryptionAvailable())throw new Error('Windows encryption is unavailable.');return safeStorage.encryptString(text).toString('base64');},decrypt:text=>safeStorage.decryptString(Buffer.from(text,'base64')),suspendWake:()=>studioKit?.suspend(),resumeWake:()=>studioKit?.resume()});
+    powerMonitor.on('suspend',()=>{suspended=true;speechKit.stop();flowKit?.suspend();studioKit?.suspend?.();broadcast();});
+    powerMonitor.on('resume',()=>{suspended=false;studioKit?.resume();flowKit?.resume();refreshBackground();broadcast();});
     createWindow();
     createTray();
 
@@ -1801,7 +1802,7 @@ ipcMain.on("nook:quit", () => {
 });
 
 ipcMain.on("nook:open-app", (_event, page) => {
-  if (["studio","home","keys","look","agents","workspace","companion","updates","performance","shortcuts","week","everyday"].includes(page)) navigateSettings(page);
+  if (["voice","studio","home","keys","look","agents","workspace","companion","updates","performance","shortcuts","week","everyday"].includes(page)) navigateSettings(page);
   else openApp();
 });
 
@@ -2329,7 +2330,7 @@ ipcMain.handle('nook:pet-drop', async (_event, point) => {
 });
 
 app.on("before-quit", () => {
-  studioKit?.stop();chatSession.dispose();comparisonAbort?.abort();speechKit?.stop();clearTimeout(backgroundTimer);clearInterval(focusTimer);fullscreenWatcher?.stop();
+  flowKit?.stop();studioKit?.stop();chatSession.dispose();comparisonAbort?.abort();speechKit?.stop();clearTimeout(backgroundTimer);clearInterval(focusTimer);fullscreenWatcher?.stop();
   workspaceKit?.stop();
   pushBridge?.stop();
   updateKit?.stop();

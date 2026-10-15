@@ -16,6 +16,7 @@ try {
     if (-not $chosen) { $chosen = $recognizers[0] }
   } else {
     $chosen = $recognizers | Where-Object { $_.Culture.Name -eq $Language } | Select-Object -First 1
+    if (-not $chosen -and $Language -match '^[a-z]{2}$') { $chosen = $recognizers | Where-Object { $_.Culture.Name -like ($Language + '-*') } | Select-Object -First 1 }
     if (-not $chosen) { throw 'This speech language is not installed. Install it in Windows, or choose another language.' }
   }
   $engine = New-Object System.Speech.Recognition.SpeechRecognitionEngine($chosen)

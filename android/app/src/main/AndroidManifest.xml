@@ -7,6 +7,9 @@
     </activity>
     <service android:name=".IslandService" android:exported="false" android:foregroundServiceType="specialUse"><property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE" android:value="User-enabled local PC agent activity indicator and action notifications"/></service>
     <service android:name=".NookTile" android:label="Nook" android:icon="@drawable/nook_icon" android:exported="true" android:permission="android.permission.BIND_QUICK_SETTINGS_TILE"><intent-filter><action android:name="android.service.quicksettings.action.QS_TILE"/></intent-filter></service>
-    <receiver android:name=".NookWidget" android:exported="false"><intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE"/></intent-filter><meta-data android:name="android.appwidget.provider" android:resource="@xml/nook_widget"/></receiver>
+    <receiver android:name=".NookWidget" android:exported="false" android:label="Nook status"><intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE"/></intent-filter><meta-data android:name="android.appwidget.provider" android:resource="@xml/nook_widget"/></receiver>
+    <receiver android:name=".PetWidget" android:exported="false" android:label="Nook companion"><intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE"/></intent-filter><meta-data android:name="android.appwidget.provider" android:resource="@xml/nook_pet_widget"/></receiver>
+    <receiver android:name=".AgentsWidget" android:exported="false" android:label="Nook agents"><intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE"/></intent-filter><meta-data android:name="android.appwidget.provider" android:resource="@xml/nook_widget"/></receiver>
+    <receiver android:name=".RequestsWidget" android:exported="false" android:label="Nook requests"><intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE"/></intent-filter><meta-data android:name="android.appwidget.provider" android:resource="@xml/nook_widget"/></receiver>
   </application>
 </manifest>

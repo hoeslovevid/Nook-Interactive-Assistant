@@ -17,4 +17,12 @@ Open this directory in Android Studio with **JDK 17**, Android SDK 35, and **Gra
 
 The source uses Android framework UI and cryptography, without analytics or external UI libraries. Pairing and chat screens block screenshots. Polling runs only while the app is visible or the user-enabled foreground island is active; screen-off polling slows to 30 seconds. Android may stop background work under battery restrictions. The app reports connection errors and does not grant requests from background notifications.
 
+## Widgets and stable signing
+
+The launcher offers four resizable widgets: **Nook status**, **Nook companion**, **Nook agents**, and **Nook requests**. Orange indicates review is needed, blue indicates active agents, and green indicates a quiet workspace. Widgets only open the review app; they never grant approvals. Snapshots refresh when the connected app or activity island receives state, and can be stale when both are stopped. Disconnecting clears their status.
+
+For a release APK that can be upgraded without reinstalling, create and securely back up one production keystore and reuse it. Configure `NOOK_ANDROID_KEYSTORE` (absolute path), `NOOK_ANDROID_STORE_PASSWORD`, `NOOK_ANDROID_KEY_ALIAS`, and `NOOK_ANDROID_KEY_PASSWORD`, then run `gradle :app:assembleRelease :app:lintRelease`. Without those variables the release task remains unsigned; it never substitutes a debug key.
+
+The manual **Signed Android companion** workflow accepts repository secrets `NOOK_ANDROID_KEYSTORE_BASE64`, `NOOK_ANDROID_STORE_PASSWORD`, `NOOK_ANDROID_KEY_ALIAS`, and `NOOK_ANDROID_KEY_PASSWORD`. It restores the key temporarily, builds and verifies a signed release APK, uploads a build artifact, and deletes the temporary key. Keep the keystore and passwords outside Git. Installing a production-signed APK over a differently signed debug APK requires uninstalling the debug app and pairing again. No production keystore or repository signing secrets are configured by this source change.
+
 Physical-device microphone input, camera QR scanning, biometric behavior, overlay positioning around device cut-outs, and battery behavior still require device validation. QR scanning uses the phone's existing camera/scanner; no camera permission is requested by Nook itself.

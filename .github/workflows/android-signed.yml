@@ -1,0 +1,48 @@
+name: Signed Android companion
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  signed-apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools build-tools;35.0.0'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+      - name: Restore signing key
+        env:
+          NOOK_ANDROID_KEYSTORE_BASE64: ${{ secrets.NOOK_ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          if [ -z "$NOOK_ANDROID_KEYSTORE_BASE64" ]; then
+            echo "Configure the Android signing secrets described in android/README.md."
+            exit 1
+          fi
+          printf '%s' "$NOOK_ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/nook-release.jks"
+      - name: Build signed APK and check lint
+        working-directory: android
+        env:
+          NOOK_ANDROID_KEYSTORE: ${{ runner.temp }}/nook-release.jks
+          NOOK_ANDROID_STORE_PASSWORD: ${{ secrets.NOOK_ANDROID_STORE_PASSWORD }}
+          NOOK_ANDROID_KEY_ALIAS: ${{ secrets.NOOK_ANDROID_KEY_ALIAS }}
+          NOOK_ANDROID_KEY_PASSWORD: ${{ secrets.NOOK_ANDROID_KEY_PASSWORD }}
+        run: gradle :app:assembleRelease :app:lintRelease
+      - name: Verify release signature
+        run: |
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose android/app/build/outputs/apk/release/app-release.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Nook-Android-signed
+          path: android/app/build/outputs/apk/release/app-release.apk
+          if-no-files-found: error
+      - name: Remove temporary signing key
+        if: always()
+        run: rm -f "$RUNNER_TEMP/nook-release.jks"

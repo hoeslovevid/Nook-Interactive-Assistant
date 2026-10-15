@@ -39,6 +39,18 @@ let card = "session";
 let settleTimer = 0;
 let leanTimer = 0;
 let provider = "chatgpt";
+const providerDrafts = new Map(), providerScrolls = new Map();
+function switchChatProvider(id) {
+  if (!PROVIDER_NAMES.includes(id)) return;
+  if (provider !== id) {
+    providerDrafts.set(provider, chatInput.value);
+    providerScrolls.set(provider, transcript.scrollTop);
+    provider = id;
+    chatInput.value = providerDrafts.get(id) || '';
+    requestAnimationFrame(() => { transcript.scrollTop = providerScrolls.get(id) ?? transcript.scrollHeight; });
+  }
+  providerSelect.value = id;
+}
 let state = null;
 let chatError = "";
 let chatFailure = null;
@@ -831,7 +843,7 @@ modelOptions.addEventListener('change', async () => {
   finally { modelOptions.disabled = sending; }
 });
 providerSelect.addEventListener("change", () => {
-  provider = providerSelect.value;
+  switchChatProvider(providerSelect.value);
   chatError = ""; chatFailure = null; closeModelPicker();
   paint();
 });
@@ -982,7 +994,7 @@ document.querySelector("#open-diff").addEventListener("click", (event) => {
 });
 
 window.nook.onCommand((action) => {
-  if(action.startsWith('provider:')){const id=action.slice(9);if(PROVIDER_NAMES.includes(id)){if(provider!==id){chatError='';chatFailure=null;}provider=id;providerSelect.value=id;showCard('chat');held=true;expanded=true;paint();window.nook.focusWindow();chatInput.focus();}return;}
+  if(action.startsWith('provider:')){const id=action.slice(9);if(PROVIDER_NAMES.includes(id)){if(provider!==id){chatError='';chatFailure=null;}switchChatProvider(id);showCard('chat');held=true;expanded=true;paint();window.nook.focusWindow();chatInput.focus();}return;}
   if(action.startsWith('service:')){window.nook.openService(action.slice(8));return;}
   if (action === 'home') { showCard('session'); held = true; welcome = false; expanded = true; renderShell(); return; }
   if (action.startsWith('session:')) {

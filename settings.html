@@ -16,9 +16,9 @@
   <link rel="stylesheet" href="companion-extras.css">
 <link rel="stylesheet" href="experience.css" />
 <link rel="stylesheet" href="everyday.css" />
-<link rel="stylesheet" href="studio.css" />
+<link rel="stylesheet" href="studio.css" /><link rel="stylesheet" href="controls.css" /><link rel="stylesheet" href="workspace-next.css" />
 </head>
-  <body>
+  <body><a class="skip-link" href="#workspace-main">Skip to content</a>
     <aside>
       <div class="brand">
         <img class="brand-logo" src="assets/icon.svg" width="36" height="36" alt="" />
@@ -29,12 +29,13 @@
       </div>
       <nav>
         <button type="button" class="nav" data-page="home">Home</button>
-        <button type="button" class="nav" data-page="everyday">Chats & everyday tools</button>
+        <button type="button" class="nav" data-page="everyday">Chat</button>
+        <button type="button" class="nav" data-page="voice">Voice</button>
         <button type="button" class="nav is-selected" id="nav-look" data-page="look">
           Appearance
         </button>
         <button type="button" class="nav" id="nav-keys" data-page="keys">
-          Models & connections
+          Connections
         </button>
         <button type="button" class="nav" id="nav-agents" data-page="agents">
           Agents
@@ -52,7 +53,7 @@
         <button type="button" class="nav" data-page="studio">Health & studio</button>
       </nav><div class="sidebar-footer"><span class="connection-dot"></span> Made for your flow<span class="version">Nook · Desktop</span></div>
     </aside>
-    <main>
+    <main id="workspace-main" tabindex="-1">
       <div class="app-ribbon"><div class="workspace-location"><span class="workspace-orbit"></span><span>Personal workspace</span><span class="ribbon-divider">/</span><strong id="app-page-name">Appearance</strong></div><button type="button" id="app-open-notch" class="ribbon-action" data-icon="home">Open notch</button></div>
       <div class="workspace-glance" aria-label="Workspace status"><div><span class="glance-dot"></span><strong id="app-agent-count">No active agents</strong><small id="app-requests">Ready when you are</small></div><span id="app-context" class="context-chip">Local workspace</span></div>
       <section id="page-everyday" hidden><header><div class="eyebrow">A LITTLE MORE USEFUL, EVERY DAY</div><h1>Chats & everyday tools</h1><p>Keep conversations, stay focused, and choose what appears when you hover.</p></header><div id="everyday-app"></div></section>
@@ -355,7 +356,7 @@
         <div class="settings-group"><h2>Wardrobe</h2><p class="feature-copy">Original outfits, shared across the notch and desktop companion.</p><div id="wardrobe" class="wardrobe-grid"></div><label class="feature-toggle"><input id="seasonal-outfit" type="checkbox"> Seasonal outfits <small>Nook changes with the season</small></label><p id="wardrobe-note" class="note" role="status"></p></div>
         <div class="settings-group"><h2>Music & movement</h2><p class="feature-copy">Control the active Windows media session: Spotify, browser playback, and compatible music apps.</p><label class="feature-toggle"><input id="music-enabled" type="checkbox"> Show music controls <small>Nook dances while music plays</small></label><button type="button" class="ghost" id="check-music">Refresh music</button><p id="music-note" class="note" role="status"></p></div>
         <div class="settings-group"><h2>Sound studio</h2><p class="feature-copy">Preview each event, choose your own audio, and adjust the volume. Supports WAV, MP3, OGG, and M4A under 2 MB.</p><label class="sound-volume">Volume<input type="range" id="sound-volume" min="0" max="100" value="60"><span id="sound-volume-value">60%</span></label><div id="sound-events"></div><p id="sound-status" class="note" role="status"></p></div>
-        <div class="settings-group"><h2>Voice input</h2><p class="feature-copy">Click the microphone in chat, speak, then stop to review the text before sending.</p><label class="model-field">Dictation service<select id="voice-service"><option value="windows">Windows · on this PC</option><option value="openai">OpenAI · uses your saved OpenAI key</option></select></label><label class="model-field">Speech language<select id="voice-language"><option value="auto">Automatic</option></select></label><p id="voice-languages-note" class="note" role="status"></p><p class="note" id="voice-service-note">Windows dictation uses your installed speech language. OpenAI mode sends the recording to OpenAI.</p></div>
+        <div class="settings-group"><h2>Voice input</h2><p class="feature-copy">Click the microphone in chat, speak, then stop to review the text before sending.</p><label class="model-field">Dictation service<select id="voice-service"><option value="windows">Windows · on this PC</option><option value="offline">Offline Whisper</option><option value="openai">OpenAI · uses your saved OpenAI key</option></select></label><label class="model-field">Speech language<select id="voice-language"><option value="auto">Automatic</option></select></label><p id="voice-languages-note" class="note" role="status"></p><p class="note" id="voice-service-note">Windows dictation uses your installed speech language. OpenAI mode sends the recording to OpenAI.</p></div>
         <div class="settings-group"><h2>Phone sharing</h2><label class="feature-toggle"><input id="phone-details" type="checkbox"> Share session details <small>Timelines, code diffs, and final answers on paired phones</small></label><label class="feature-toggle"><input id="phone-instructions" type="checkbox"> Receive follow-up drafts <small>Review on this PC, copy, and send from your terminal</small></label><p class="note">Details may include code and commands. Enable only on trusted Wi-Fi. Keys, chat messages, and screenshots are excluded.</p></div><div class="settings-group"><h2>Phone draft inbox</h2><p class="feature-copy">Drafts from paired phones stay here until you dismiss them. Nothing is typed or run automatically.</p><div id="phone-drafts"></div></div><div class="settings-group phone-setup"><h2>Nook in your pocket</h2><p class="feature-copy">A paired browser companion for sessions, activity, and approvals. Your phone and PC need the same trusted Wi-Fi. Access stops when Nook closes.</p><div class="settings-actions"><button type="button" id="phone-enable" class="solid">Enable phone access</button><button type="button" id="phone-disable" class="ghost" hidden>Disable</button><button type="button" id="phone-revoke" class="ghost" hidden>Revoke & new code</button></div><div id="phone-pairing" hidden><p class="note">Open this address on your phone</p><code id="phone-url"></code><button type="button" id="phone-copy" class="ghost">Copy address</button><p class="note">Enter this pairing code · expires in 10 minutes</p><strong id="phone-code" class="pairing-code"></strong><p id="phone-count" class="note"></p></div><p id="phone-note" class="note" role="status"></p><small class="feature-copy">Local-network access uses HTTP. Use trusted Wi-Fi; no internet relay or router changes are configured.</small></div>
       </section>
       <section id="page-week" hidden>
@@ -400,6 +401,7 @@
         <div class="settings-group"><h2>Search history</h2><div class="workspace-options"><input id="history-query" type="search" placeholder="Search projects, commands, diffs, or answers…" maxlength="200" aria-label="Search history"><input id="history-agent" placeholder="Filter by agent" maxlength="30" aria-label="Filter history by agent"></div><div class="settings-actions"><button type="button" id="history-search" class="ghost">Search</button><button type="button" id="history-clear" class="ghost">Clear history</button></div><p id="history-count" class="note" role="status"></p><div id="history-results"></div><div id="history-detail" hidden></div></div>
         <div class="settings-group"><h2>Service details</h2><div class="workspace-options"><select id="service-choice" aria-label="Service"><option value="github">GitHub</option><option value="vercel">Vercel</option><option value="n8n">n8n</option><option value="stripe">Stripe</option><option value="resend">Resend</option><option value="notion">Notion</option><option value="cal">Cal.com</option></select><button type="button" id="service-refresh" class="ghost">Refresh details</button></div><p id="service-status" class="note" role="status"></p><div id="service-items"></div></div>
       </section>
+      <section id="page-voice" hidden><header><p class="eyebrow">SPEAK, SHAPE, REMEMBER</p><h1>Voice</h1><p>Dictation, your words, and meeting notes in one place.</p></header></section>
       <section id="page-studio" hidden><header><p class="eyebrow">YOUR WORKSPACE, CONNECTED</p><h1>Connection health & studio</h1><p>Check your setup, choose models for each task, and shape your notch.</p></header><div id="studio-root"></div></section>
     </main>
     <script src="lib/locale-catalog.js"></script>
@@ -435,5 +437,5 @@
 <script src="everyday-ui.js"></script>
 <script src="personality-ui.js"></script>
 <script src="lib/audio.js"></script><script src="lib/studio.js"></script><script src="studio-ui.js"></script>
-</body>
+<script src="controls-ui.js"></script><script src="voice-workspace-ui.js"></script><script src="workspace-next-ui.js"></script></body>
 </html>

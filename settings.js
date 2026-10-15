@@ -1,4 +1,5 @@
 const pages = {
+  voice:document.querySelector("#page-voice"),
   studio:document.querySelector('#page-studio'),
   everyday: document.querySelector('#page-everyday'),
   home: document.querySelector("#page-home"),

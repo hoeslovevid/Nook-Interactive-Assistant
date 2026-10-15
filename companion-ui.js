@@ -214,7 +214,7 @@ async function stopVoice(cancel = false) {
     if (count < rate * 0.25) { featureMessage("Recording too short. Try again."); return; }
     featureMessage("Transcribing…");
     const result = await window.nook.transcribe(
-      window.NookAudio.encodeWav(samples, rate),
+      window.NookAudio.encodeWav(state?.features?.companion?.voice === "offline" ? window.NookAudio.resample(samples, rate) : samples, state?.features?.companion?.voice === "offline" ? 16000 : rate),
     );
     if (!result.ok) throw new Error(result.error);
     if (result.text) {
@@ -331,3 +331,5 @@ window.addEventListener("beforeunload", () => {
   voiceGeneration++;
   releaseVoiceResources();
 });
+
+window.nook.onState(next=>{if(next.flow?.current&&['starting','recording','transcribing'].includes(next.flow.current.phase)&&(recording||voiceStarting))stopVoice(true);});

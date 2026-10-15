@@ -137,6 +137,8 @@ contextBridge.exposeInMainWorld("nook", {
   },
   previewOutfit(outfit, previous) { return ipcRenderer.invoke("nook:outfit-preview", { outfit, previous }); },
   speechLanguages() { return ipcRenderer.invoke("nook:speech-languages"); },
+  flow(action, value) { return ipcRenderer.invoke('nook:flow', {action,value}); },
+  onFlow(callback) { ipcRenderer.on('nook:flow-record', (_event,value)=>callback(value)); },
   saveCompanion(patch) { return ipcRenderer.invoke("nook:companion-save", patch); },
   media(action, position) { return ipcRenderer.invoke("nook:media", { action, position }); },
   windows() { return ipcRenderer.invoke("nook:windows"); },
