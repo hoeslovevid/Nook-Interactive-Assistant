@@ -1,0 +1,32 @@
+const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),os=require('node:os'),path=require('node:path');
+const {choose}=require('../lib/model-routing'),{subtitles,tasks,correction}=require('../lib/meeting-tools'),{dimensions}=require('../lib/notch-layout'),{createSpotify}=require('../lib/spotify'),{createVoiceStore}=require('../lib/voice-workspace');
+test('task model choices respect provider locks and verified capabilities',()=>{
+ const input={models:{chatgpt:'cloud',ollama:'local'},keys:{chatgpt:'secret'},roles:{quick:{provider:'chatgpt',model:'fast'}},health:{chatgpt:{model:'cloud',latency:15,details:{cloud:{vision:true}}}}};assert.equal(choose('local',input).provider,'ollama');assert.equal(choose('fast',input).model,'fast');assert.equal(choose('images',input).model,'cloud');assert.throws(()=>choose('local',{...input,lock:'chatgpt'}),/locked/);assert.throws(()=>choose('images',{...input,health:{}}),/verify image/);assert.throws(()=>choose('shell',input));
+});
+test('model speed recommendations use measured current-model latency, not guesses',()=>{
+ const config={models:{chatgpt:'new',ollama:'local'},keys:{chatgpt:true},health:{chatgpt:{model:'old',latency:1},ollama:{model:'local',latency:20}}};assert.equal(choose('fast',config).provider,'ollama');assert.throws(()=>choose('fast',{...config,health:{}}),/connection test/);
+});
+test('subtitle exports preserve speaker timestamps and reject untimed transcripts',()=>{
+ const entry={speakers:{speaker_0:'Alex'},speakerTurns:[{start:1.234,end:2.7,speaker:'speaker_0',text:'Hello → team'},{start:3,end:4,speaker:'unknown',text:'Yes --> okay'}]};assert.match(subtitles(entry,'srt'),/00:00:01,234 --> 00:00:02,700\nAlex: Hello/);assert.ok(subtitles(entry,'vtt').startsWith('WEBVTT\n\n00:00:01.234'));assert.ok(!subtitles(entry,'vtt').includes('Yes -->'));assert.throws(()=>subtitles({text:'No timing'},'srt'));assert.throws(()=>subtitles(entry,'html'));
+});
+test('meeting tasks preserve explicit owners and validate real calendar dates',()=>{
+ assert.deepEqual(tasks([{title:'Ship build',owner:' Alex ',due:'2026-10-20'}]),[{title:'Ship build',owner:'Alex',due:'2026-10-20'}]);assert.throws(()=>tasks([{title:'Ship',due:'2026-02-30'}]));assert.throws(()=>tasks([{title:'',due:''}]));assert.deepEqual(tasks([{title:'Check deployment'}]),[{title:'Check deployment',owner:'',due:''}]);
+});
+test('correction learning suggests one short changed phrase and never auto-expands large edits',()=>{
+ assert.deepEqual(correction('Tell cloud code to review this','Tell Claude Code to review this'),{from:'cloud code',to:'Claude Code'});assert.equal(correction('unchanged','unchanged'),null);assert.equal(correction('a b c d e f g h','new text'),null);assert.equal(correction('remove this',''),null);
+});
+test('shared speech preferences persist microphone, engine and regional language',t=>{
+ const directory=fs.mkdtempSync(path.join(os.tmpdir(),'nook-shared-speech-'));t.after(()=>fs.rmSync(directory,{recursive:true,force:true}));const api=()=>createVoiceStore({directory,encrypt:s=>s,decrypt:s=>s});api().save({engine:'openai',language:'en-US',microphoneId:'test-device'});const p=api().snapshot().settings;assert.equal(p.engine,'openai');assert.equal(p.language,'en-US');assert.equal(p.microphoneId,'test-device');
+});
+test('notch geometry accounts for browser zoom and stays within small displays',()=>{
+ for(const zoom of [1,1.25,1.5,2]){const result=dimensions({mode:'open',width:820,height:560,zoom,maxWidth:800,maxHeight:600});assert.ok(result.width<=800&&result.height<=600);}assert.equal(dimensions({mode:'open',zoom:1.5}).width,996);assert.equal(dimensions({mode:'asleep'}).width,140);assert.equal(dimensions({mode:'peek',peekWidth:200}).width,244);
+});
+test('Spotify controls validate devices and ranges and preserve response metadata',async()=>{
+ const calls=[],spotify=createSpotify({readToken:()=>JSON.stringify({refresh:'private',access:'secret',expires:Date.now()+900000}),saveToken:async()=>{},removeToken:async()=>{},openUrl:()=>{},fetcher:async(url,options)=>{calls.push({url,options});if(url.endsWith('me/player/devices'))return new Response(JSON.stringify({devices:[{id:'device-a',name:'Desk',supports_volume:true},{id:'restricted',is_restricted:true}]}));if(url.endsWith('me/player')&&(!options.method||options.method==='GET'))return new Response(JSON.stringify({item:{name:'Song',artists:[{name:'Artist'}],duration_ms:90000},progress_ms:123,is_playing:true,device:{id:'device-a',supports_volume:true,volume_percent:50}}));return new Response(null,{status:204});}});
+ await spotify.status();await spotify.control('volume',35);assert.ok(calls.some(c=>c.url.endsWith('volume?volume_percent=35')&&c.options.method==='PUT'));await spotify.control('repeat','track');await spotify.control('shuffle',true);await spotify.control('device','device-a');assert.equal(spotify.snapshot().devices.length,1);await assert.rejects(()=>spotify.control('device','restricted'));await assert.rejects(()=>spotify.control('volume',101));await assert.rejects(()=>spotify.control('seek',999999));await assert.rejects(()=>spotify.control('repeat','shell'));assert.ok(!JSON.stringify(spotify.snapshot()).includes('secret'));
+});
+test('Spotify obeys server cooldowns before issuing another request',async()=>{
+ let calls=0;const spotify=createSpotify({readToken:()=>JSON.stringify({access:'x',refresh:'r',expires:100000}),saveToken:async()=>{},removeToken:async()=>{},openUrl:()=>{},now:()=>1000,fetcher:async()=>{calls++;return new Response('{}',{status:429,headers:{'retry-after':'20'}});}});await assert.rejects(()=>spotify.status(),/rate limited/);await assert.rejects(()=>spotify.status(),/cooling down/);assert.equal(calls,1);
+});
+
+test('manual transcript edits clear stale timing instead of exporting the old words',t=>{const directory=fs.mkdtempSync(path.join(os.tmpdir(),'nook-edited-notes-'));t.after(()=>fs.rmSync(directory,{recursive:true,force:true}));const store=createVoiceStore({directory,encrypt:s=>s,decrypt:s=>s});const row=store.add('meeting','Original transcript','Notes',{speakers:{speaker_0:'Alex'},speakerTurns:[{start:0,end:2,text:'Original transcript',speaker:'speaker_0'}],segments:[{seconds:0,text:'Original transcript'}]});store.update(row.id,{text:'Reviewed replacement'});const edited=store.detail(row.id);assert.deepEqual(edited.speakerTurns,[]);assert.deepEqual(edited.segments,[]);assert.throws(()=>subtitles(edited,'vtt'),/no recorded timing/);});

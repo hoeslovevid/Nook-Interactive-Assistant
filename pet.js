@@ -35,7 +35,7 @@ seed.addEventListener("pointerup", async (event) => {
     const result = await window.nook.dropPet(event.screenX, event.screenY);
     window.NookSeed.react(seed, result.ok ? "happy" : "curious");
     seed.title = result.image
-      ? "Window attached. Review it in chat before sending."
+      ? "Window preview ready. Review and attach it in Nook."
       : "Drag onto a window for context · Right-click for shortcuts";
   } catch (_) {
     seed.title = "Could not capture this window. Use Window context in chat.";

@@ -60,7 +60,7 @@ window.nook.onState(state=>{
 filterConnections();
 
 // Shortcut buttons display readable keycaps and record only after an explicit click.
-const shortcutDescriptions={chat:'Start a conversation from anywhere',alert:'Bring an approval into focus',mute:'Toggle companion sounds',pet:'Show or hide your desktop companion',next:'Move to the next session',prev:'Move to the previous session',toggle:'Expand or tuck away the notch',diff:'Open the latest file changes'};
+const shortcutDescriptions={selection:'Review and use selected text in AI chat',chat:'Start a conversation from anywhere',alert:'Bring an approval into focus',mute:'Toggle companion sounds',pet:'Show or hide your desktop companion',next:'Move to the next session',prev:'Move to the previous session',toggle:'Expand or tuck away the notch',diff:'Open the latest file changes'};
 const shortcutPage=document.querySelector('#page-shortcuts');
 shortcutPage.querySelector('header p').textContent='Your favorite actions, one key combination away. Click a shortcut to change it.';
 const shortcutNote=document.createElement('p');shortcutNote.className='shortcut-note';shortcutNote.setAttribute('role','status');shortcutNote.textContent='Click a shortcut, then press your new combination. Esc cancels.';document.querySelector('#shortcuts-form').after(shortcutNote);

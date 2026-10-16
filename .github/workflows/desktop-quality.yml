@@ -1,0 +1,32 @@
+name: Desktop quality
+on:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  checks:
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ['22', '24']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run smoke:refinements
+      - name: Check visual-test result
+        shell: pwsh
+        run: |
+          $result = Get-Content -LiteralPath dist/refinements-qa/result.json -Raw | ConvertFrom-Json
+          if (-not $result.ok) { throw $result.error }
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: desktop-qa-node-${{ matrix.node }}
+          path: dist/refinements-qa/

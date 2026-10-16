@@ -16,7 +16,7 @@
   <link rel="stylesheet" href="companion-extras.css">
 <link rel="stylesheet" href="experience.css" />
 <link rel="stylesheet" href="everyday.css" />
-<link rel="stylesheet" href="studio.css" /><link rel="stylesheet" href="controls.css" /><link rel="stylesheet" href="workspace-next.css" />
+<link rel="stylesheet" href="studio.css" /><link rel="stylesheet" href="controls.css" /><link rel="stylesheet" href="workspace-next.css" /><link rel="stylesheet" href="library.css" /><link rel="stylesheet" href="ios-notch.css" />
 </head>
   <body><a class="skip-link" href="#workspace-main">Skip to content</a>
     <aside>
@@ -30,7 +30,7 @@
       <nav>
         <button type="button" class="nav" data-page="home">Home</button>
         <button type="button" class="nav" data-page="everyday">Chat</button>
-        <button type="button" class="nav" data-page="voice">Voice</button>
+        <button type="button" class="nav" data-page="voice">Voice</button><button type="button" class="nav" data-page="library">Library & tools</button>
         <button type="button" class="nav is-selected" id="nav-look" data-page="look">
           Appearance
         </button>
@@ -254,7 +254,7 @@
           <h1>Shortcuts</h1>
           <p>Click a field and press the keys. The notch keeps the ones already in use.</p>
         </header>
-        <form id="shortcuts-form">
+        <form id="shortcuts-form"><label>Selected text actions<input id="shortcut-selection" data-shortcut="selection" value="CommandOrControl+Shift+Alt+S" maxlength="48" /></label>
           <label>
             Open chat
             <input id="shortcut-chat" data-shortcut="chat" value="CommandOrControl+Shift+Alt+N" maxlength="48" />
@@ -401,7 +401,7 @@
         <div class="settings-group"><h2>Search history</h2><div class="workspace-options"><input id="history-query" type="search" placeholder="Search projects, commands, diffs, or answers…" maxlength="200" aria-label="Search history"><input id="history-agent" placeholder="Filter by agent" maxlength="30" aria-label="Filter history by agent"></div><div class="settings-actions"><button type="button" id="history-search" class="ghost">Search</button><button type="button" id="history-clear" class="ghost">Clear history</button></div><p id="history-count" class="note" role="status"></p><div id="history-results"></div><div id="history-detail" hidden></div></div>
         <div class="settings-group"><h2>Service details</h2><div class="workspace-options"><select id="service-choice" aria-label="Service"><option value="github">GitHub</option><option value="vercel">Vercel</option><option value="n8n">n8n</option><option value="stripe">Stripe</option><option value="resend">Resend</option><option value="notion">Notion</option><option value="cal">Cal.com</option></select><button type="button" id="service-refresh" class="ghost">Refresh details</button></div><p id="service-status" class="note" role="status"></p><div id="service-items"></div></div>
       </section>
-      <section id="page-voice" hidden><header><p class="eyebrow">SPEAK, SHAPE, REMEMBER</p><h1>Voice</h1><p>Dictation, your words, and meeting notes in one place.</p></header></section>
+      <section id="page-library" hidden><header><p class="eyebrow">YOUR KNOWLEDGE, WITH YOU</p><h1>Library & tools</h1><p>Read sources, recover your work, and review what leaves your workspace.</p></header><div id="library-root"></div></section><section id="page-voice" hidden><header><p class="eyebrow">SPEAK, SHAPE, REMEMBER</p><h1>Voice</h1><p>Dictation, your words, and meeting notes in one place.</p></header></section>
       <section id="page-studio" hidden><header><p class="eyebrow">YOUR WORKSPACE, CONNECTED</p><h1>Connection health & studio</h1><p>Check your setup, choose models for each task, and shape your notch.</p></header><div id="studio-root"></div></section>
     </main>
     <script src="lib/locale-catalog.js"></script>
@@ -437,5 +437,5 @@
 <script src="everyday-ui.js"></script>
 <script src="personality-ui.js"></script>
 <script src="lib/audio.js"></script><script src="lib/studio.js"></script><script src="studio-ui.js"></script>
-<script src="controls-ui.js"></script><script src="voice-workspace-ui.js"></script><script src="workspace-next-ui.js"></script></body>
+<script src="controls-ui.js"></script><script src="voice-workspace-ui.js"></script><script src="voice-advanced-ui.js"></script><script src="assistant-ui.js"></script><script src="workspace-next-ui.js"></script><script src="library-ui.js"></script><script src="companion-scenes-ui.js"></script><script src="connected-phone-ui.js"></script><script src="voice-setup-ui.js"></script><script src="meeting-review-ui.js"></script><script src="preview-editor-ui.js"></script><script src="next-ui.js"></script><script src="context-review-ui.js"></script><script src="readiness-ui.js"></script></body>
 </html>

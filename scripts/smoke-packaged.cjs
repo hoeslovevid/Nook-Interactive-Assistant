@@ -19,7 +19,7 @@ function run(command, args, options = {}, input = '') {
     child.stdout.on('data', chunk => { stdout += chunk; });
     child.stderr.on('data', chunk => { stderr += chunk; });
     child.on('error', reject);
-    const timeout = setTimeout(() => { child.kill(); reject(new Error('Packaged smoke test timed out')); }, 30000);
+    const timeout = setTimeout(() => { child.kill(); reject(new Error('Packaged smoke test timed out')); }, 45000);
     child.on('close', code => { clearTimeout(timeout); resolve({ code, stdout, stderr }); });
     child.stdin.end(input);
   });
@@ -32,12 +32,16 @@ function run(command, args, options = {}, input = '') {
   }
   for(const file of ['studio-ui.js','studio.css','island.css','lib/studio.js','lib/studio-main.js','lib/studio-store.js','lib/wake-listener.js','lib/windows-wake.ps1','lib/windows-foreground.ps1','lib/foreground.js','lib/spotify.js','lib/phone-certificate.js'])assert.ok(fs.existsSync(path.join(appDir,file)),'Missing studio resource: '+file);
   for(const file of ['controls-ui.js','controls.css','workspace-next-ui.js','workspace-next.css','voice-workspace-ui.js','notch-next-ui.js','flow-pill.html','flow-pill.css','flow-pill.js','lib/flow-main.js','lib/voice-workspace.js','lib/offline-speech.js','lib/windows-flow.ps1','lib/offline-extract.ps1'])assert.ok(fs.existsSync(path.join(appDir,file)),'Missing voice resource: '+file);
+  for(const file of ['library-ui.js','library.css','recovery-chat-ui.js','lib/library-data.js','lib/library-main.js','lib/document-reader.js','lib/document-worker.js','lib/windows-library.ps1','node_modules/pdfjs-dist/legacy/build/pdf.mjs','node_modules/pdfjs-dist/standard_fonts/LiberationSans-Regular.ttf','node_modules/pdfjs-dist/cmaps/78-EUC-H.bcmap','node_modules/fflate/package.json','node_modules/ignore/package.json'])assert.ok(fs.existsSync(path.join(appDir,file)),'Missing library resource: '+file);
+  for(const file of ['ios-notch.css','assistant-ui.js','connected-phone-ui.js','companion-scenes-ui.js','voice-advanced-ui.js','lib/conversation-assistant.js','lib/phone-relay.js','lib/native-speech.js','lib/native-speech-assets.json','lib/native-speech-NOTICE.md','lib/speaker-transcript.js','lib/voice-statistics.js','node_modules/bonjour-service/package.json'])assert.ok(fs.existsSync(path.join(appDir,file)),'Missing modern companion resource: '+file);
+  for(const file of ['voice-setup-ui.js','meeting-review-ui.js','preview-editor-ui.js','next-ui.js','context-review-ui.js','readiness-ui.js','lib/model-routing.js','lib/meeting-tools.js','lib/notch-layout.js'])assert.ok(fs.existsSync(path.join(appDir,file)),'Missing refinement resource: '+file);
   assert.ok(!fs.existsSync(path.join(appDir, 'test')), 'Tests should not ship');
   for (const file of ['experience.css','experience-settings-ui.js','experience-notch-ui.js','model-setup-ui.js','notch-preview-ui.js','command-palette-ui.js','lib/experience-store.js','lib/chat-session.js','lib/lifelike.js','lib/speech-output.js','lib/windows-voice-output.ps1','notch-modern.css', 'app-modern.css', 'light-theme.css', 'app-modern.js', 'lib/appearance.js', 'lib/ui-icons.js', 'lib/workbench.js', 'lib/chat-transport.js', 'lib/attachments.js', 'lib/model-discovery.js', 'lib/provider-guides.js', 'lib/chat-memory.js', 'lib/history-tail.js']) assert.ok(fs.existsSync(path.join(appDir, file)), `Missing modern UI resource: ${file}`);
   assert.ok(!fs.existsSync(path.join(appDir, 'assets/previews')), 'Previews should not ship');
   for(const file of ['everyday-ui.js','everyday.css','personality-ui.js','lib/everyday.js','lib/everyday-store.js','lib/attachment-tray.js','lib/fullscreen.js','lib/windows-fullscreen.ps1'])assert.ok(fs.existsSync(path.join(appDir,file)),'Missing everyday resource: '+file);
   for (const file of ['usage-ui.js','voice-language-ui.js','custom-agent-ui.js','companion-extras.css','hooks/nook-custom-hook.js','lib/custom-agents.js','lib/handoff-policy.js','rich-chat.css','service-cards.css','sound-settings.css','localization.css','lib/rich-markdown.js','lib/chat-handoff.js','lib/locale.js','lib/locale-catalog.js','lib/Coucou-Translation-LICENSE.txt','lib/service-cards.js','lib/sound-player.js','lib/sound-settings.js','lib/credential-store.js','lib/windows-credentials.ps1','lib/windows-terminal-focus.ps1','lib/windows-process-chain.ps1','lib/terminal-focus.js','assets/terminal-helper.vsix']) assert.ok(fs.existsSync(path.join(appDir,file)), 'Missing feature resource: '+file);
   fs.mkdirSync(data, { recursive: true });
+  fs.writeFileSync(path.join(data,'document-smoke.pdf'),require('../test/fixtures/documents.cjs').pdf('Packaged PDF source references'));
   const original = fs.readFileSync(manifest, 'utf8');
   const config = JSON.parse(original);
   config.main = 'smoke.cjs';
@@ -61,7 +65,8 @@ function run(command, args, options = {}, input = '') {
       const windows = BrowserWindow.getAllWindows();
       const pages = await Promise.all(windows.map(window => window.webContents.executeJavaScript('({title: document.title, ready: document.readyState, text: document.body.innerText.length, brandCount: document.querySelectorAll(".brand-logo").length, images: [...document.querySelectorAll(".brand-logo")].every(image => image.complete && image.naturalWidth > 0)})').catch(error => { errors.push(error.message); return {}; })));
       const media = await require('./lib/native').media();
-      fs.writeFileSync(process.env.NOOK_SMOKE_RESULT, JSON.stringify({windows: windows.length, pages, errors, media}));
+      let document;try{document=await require('./lib/document-reader').readDocument(require('path').join(data,'document-smoke.pdf'));}catch(error){errors.push(error.message);}
+      fs.writeFileSync(process.env.NOOK_SMOKE_RESULT, JSON.stringify({windows: windows.length, pages, errors, media, document}));
       app.quit();
     }, 6500);
   `);
@@ -77,7 +82,8 @@ function run(command, args, options = {}, input = '') {
     assert.ok(result.pages.some(page => page.brandCount === 1), 'Settings should show the logo');
     assert.ok(result.pages.some(page => page.text > 0), 'Settings should render visible content');
     assert.equal(result.media.ok, true, 'Packaged Windows media script should execute');
-    console.log('Packaged startup, pages, resources, and native media passed');
+    assert.ok(result.document.pages[0].text.includes('Packaged PDF source references'),'Packaged PDF worker and local fonts should work');
+    console.log('Packaged startup, PDF worker, local fonts, pages, resources, and native media passed');
   } finally {
     fs.writeFileSync(manifest, original);
     fs.unlinkSync(wrapper);

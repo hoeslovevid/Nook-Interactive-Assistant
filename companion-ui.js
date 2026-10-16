@@ -17,7 +17,7 @@ let musicState = {},
   voiceStarting = false,
   voiceGeneration = 0;
 const microphoneSelect = featureNode('voice-device');
-let microphoneId = '';
+let microphoneId = '',voiceSpeechConfig=null;
 try { microphoneId = localStorage.getItem('nook-microphone') || ''; } catch {}
 function microphoneOptions(devices) {
   microphoneSelect.replaceChildren(new Option('Windows default', ''));
@@ -31,9 +31,10 @@ async function refreshMicrophones() {
   try { microphoneOptions(await navigator.mediaDevices.enumerateDevices()); }
   catch { featureMessage('Could not list microphones. Check Windows microphone permissions, then retry.'); }
 }
-microphoneSelect.addEventListener('change', () => {
-  microphoneId = microphoneSelect.value;
-  try { localStorage.setItem('nook-microphone', microphoneId); } catch {}
+microphoneSelect.addEventListener('change', async () => {
+  const selected=microphoneSelect.value,result=await window.nook.flow('save',{microphoneId:selected});
+  if(!result.ok){microphoneSelect.value=microphoneId;featureMessage(result.error);return;}
+  microphoneId=selected;try{localStorage.setItem('nook-microphone',microphoneId);}catch{}
 });
 featureNode('voice-devices-refresh').addEventListener('click', refreshMicrophones);
 featureNode('voice-configure').addEventListener('click', () => window.nook.openApp('companion'));
@@ -151,6 +152,7 @@ featureNode("window-button").addEventListener("click", async () => {
           const capture = await window.nook.captureWindow(source.id);
           if (!capture.ok) throw new Error(capture.error);
           featureNode("window-picker").hidden = true;
+          if(capture.preview){await window.NookContextReview.open(capture.id);return;}
           previewAttachment(capture);
           featureMessage(
             "Screenshot attached. Review it, then send your question.",
@@ -214,7 +216,7 @@ async function stopVoice(cancel = false) {
     if (count < rate * 0.25) { featureMessage("Recording too short. Try again."); return; }
     featureMessage("Transcribing…");
     const result = await window.nook.transcribe(
-      window.NookAudio.encodeWav(state?.features?.companion?.voice === "offline" ? window.NookAudio.resample(samples, rate) : samples, state?.features?.companion?.voice === "offline" ? 16000 : rate),
+      window.NookAudio.encodeWav(state?.features?.companion?.voice === "offline" ? window.NookAudio.resample(samples, rate) : samples, state?.features?.companion?.voice === "offline" ? 16000 : rate),voiceSpeechConfig,
     );
     if (!result.ok) throw new Error(result.error);
     if (result.text) {
@@ -252,12 +254,12 @@ async function startVoice() {
   window.nook.focusWindow();
   try {
     // Speech setup is independent of microphone hardware. Diagnose it before recording.
-    const companion = state?.features?.companion || {};
-    if (companion.voice !== 'openai') {
+    const companion = state?.features?.companion || {};voiceSpeechConfig={engine:state?.flow?.settings.engine,language:state?.flow?.settings.language,microphoneId:state?.flow?.settings.microphoneId};
+    if (companion.voice === 'windows') {
       const speech = await window.nook.speechLanguages();
       if (!speech.ok || !speech.languages?.length) throw Object.assign(new Error(speech.error || 'Windows dictation is not installed. Add a Windows speech language, or choose OpenAI dictation in Companion & devices.'), {name:'SpeechSetupError'});
       if (companion.voiceLanguage && companion.voiceLanguage !== 'auto' && !speech.languages.some(language => language.id === companion.voiceLanguage)) throw Object.assign(new Error('Your dictation language is not installed. Choose an installed language or Automatic in Companion & devices.'), {name:'SpeechSetupError'});
-    } else if (!state?.keys?.chatgpt) throw Object.assign(new Error('OpenAI dictation needs an OpenAI API key. Save it in Models & connections, or choose Windows dictation in Companion & devices.'), {name:'SpeechSetupError'});
+    } else if (companion.voice==='openai'&&!state?.keys?.chatgpt) throw Object.assign(new Error('OpenAI dictation needs an OpenAI API key. Save it in Models & connections, or choose Windows dictation in Companion & devices.'), {name:'SpeechSetupError'});
     if (generation !== voiceGeneration) return;
     voiceStream = await window.NookAudio.openMicrophone(navigator.mediaDevices, microphoneId);
     if (generation !== voiceGeneration) {releaseVoiceResources();return;}
@@ -333,3 +335,5 @@ window.addEventListener("beforeunload", () => {
 });
 
 window.nook.onState(next=>{if(next.flow?.current&&['starting','recording','transcribing'].includes(next.flow.current.phase)&&(recording||voiceStarting))stopVoice(true);});
+
+window.nook.onState(next=>{const selected=next.flow?.settings.microphoneId;if(typeof selected==='string'&&!recording){microphoneId=selected;if(document.activeElement!==microphoneSelect&&[...microphoneSelect.options].some(o=>o.value===selected))microphoneSelect.value=selected;}});

@@ -1,4 +1,4 @@
-param([string]$Language='auto')
+param([string]$Language='auto',[switch]$FollowUp)
 $ErrorActionPreference='Stop'
 [Console]::OutputEncoding=[System.Text.UTF8Encoding]::new($false)
 $engine=$null
@@ -15,14 +15,14 @@ try {
   $engine.SetInputToDefaultAudioDevice()
   Register-ObjectEvent -InputObject $engine -EventName SpeechRecognized -SourceIdentifier NookRecognized | Out-Null
   $engine.RecognizeAsync([System.Speech.Recognition.RecognizeMode]::Multiple)
-  $until=[DateTime]::MinValue;Send-NookEvent @{type='ready'}
+  $until=if($FollowUp){[DateTime]::UtcNow.AddSeconds(20)}else{[DateTime]::MinValue};if($FollowUp){$dictation.Enabled=$true};Send-NookEvent @{type='ready'}
   while($true){
     $event=Wait-Event -SourceIdentifier NookRecognized -Timeout 1
     if($event){$result=$event.SourceEventArgs.Result;Remove-Event -EventIdentifier $event.EventIdentifier
       if($result.Grammar.Name -eq 'wake' -and $result.Confidence -ge .65){$until=[DateTime]::UtcNow.AddSeconds(10);$dictation.Enabled=$true;Send-NookEvent @{type='wake'}}
       elseif($until -gt [DateTime]::UtcNow -and $result.Grammar.Name -eq 'dictation' -and $result.Confidence -ge .45){$dictation.Enabled=$false;$until=[DateTime]::MinValue;Send-NookEvent @{type='text';text=$result.Text}}
     }
-    if($until -ne [DateTime]::MinValue -and $until -le [DateTime]::UtcNow){$dictation.Enabled=$false;$until=[DateTime]::MinValue;Send-NookEvent @{type='idle'}}
+    if($until -ne [DateTime]::MinValue -and $until -le [DateTime]::UtcNow){$dictation.Enabled=$false;$until=[DateTime]::MinValue;Send-NookEvent @{type='idle'};if($FollowUp){break}}
   }
 }catch{Send-NookEvent @{type='error'}}
 finally{Unregister-Event -SourceIdentifier NookRecognized -ErrorAction SilentlyContinue;if($engine){$engine.RecognizeAsyncCancel();$engine.Dispose()}}

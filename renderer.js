@@ -43,6 +43,7 @@ const providerDrafts = new Map(), providerScrolls = new Map();
 function switchChatProvider(id) {
   if (!PROVIDER_NAMES.includes(id)) return;
   if (provider !== id) {
+    window.NookDrafts?.capture(provider,chatInput.value);
     providerDrafts.set(provider, chatInput.value);
     providerScrolls.set(provider, transcript.scrollTop);
     provider = id;
@@ -82,6 +83,7 @@ function updateCompanion() {
   if (state) window.NookCompanion.agentColor(seed, state, selectedSession);
   seed.dataset.mood = window.NookMotion.companionMood({task:activeSession && activeSession.task,pending:waiting(),drop:island.classList.contains("is-drop"),receiving,thinking:sending||Boolean(state?.chatBusy||state?.comparison?.busy),celebrating,dancing:Boolean(state?.features?.music?.playing),working,hover:hovering||welcome,sleeping:!chatting&&!welcome&&!working&&!hovering&&!held&&!pinned&&!expanded});
   document.body.classList.toggle("is-thinking", sending);
+  if(!waiting()&&!receiving&&state?.flow?.current&&['starting','recording','transcribing'].includes(state.flow.current.phase))seed.dataset.mood=state.flow.current.phase==='transcribing'?'thinking':'listening';
   if (state?.demoMood) seed.dataset.mood = state.demoMood;
   for (const canvas of document.querySelectorAll('.focus-pet,.task-pet')) {
     canvas.dataset.mood = seed.dataset.mood;
@@ -951,7 +953,7 @@ async function runChatAction(action, text, messageId) {
   }catch{chatError='Could not connect. Please try again.';if(['send','retry'].includes(action)&&!chatInput.value)chatInput.value=retryText||'';playSound('error');}
   finally{sending=false;providerSelect.disabled=false;sendButton.disabled=false;sendButton.textContent='↑';paint();window.NookChatControls?.paint(state);if(chatError)document.querySelector('#chat-error-panel').scrollIntoView({block:'nearest'});}
 }
-chatForm.addEventListener('submit',event=>{event.preventDefault();const text=chatInput.value.trim();if(!text||sending)return;chatInput.value='';runChatAction('send',text);});
+chatForm.addEventListener('submit',event=>{event.preventDefault();const text=chatInput.value.trim();if(!text||sending)return;chatInput.value='';window.NookDrafts?.capture(provider,'');runChatAction('send',text);});
 
 const API_RECOVERY = {
   billing:{label:'Check API billing',url:'https://platform.openai.com/settings/organization/billing'},

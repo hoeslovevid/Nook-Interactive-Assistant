@@ -6,8 +6,8 @@ async function saveCompanion(patch) {
     companionConfig = await window.nook.saveCompanion(patch);
     paintCompanionSettings();
     featureSelect("wardrobe-note").textContent = "Saved. Nook is ready.";
-  } catch (_) {
-    featureSelect("wardrobe-note").textContent = "Could not save. Try again.";
+  } catch (error) {
+    paintCompanionSettings();featureSelect("voice-service-note").textContent=error.message||"Could not save. Try again.";featureSelect("wardrobe-note").textContent = "Could not save. Try again.";
   }
 }
 const outfitLabels = {

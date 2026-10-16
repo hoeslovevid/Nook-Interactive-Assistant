@@ -75,7 +75,13 @@ const { finalFromTranscript } = require("./lib/transcript");
 const { LANGUAGES, translate } = require("./lib/i18n");
 const { pluginSource, ampSource, hermesManifest } = require("./lib/plugins");
 const { recentMessages } = require('./lib/chat-memory');
-const { completeChat } = require("./lib/chat-transport");
+const { completeChat: rawCompleteChat } = require("./lib/chat-transport");
+let libraryKit;
+async function completeChat(provider,key,history,options={},onDelta,transport){
+  const start=Date.now();let ok=false,usage={input:null,output:null,cached:null};
+  try{const result=await rawCompleteChat(provider,key,history,{...options,onUsage(next){for(const field of ['input','output','cached'])if(next[field]!=null)usage[field]=next[field];options.onUsage?.(next);}},onDelta,transport);ok=true;return result;}
+  finally{libraryKit?.recordUsage({provider,model:options.model||'',ms:Date.now()-start,ok,...usage});}
+}
 const { createChatSession } = require('./lib/chat-session');
 const { createExperienceStore } = require('./lib/experience-store');
 const { aggregateMetrics, backgroundDelay } = require('./lib/performance');
@@ -145,8 +151,8 @@ const chatSession = createChatSession({messages,complete:completeChat,getSetting
   if(!Object.hasOwn(PROVIDERS,provider))throw new Error('Unknown chat provider.');
   const spec=PROVIDERS[provider],key=readKeys()[provider];if(['bearer','anthropic'].includes(spec.auth)&&!key)throw new Error('Save a '+spec.label+' API key first.');
   const models=readModels();return {key,model:models[provider],url:provider==='ollama'?models.ollamaUrl:provider==='lmstudio'?models.lmstudioUrl:models.customUrl,greeting:displayName,context:studioKit?.context(provider)};
-},onChange(){chatBusyProviders.clear();for(const id of chatSession.busyProviders())chatBusyProviders.add(id);if(!chatBusyProviders.size)everydayKit?.checkpoint(messages);broadcast();},onSent(provider,model){handoffUndo.delete(provider);experienceKit?.recent(provider,model);},onDone(reply){
-  celebrate++;
+},onChange(){libraryKit?.checkpointReplies(messages);chatBusyProviders.clear();for(const id of chatSession.busyProviders())chatBusyProviders.add(id);if(!chatBusyProviders.size)everydayKit?.checkpoint(messages);broadcast();},onSent(provider,model){handoffUndo.delete(provider);experienceKit?.recent(provider,model);},onDone(reply){
+  libraryKit?.completed(reply.provider);celebrate++;
   everydayKit?.notice({kind:'chat',id:reply.id,title:PROVIDERS[reply.provider].label+' replied',agent:reply.provider});
   const prefs=experienceKit?.snapshot().settings,alerts=workspaceKit?.snapshot().settings;
   if(prefs?.spokenReplies&&!readPrefs().muted&&!isQuiet(alerts)&&!alerts?.mutedAgents?.includes(reply.provider))speechKit?.speak({text:reply.content,voice:prefs.speechVoice,rate:prefs.speechRate});
@@ -184,6 +190,7 @@ const DEFAULT_SHORTCUTS = {
   prev: "CommandOrControl+Shift+Alt+Left",
   toggle: "CommandOrControl+Shift+Alt+O",
   diff: "CommandOrControl+Shift+Alt+E",
+  selection: "CommandOrControl+Shift+Alt+S",
 };
 const DEFAULT_COLORS = {
   claude: "#d4a574",
@@ -209,15 +216,7 @@ app.setAppUserModelId("com.nook.companion");
 let cardHeight = 360;
 
 function windowSize(nextMode) {
-  const content = { ...(SIZES[nextMode] || SIZES.asleep) };
-  if (nextMode === "open") {
-    content.height = cardHeight;
-    content.width = everydayKit?.snapshot().layouts[String(chosenDisplay().id)]?.width || readLook().notchWidth;
-  }
-  return {
-    width: content.width + content.gutterX * 2,
-    height: content.height + content.gutterBottom,
-  };
+ const display=chosenDisplay(),look=readLook();return require('./lib/notch-layout').dimensions({mode:nextMode,width:everydayKit?.snapshot().layouts[String(display.id)]?.width||look.notchWidth,peekWidth:look.peekWidth,height:cardHeight,zoom:win&&!win.isDestroyed()?win.webContents.getZoomFactor():1,maxWidth:display.bounds.width,maxHeight:display.workArea.y+display.workArea.height-display.bounds.y});
 }
 
 function displayUnderCursor() {
@@ -351,6 +350,7 @@ function createWindow() {
   win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
   Menu.setApplicationMenu(null);
 
+  win.webContents.on("zoom-changed",()=>{setImmediate(()=>animateTo(mode));});
   win.once("ready-to-show", () => {
     if (!win || win.isDestroyed()) {
       return;
@@ -924,7 +924,7 @@ function readPrefs() {
   return {
     language: [...LANGUAGES, "system"].includes(saved.language) ? saved.language : "system",
     resolvedLanguage: locale.resolveLanguage(saved.language || "system", app.getLocale()),
-    muted: Boolean(saved.muted),
+    openAppOnLaunch:saved.openAppOnLaunch!==false,muted: Boolean(saved.muted),
     shortcuts,
     colors,
     n8nUrl: cleanServiceUrl(saved.n8nUrl) || "http://127.0.0.1:5678",
@@ -956,6 +956,7 @@ function writePrefs(patch) {
   if ([...LANGUAGES, "system"].includes(source.language)) {
     next.language = source.language;
   }
+  if(typeof source.openAppOnLaunch==='boolean')next.openAppOnLaunch=source.openAppOnLaunch;
   if (typeof source.muted === "boolean") {
     next.muted = source.muted;
   }
@@ -1307,6 +1308,7 @@ function registerShortcuts() {
     prev: () => sendIsland("prev"),
     toggle: () => sendIsland("toggle"),
     diff: () => sendIsland("diff"),
+    selection: () => libraryKit?.captureSelection(),
   };
   for (const [name, accelerator] of Object.entries(shortcuts)) {
     const action = actions[name];
@@ -1480,7 +1482,7 @@ function currentState() {
     github,
     githubBadge,
     paused,
-    experience: experienceKit?.snapshot(), everyday: everydayKit?.snapshot(), studio:studioKit?.snapshot(), flow:flowKit?.snapshot(), currentDisplay:String(chosenDisplay().id), comparison, runtime: runtimeMode(), speech: speechKit?.snapshot(),
+    experience: experienceKit?.snapshot(), everyday: everydayKit?.snapshot(), studio:studioKit?.snapshot(), flow:flowKit?.snapshot(), library:libraryKit?.snapshot(), currentDisplay:String(chosenDisplay().id), comparison, runtime: runtimeMode(), speech: speechKit?.snapshot(),
     greeting: displayName,
     recap: historyTail.recap(historyPath(), summarizeHistory),
     strings,
@@ -1649,7 +1651,7 @@ app.on("second-instance", () => {
 
 if (gotLock) {
   app.whenReady().then(async () => {
-    credentialKit = require('./lib/credential-store').createCredentialStore({ directory: app.getPath('userData'), providers: [...Object.keys(PROVIDERS), ...SERVICES, 'update-access', 'phone-relay', 'spotify-oauth'], decrypt: value => safeStorage.decryptString(Buffer.from(value, 'base64')) });
+    credentialKit = require('./lib/credential-store').createCredentialStore({ directory: app.getPath('userData'), providers: [...Object.keys(PROVIDERS), ...SERVICES, 'update-access', 'phone-relay', 'spotify-oauth', 'brave-search', 'remote-relay'], decrypt: value => safeStorage.decryptString(Buffer.from(value, 'base64')) });
     await credentialKit.init();
     customAgents = require("./lib/custom-agents").createCustomAgents(app.getPath("userData"));
     soundKit = require("./lib/sound-settings").createSoundSettings(app.getPath("userData"));
@@ -1670,9 +1672,9 @@ if (gotLock) {
     });
     pushBridge = require('./lib/phone-push').createPushBridge({ directory: app.getPath('userData'), getSettings: () => workspaceKit.snapshot().settings, getSecret: () => readKeys()['phone-relay'],
       encrypt: text => { if (!safeStorage.isEncryptionAvailable()) throw new Error(); return safeStorage.encryptString(text).toString('base64'); }, decrypt: text => safeStorage.decryptString(Buffer.from(text, 'base64')) });
-    powerMonitor.on('lock-screen', () => { flowKit?.suspend();studioKit?.suspend();pushBridge.lock(true); broadcast(); }); powerMonitor.on('unlock-screen', () => { studioKit?.resume();flowKit?.resume();pushBridge.lock(false); broadcast(); });
+    powerMonitor.on('lock-screen', () => { featureKit?.clearContextPreviews();flowKit?.suspend();studioKit?.suspend();pushBridge.lock(true); broadcast(); }); powerMonitor.on('unlock-screen', () => { studioKit?.resume();flowKit?.resume();pushBridge.lock(false); broadcast(); });
     const phoneCertificate=require('./lib/phone-certificate').createPhoneCertificate({directory:app.getPath('userData'),encrypt:value=>{if(!safeStorage.isEncryptionAvailable())throw new Error('Secure phone pairing requires Windows encryption.');return safeStorage.encryptString(value).toString('base64');},decrypt:value=>safeStorage.decryptString(Buffer.from(value,'base64'))});
-    featureKit = installFeatures({ app, ipcMain, desktopCapturer, clipboard, getState: currentState, getRuntime: runtimeMode, readVoiceKey: () => readKeys().chatgpt, decide: handleDecision, broadcast, setAttachment: addAttachment, onDraft: () => navigateSettings('companion'), serviceDetail: readServiceDetail, serviceAction: (id, input) => serviceDetails.act(id, input), registerDevice: input => pushBridge.register(input), revokeDevices: () => pushBridge.revoke(), historySearch: query => workspaceKit.search(query), historyDetail: id => workspaceKit.detail(id), phoneChat:(provider,text,device)=>studioKit?.phoneChat(provider,text,device),forgetPhone:device=>studioKit?.forgetPhone(device),getPhoneTls:()=>phoneCertificate.load(), transcribeOffline:bytes=>flowKit?.transcribeOffline(bytes) });
+    featureKit = installFeatures({ app, ipcMain, desktopCapturer, clipboard, getState: currentState, getRuntime: runtimeMode, unifiedSpeech:bytes=>flowKit?.transcribeBuffer(bytes),getSpeechSettings:()=>flowKit?.settings(),saveSpeech:patch=>flowKit?.saveSpeech(patch),readVoiceKey: () => readKeys().chatgpt,readRelayKey:()=>readKeys()['remote-relay'], decide: handleDecision, broadcast, setAttachment: addAttachment, onDraft: () => navigateSettings('companion'), serviceDetail: readServiceDetail, serviceAction: (id, input) => serviceDetails.act(id, input), registerDevice: input => pushBridge.register(input), revokeDevices: () => pushBridge.revoke(), historySearch: query => workspaceKit.search(query), historyDetail: id => workspaceKit.detail(id), phoneChat:(provider,text,device)=>studioKit?.phoneChat(provider,text,device),forgetPhone:device=>studioKit?.forgetPhone(device),getPhoneTls:()=>phoneCertificate.load(), transcribeOffline:bytes=>flowKit?.transcribeOffline(bytes) });
     updateKit = createUpdateController({app, updater: app.isPackaged && process.platform === 'win32' ? require('electron-updater').autoUpdater : null, onChange: broadcast, getToken: () => readKeys()['update-access'] || '',
       async confirmRestart() {
         const busy = pending.length || chatBusyProviders.size || [...sessions.values()].some(session => !session.finished);
@@ -1712,15 +1714,22 @@ if (gotLock) {
     focusTimer=setInterval(()=>{try{const expired=++retentionTicks%3600===0&&everydayKit.expire();if(everydayKit.tick()){celebrate++;broadcast();}else if(expired)broadcast();}catch{}},1000);focusTimer.unref();
     setupDisplayBehavior();
     speechKit = createSpeechOutput({onChange:broadcast});
-    studioKit=require('./lib/studio-main').installStudio({app,ipcMain,broadcast,getState:currentState,readKeys,readModels,writeModels,complete:completeChat,discover:(provider,refresh)=>modelDiscovery.discover(provider,readModels(),readKeys()[provider],refresh),messages,chatSession,everyday:everydayKit,experience:experienceKit,speech:speechKit,features:()=>featureKit.snapshot(),credential:credentialKit,encrypt:text=>{if(!safeStorage.isEncryptionAvailable())throw new Error('Windows encryption is unavailable.');return safeStorage.encryptString(text).toString('base64');},decrypt:text=>safeStorage.decryptString(Buffer.from(text,'base64')),openUrl:url=>shell.openExternal(url),showChat(provider,command){showNook();win?.webContents.send('nook:command','provider:'+provider);if(command)win?.webContents.send('nook:command',command);},showService:id=>{showNook();win?.webContents.send('nook:command','service:'+id);},applyProfile,followDisplay(){if(win?.isFocused()||currentState().pending)return String(screen.getDisplayMatching(win?.getBounds()||screen.getPrimaryDisplay().bounds).id);const desired=targetBounds(mode);if(!boundsNow||boundsNow.x!==desired.x||boundsNow.y!==desired.y)animateTo(mode);return String(chosenDisplay().id);},controlMedia:action=>featureKit.controlMedia(action),foreground:require('./lib/foreground').createForegroundWatcher()});
+    studioKit=require('./lib/studio-main').installStudio({app,ipcMain,broadcast,getState:currentState,readKeys,readModels,writeModels,complete:completeChat,discover:(provider,refresh)=>modelDiscovery.discover(provider,readModels(),readKeys()[provider],refresh),messages,chatSession,everyday:everydayKit,experience:experienceKit,speech:speechKit,features:()=>featureKit.snapshot(),credential:credentialKit,encrypt:text=>{if(!safeStorage.isEncryptionAvailable())throw new Error('Windows encryption is unavailable.');return safeStorage.encryptString(text).toString('base64');},decrypt:text=>safeStorage.decryptString(Buffer.from(text,'base64')),openUrl:url=>shell.openExternal(url),showChat(provider,command){showNook();win?.webContents.send('nook:command','provider:'+provider);if(command)win?.webContents.send('nook:command',command);},showService:id=>{showNook();win?.webContents.send('nook:command','service:'+id);},applyProfile,followDisplay(){if(win?.isFocused()||currentState().pending)return String(screen.getDisplayMatching(win?.getBounds()||screen.getPrimaryDisplay().bounds).id);const desired=targetBounds(mode);if(!boundsNow||boundsNow.x!==desired.x||boundsNow.y!==desired.y)animateTo(mode);return String(chosenDisplay().id);},startVoice:send=>flowKit.startAssistant(send),controlMedia:action=>featureKit.controlMedia(action),foreground:require('./lib/foreground').createForegroundWatcher()});
     for(const event of ['on-battery','on-ac'])powerMonitor.on(event,()=>{broadcast();refreshBackground();});
-    flowKit=require('./lib/flow-main').installFlow({app,ipcMain,BrowserWindow,screen,dialog,clipboard,broadcast,getState:currentState,complete:completeChat,chatOptions:provider=>({...readModels(),key:readKeys()[provider],model:readModels()[provider],url:provider==='ollama'?readModels().ollamaUrl:provider==='lmstudio'?readModels().lmstudioUrl:readModels().customUrl}),encrypt:text=>{if(!safeStorage.isEncryptionAvailable())throw new Error('Windows encryption is unavailable.');return safeStorage.encryptString(text).toString('base64');},decrypt:text=>safeStorage.decryptString(Buffer.from(text,'base64')),suspendWake:()=>studioKit?.suspend(),resumeWake:()=>studioKit?.resume()});
-    powerMonitor.on('suspend',()=>{suspended=true;speechKit.stop();flowKit?.suspend();studioKit?.suspend?.();broadcast();});
+    flowKit=require('./lib/flow-main').installFlow({app,ipcMain,BrowserWindow,screen,dialog,clipboard,broadcast,getState:currentState,complete:completeChat,chatOptions:provider=>({...readModels(),key:readKeys()[provider],model:readModels()[provider],url:provider==='ollama'?readModels().ollamaUrl:provider==='lmstudio'?readModels().lmstudioUrl:readModels().customUrl}),encrypt:text=>{if(!safeStorage.isEncryptionAvailable())throw new Error('Windows encryption is unavailable.');return safeStorage.encryptString(text).toString('base64');},decrypt:text=>safeStorage.decryptString(Buffer.from(text,'base64')),suspendWake:()=>studioKit?.pauseWake(),resumeWake:()=>studioKit?.resumeWake(),onTranscript:current=>{if(current.kind!=='assistant')libraryKit?.checkpointVoice(current);},onAssistant:(text,options)=>studioKit.voiceTranscript(text,options),transcribeCloud:(bytes,language,signal)=>featureKit.transcribeCloud(bytes,language,signal)});
+    libraryKit=require('./lib/library-main').installLibrary({app,ipcMain,dialog,broadcast,getState:currentState,encrypt:text=>{if(!safeStorage.isEncryptionAvailable()||safeStorage.getSelectedStorageBackend?.()==='basic_text')throw new Error('Secure Windows storage is unavailable.');return safeStorage.encryptString(text).toString('base64');},decrypt:text=>safeStorage.decryptString(Buffer.from(text,'base64')),addAttachment,showLibrary:()=>navigateSettings('library'),showChat:(draft,provider,kind)=>{showNook();if(provider)win?.webContents.send('nook:command','provider:'+provider);else win?.webContents.send('nook:open-chat');if(draft)win?.webContents.send('nook:command',(kind==='source'?'source-draft:':kind==='restore'?'restore-draft:':'draft:')+draft);},restoreVoice:(text,title)=>{flowKit.restore(text,title);navigateSettings('voice');},task:title=>everydayKit.task('add',{title}),applyPack:async pack=>{
+      if(chatBusyProviders.size||pending.length)throw new Error('Finish the current reply or waiting approval before importing preferences.');
+      const before=require('./lib/library-data').portable(currentState(),'settings');
+      const apply=value=>{writeLook(value.look);experienceKit.save(value.experience);studioKit.saveLayout(value.layout);if(value.profile){writeModels(value.profile.models);writePrefs(value.profile.prefs);workspaceKit.save(value.profile.alerts);}};
+      try{apply(pack);}catch(error){try{apply(before);}catch{}throw error;}
+      applyLookEverywhere();registerShortcuts();refreshTray();refreshBackground(false);animateTo(mode);broadcast();
+    }});
+    powerMonitor.on('suspend',()=>{suspended=true;featureKit?.clearContextPreviews();speechKit.stop();flowKit?.suspend();studioKit?.suspend?.();broadcast();});
     powerMonitor.on('resume',()=>{suspended=false;studioKit?.resume();flowKit?.resume();refreshBackground();broadcast();});
     createWindow();
     createTray();
 
-    openApp();
+    if(readPrefs().openAppOnLaunch&&!process.argv.includes('--background')&&!app.getLoginItemSettings().wasOpenedAtLogin)openApp();
     execFile(
       "powershell.exe",
       ["-NoProfile", "-Command", "([adsi]\"WinNT://$env:USERDOMAIN/$env:USERNAME,user\").FullName"],
@@ -1802,7 +1811,7 @@ ipcMain.on("nook:quit", () => {
 });
 
 ipcMain.on("nook:open-app", (_event, page) => {
-  if (["voice","studio","home","keys","look","agents","workspace","companion","updates","performance","shortcuts","week","everyday"].includes(page)) navigateSettings(page);
+  if (["voice","studio","home","keys","look","agents","workspace","companion","updates","performance","shortcuts","week","everyday","library"].includes(page)) navigateSettings(page);
   else openApp();
 });
 
@@ -1921,6 +1930,7 @@ ipcMain.handle("nook:save-model", (_event, patch) => {
 function addAttachment(file) {const added=attachmentTray.add(file);attachment=added;return added;}
 function attachPath(filePath) {
   try {
+    if(typeof filePath==='string'&&/\.(pdf|docx)$/i.test(filePath))throw new Error('Open Sources in chat or Library & tools to preview and attach PDF or Word pages.');
     addAttachment(require('./lib/attachments').readAttachment(filePath)); broadcast();
     return { ok: true, name: attachment.name };
   } catch (error) { return { ok: false, error: error.code ? 'That file could not be read.' : error.message }; }
@@ -2323,14 +2333,14 @@ ipcMain.handle('nook:pet-drop', async (_event, point) => {
     const sources = await desktopCapturer.getSources({types: ['window'], thumbnailSize: {width: 0, height: 0}});
     const source = sources.find(source => source.id.split(':')[1] === hit.handle && !/^Nook(?:$| ·)/.test(source.name));
     if (!source) return { ok: true, moved: true };
-    const result = await featureKit.captureWindow(source.id);
-    if (result.ok) { showNook(); win.webContents.send('nook:open-chat'); }
+    const result = await featureKit.previewWindow(source.id);
+    if (result.ok) { showNook(); win.webContents.send('nook:open-chat');win.webContents.send('nook:command','context-preview:'+result.id); }
     return result;
   } finally { petDropBusy = false; }
 });
 
 app.on("before-quit", () => {
-  flowKit?.stop();studioKit?.stop();chatSession.dispose();comparisonAbort?.abort();speechKit?.stop();clearTimeout(backgroundTimer);clearInterval(focusTimer);fullscreenWatcher?.stop();
+  libraryKit?.stop();flowKit?.stop();studioKit?.stop();chatSession.dispose();comparisonAbort?.abort();speechKit?.stop();clearTimeout(backgroundTimer);clearInterval(focusTimer);fullscreenWatcher?.stop();
   workspaceKit?.stop();
   pushBridge?.stop();
   updateKit?.stop();
@@ -2421,7 +2431,8 @@ async function compareModels(input){
 ipcMain.handle('nook:everyday',async(event,{action,value}={})=>{
   if(!everydayKit)return {ok:false,error:'Nook is starting.'};
   try{
-    if(action==='save'){if(value&&Object.hasOwn(value,'paused'))fullscreenOverride=false;const next=everydayKit.save(value||{});if(next.settings.saveChats)everydayKit.checkpoint(messages);if(next.settings.hideFullscreen)fullscreenWatcher.start();else{fullscreenWatcher.stop();fullscreenDisplay='';}updateNotchVisibility();}
+    if(action==='snapshot')return {ok:true,...everydayKit.snapshot()};
+    else if(action==='save'){if(value&&Object.hasOwn(value,'paused'))fullscreenOverride=false;const next=everydayKit.save(value||{});if(next.settings.saveChats)everydayKit.checkpoint(messages);if(next.settings.hideFullscreen)fullscreenWatcher.start();else{fullscreenWatcher.stop();fullscreenDisplay='';}updateNotchVisibility();}
     else if(action==='request-select'){const at=pending.findIndex(item=>item.id===value);if(at<0)throw new Error('That request is no longer waiting.');const [item]=pending.splice(at,1);pending.unshift(item);}
     else if(action==='chat-window'){openChatWindow(value?.provider);return {ok:true};}
     else if(action==='draft'){if(typeof value!=='string'||value.length>2000)throw new Error('Enter a prompt of up to 2,000 characters.');showNook();win?.webContents.send('nook:command','draft:'+value);return {ok:true};}

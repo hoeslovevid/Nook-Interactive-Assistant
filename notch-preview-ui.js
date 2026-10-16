@@ -15,7 +15,7 @@
   const play=button('▶ Play scenes',()=>{playing=!playing;play.textContent=playing?'Pause scenes':'▶ Play scenes';play.setAttribute('aria-pressed',String(playing));schedule();});play.id='preview-play';controls.append(play);
   function schedule(){clearTimeout(timer);if(!playing||!visible||document.hidden)return;timer=setTimeout(()=>{const scenes=['idle','tasks','chat','approval','music'];mode=scenes[(scenes.indexOf(mode)+1)%scenes.length];collapsed=false;paint();schedule();},3200);}
   function paint(){
-    panel.dataset.collapsed=String(collapsed);panel.dataset.scene=mode;body.hidden=collapsed;toggle.textContent=collapsed?'+':'−';toggle.setAttribute('aria-label',collapsed?'Expand sample notch':'Collapse sample notch');toggle.setAttribute('aria-expanded',String(!collapsed));
+    panel.style.width=Math.min(100,Math.max(22,(collapsed?(lastState.look?.peekWidth||240):(lastState.everyday?.layouts?.[lastState.currentDisplay]?.width||lastState.look?.notchWidth||620))/8.2))+'%';panel.dataset.collapsed=String(collapsed);panel.dataset.scene=mode;body.hidden=collapsed;toggle.textContent=collapsed?'+':'−';toggle.setAttribute('aria-label',collapsed?'Expand sample notch':'Collapse sample notch');toggle.setAttribute('aria-expanded',String(!collapsed));
     choices.forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.scene===mode)));canvas.dataset.mood=collapsed?'curious':mode==='tasks'?task:moods[mode];body.replaceChildren();
     const title=document.createElement('strong'),detail=document.createElement('p');detail.className='preview-detail';
     if(mode==='tasks'){
@@ -35,6 +35,6 @@
   }
   toggle.onclick=()=>{collapsed=!collapsed;paint();};
   const observer=new IntersectionObserver(entries=>{visible=entries[0].isIntersecting;schedule();});observer.observe(stage);document.addEventListener('visibilitychange',schedule);
-  window.nook.onState(next=>{lastState=next;const look=next.look||{};panel.dataset.notchStyle=next.studio?.settings?.notchStyle||'island';panel.style.width=Math.min(100,Math.max(60,(look.notchWidth||620)/8.2))+'%';window.NookCompanion.apply(canvas,next.features?.companion,next.features?.previewOutfit);});
+  window.nook.onState(next=>{lastState=next;const look=next.look||{};panel.dataset.notchStyle=next.studio?.settings?.notchStyle||'island';if(!panel.dataset.layoutEditing)panel.style.width=Math.min(100,Math.max(22,(collapsed?(look.peekWidth||240):(next.everyday?.layouts?.[next.currentDisplay]?.width||look.notchWidth||620))/8.2))+'%';window.NookCompanion.apply(canvas,next.features?.companion,next.features?.previewOutfit);});
   window.NookPreview={scene(id){if(Object.hasOwn(moods,id)){mode=id;collapsed=false;paint();}},canvas};paint();
 })();
