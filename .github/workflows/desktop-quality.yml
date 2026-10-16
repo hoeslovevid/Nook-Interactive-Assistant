@@ -19,6 +19,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm test
+      - run: npm run smoke:notch
       - run: npm run smoke:refinements
       - name: Check visual-test result
         shell: pwsh
@@ -29,4 +30,6 @@ jobs:
         if: always()
         with:
           name: desktop-qa-node-${{ matrix.node }}
-          path: dist/refinements-qa/
+          path: |
+            dist/refinements-qa/
+            dist/notch-stability-qa/

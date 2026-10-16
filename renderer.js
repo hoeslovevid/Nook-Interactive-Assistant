@@ -648,13 +648,15 @@ function paint() {
 }
 
 function wake() {
+  // Re-entry can happen before the delayed leave handler clears hovering.
+  window.clearTimeout(leaveTimer);
+  leaveTimer = 0;
   if (hovering) {
     return;
   }
   hovering = true;
   if(state?.everyday?.settings?.hoverDashboard && !held && !pinned && !expanded && !chatting && !new URLSearchParams(location.search).has('detached'))showCard('widgets');
   welcome = false;
-  window.clearTimeout(leaveTimer);
   renderShell();
 }
 

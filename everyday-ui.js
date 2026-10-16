@@ -105,20 +105,46 @@
     const tray=node('div',null,'attachment-tray');tray.id='attachment-tray';$('file-chip').after(tray);
     const requestPicker=node('div',null,'request-picker');$('card-approval').prepend(requestPicker);
     const dashboard=$('card-widgets');dashboard.append(row(node('h2','Your space'),button('Customize',()=>window.nook.openApp('studio')),button('Activity',()=>{showCard('session');held=true;shell();})),node('p','Quick actions, right where you’re working.','everyday-note'));const grid=node('div',null,'hover-widget-grid');dashboard.append(grid);
-    function paintDashboard(){const prefs=latest.everyday?.settings||{},layout=latest.everyday?.layouts?.[latest.currentDisplay];const selectedWidgets=layout?.widgets||prefs.widgets||[],studio=latest.studio?.settings||{};const widgets=(studio.widgetOrder||selectedWidgets).filter(id=>selectedWidgets.includes(id));const signature=JSON.stringify([widgets,studio.widgetSizes,prefs.actionFirst,latest.sessions,latest.services,latest.features?.music,latest.everyday?.tasks,latest.everyday?.unread,latest.everyday?.focus,latest.everyday?.prompts,latest.requests,latest.pendingCount]);if(signature===dashboardKey)return;dashboardKey=signature;for(const canvas of grid.querySelectorAll('canvas'))canvas._nookDispose?.();grid.replaceChildren();requestPicker.replaceChildren();
-      if((latest.requests||[]).length>1)for(const request of latest.requests){const pick=button(request.agent+' · '+request.title,()=>act('request-select',request.id));pick.setAttribute('aria-pressed',String(request.id===latest.pending?.id));requestPicker.append(pick);}
-      for(const id of widgets){const tile=node('button',null,'hover-widget');tile.type='button';tile.dataset.widget=id;tile.dataset.size=studio.widgetSizes?.[id]||'small';const title=node('strong'),detail=node('small');tile.append(title,detail);
-        if(id==='focus'){title.textContent='Focus';detail.className='hover-focus-time';tile.onclick=()=>widgetDialog('focus');}
-        if(id==='tasks'){const tasks=(latest.everyday?.tasks||[]).filter(t=>!t.done);title.textContent='Small tasks';detail.textContent=tasks.length+' remaining'+(tasks[0]?' · '+tasks[0].title:'');tile.onclick=()=>widgetDialog('tasks');}
-        if(id==='inbox'){title.textContent='Notifications';const unread=(latest.everyday?.inbox||[]).find(i=>!i.read&&!i.dismissed);detail.textContent=(latest.everyday?.unread||0)+' unread'+(unread?' · '+unread.title:'');tile.onclick=()=>widgetDialog('inbox');}
-        if(id==='sessions'){title.textContent='Agents';detail.textContent=(latest.sessions||[]).filter(s=>!s.finished).length+' active · '+(latest.pendingCount||0)+' waiting';tile.onclick=()=>{showCard('session');held=true;shell();};}
-        if(id==='music'){if(!latest.features?.music?.available)continue;title.textContent=latest.features.music.title||'Music';detail.textContent=(latest.features.music.playing?'Pause':'Play')+' · '+(latest.features.music.artist||'Now playing');tile.onclick=()=>window.nook.media('toggle');tile.disabled=!latest.features.music.canToggle;}
-        if(id==='services'){const pins=latest.experience?.settings?.pinnedServices||[],attention=item=>window.NookServiceCards.describe(item).tone!=='ready',services=[...(latest.services||[])].sort((a,b)=>(prefs.actionFirst?Number(attention(b))-Number(attention(a)):0)||Number(pins.includes(b.id))-Number(pins.includes(a.id)));if(!services.length)continue;for(const service of services.slice(0,4)){const descriptor=window.NookServiceCards.describe(service),serviceTile=node('button',null,'hover-widget');serviceTile.type='button';serviceTile.dataset.widget='services';serviceTile.dataset.size=studio.widgetSizes?.services||'small';serviceTile.dataset.tone=descriptor.tone;serviceTile.append(node('strong',service.title||service.id),node('small',descriptor.status+' · '+(service.detail||'Open service')));const canvas=node('canvas',null,'brand-seed hover-pet');canvas.width=canvas.height=96;canvas.dataset.mood=descriptor.mood;canvas.dataset.body=descriptor.color;canvas.setAttribute('aria-hidden','true');serviceTile.append(canvas);serviceTile.onclick=()=>window.nook.openService(service.id);grid.append(serviceTile);window.NookSeed.bind(canvas);}continue;}
-        if(['focus','tasks','sessions'].includes(id)){const companion=node('canvas',null,'brand-seed hover-pet');companion.width=companion.height=96;companion.dataset.mood=id==='focus'&&latest.everyday?.focus.running?'focused':id==='sessions'&&(latest.pendingCount||0)>0?'expectant':'idle';tile.append(companion);window.NookSeed.bind(companion);}
-        if(id==='prompts'){title.textContent='Saved prompts';detail.textContent=(latest.everyday?.prompts||[]).length+' ready to use';tile.onclick=prompts;}
-        grid.append(tile);
-      }if(!grid.children.length)grid.append(node('p','Choose widgets in Chats & everyday tools. Music and service cards appear when connected.','everyday-note'));
-      if(prefs.actionFirst){const priority=n=>n.dataset.tone==='error'?0:n.dataset.tone==='warning'?1:2;for(const tile of [...grid.children].sort((a,b)=>priority(a)-priority(b)))grid.append(tile);}
+    const widgetNodes=new Map();let requestKey='';
+    function paintDashboard(){
+      const prefs=latest.everyday?.settings||{},layout=latest.everyday?.layouts?.[latest.currentDisplay],studio=latest.studio?.settings||{};
+      const selected=layout?.widgets||prefs.widgets||[],widgets=(studio.widgetOrder||selected).filter(id=>selected.includes(id)),items=[];
+      const requests=latest.requests||[],nextRequests=JSON.stringify([requests,latest.pending?.id]);
+      if(nextRequests!==requestKey){requestKey=nextRequests;requestPicker.replaceChildren();if(requests.length>1)for(const request of requests){const pick=button(request.agent+' · '+request.title,()=>act('request-select',request.id));pick.setAttribute('aria-pressed',String(request.id===latest.pending?.id));requestPicker.append(pick);}}
+      for(const id of widgets){
+        const item={key:id,widget:id,size:studio.widgetSizes?.[id]||'small'};
+        if(id==='focus')Object.assign(item,{title:'Focus',detail:'',pet:'focused',action:()=>widgetDialog('focus')});
+        if(id==='tasks'){const tasks=(latest.everyday?.tasks||[]).filter(t=>!t.done);Object.assign(item,{title:'Small tasks',detail:tasks.length+' remaining'+(tasks[0]?' · '+tasks[0].title:''),pet:'idle',action:()=>widgetDialog('tasks')});}
+        if(id==='inbox'){const unread=(latest.everyday?.inbox||[]).find(i=>!i.read&&!i.dismissed);Object.assign(item,{title:'Notifications',detail:(latest.everyday?.unread||0)+' unread'+(unread?' · '+unread.title:''),action:()=>widgetDialog('inbox')});}
+        if(id==='sessions')Object.assign(item,{title:'Agents',detail:(latest.sessions||[]).filter(s=>!s.finished).length+' active · '+(latest.pendingCount||0)+' waiting',pet:(latest.pendingCount||0)>0?'expectant':'idle',action:()=>{showCard('session');held=true;shell();}});
+        if(id==='music'){const music=latest.features?.music;if(!music?.available)continue;Object.assign(item,{title:music.title||'Music',detail:(music.playing?'Pause':'Play')+' · '+(music.artist||'Now playing'),disabled:!music.canToggle,action:()=>window.nook.media('toggle')});}
+        if(id==='services'){
+          const pins=latest.experience?.settings?.pinnedServices||[],attention=s=>window.NookServiceCards.describe(s).tone!=='ready';
+          const services=[...(latest.services||[])].sort((a,b)=>(prefs.actionFirst?Number(attention(b))-Number(attention(a)):0)||Number(pins.includes(b.id))-Number(pins.includes(a.id)));
+          for(const service of services.slice(0,4)){const d=window.NookServiceCards.describe(service);items.push({...item,key:'services:'+service.id,title:service.title||service.id,detail:d.status+' · '+(service.detail||'Open service'),tone:d.tone,pet:d.mood,color:d.color,action:()=>window.nook.openService(service.id)});}continue;
+        }
+        if(id==='prompts')Object.assign(item,{title:'Saved prompts',detail:(latest.everyday?.prompts||[]).length+' ready to use',action:prompts});
+        if(id==='focus')item.pet=latest.everyday?.focus.running?'focused':'idle';
+        items.push(item);
+      }
+      if(prefs.actionFirst){const priority=item=>item.tone==='error'?0:item.tone==='warning'?1:2;items.sort((a,b)=>priority(a)-priority(b));}
+      // Compare only rendered values, not playback positions or unrelated agent events.
+      const signature=JSON.stringify(items.map(({action,...item})=>item));if(signature===dashboardKey)return;dashboardKey=signature;
+      const keys=new Set(items.map(item=>item.key));
+      for(const [key,record]of widgetNodes)if(!keys.has(key)){record.canvas?._nookDispose?.();record.tile.remove();widgetNodes.delete(key);}
+      grid.querySelector('.everyday-note')?.remove();
+      items.forEach((item,index)=>{
+        let record=widgetNodes.get(item.key);
+        if(!record){const tile=node('button',null,'hover-widget'),title=node('strong'),detail=node('small');tile.type='button';tile.append(title,detail);record={tile,title,detail};if(item.pet){const canvas=node('canvas',null,'brand-seed hover-pet');canvas.width=canvas.height=96;canvas.setAttribute('aria-hidden','true');tile.append(canvas);record.canvas=canvas;window.NookSeed.bind(canvas);}widgetNodes.set(item.key,record);}
+        const {tile,title,detail,canvas}=record;
+        for(const [key,value]of Object.entries({widget:item.widget,size:item.size,tone:item.tone||''}))if(tile.dataset[key]!==value)tile.dataset[key]=value;
+        if(title.textContent!==item.title)title.textContent=item.title;
+        if(item.widget==='focus')detail.classList.add('hover-focus-time');else if(detail.textContent!==item.detail)detail.textContent=item.detail;
+        if(tile.disabled!==Boolean(item.disabled))tile.disabled=Boolean(item.disabled);tile.onclick=item.action;
+        if(canvas){if(canvas.dataset.mood!==item.pet)canvas.dataset.mood=item.pet;if(item.color&&canvas.dataset.body!==item.color)canvas.dataset.body=item.color;}
+        if(grid.children[index]!==tile)grid.insertBefore(tile,grid.children[index]||null);
+      });
+      if(!items.length)grid.append(node('p','Choose widgets in Chats & everyday tools. Music and service cards appear when connected.','everyday-note'));
       if(!dashboard.hidden||latest.pending)shell();
     }
     window.nook.onCommand(action=>{if(action.startsWith('widget:'))widgetDialog(action.slice(7));if(action.startsWith('draft:')){showCard('chat');held=true;expanded=true;chatInput.value=action.slice(6);window.NookDrafts?.capture(provider,chatInput.value);chatInput.focus();shell();}});
