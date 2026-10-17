@@ -10,7 +10,8 @@ async function saveCompanion(patch) {
     paintCompanionSettings();featureSelect("voice-service-note").textContent=error.message||"Could not save. Try again.";featureSelect("wardrobe-note").textContent = "Could not save. Try again.";
   }
 }
-const outfitLabels = {
+const outfitLabels = {detective:"Night detective",chef:"Little chef",robot:"Pocket robot",pirate:"Captain Nook",bee:"Busy bee",hiker:"Trail companion",fox:"Forest fox",dragon:"Tiny dragon",vampire:"Velvet vampire",graduate:"Class of Nook",knight:"Silver knight",flower:"Bloom crown",
+  astronaut:"Orbit explorer",beret:"Studio artist",leaf:"Little sprout",halo:"Golden hour",hoodie:"Cloud hoodie",
   none: "Original",
   cap: "Day off",
   glasses: "Bookworm",
@@ -36,10 +37,11 @@ for (const outfit of window.NookCompanion.OUTFITS) {
   for (const event of ['pointerenter', 'focus']) button.addEventListener(event, () => window.nook.previewOutfit(outfit));
   for (const event of ['pointerleave', 'blur']) button.addEventListener(event, () => window.nook.previewOutfit(null, outfit));
   button.addEventListener("click", () =>
-    saveCompanion({ outfit, seasonal: false }),
+    saveCompanion({ outfit, seasonal: false, petPack:null,layered:false }),
   );
   featureSelect("wardrobe").append(button);
 }
+const wardrobeSearch=document.createElement('input');wardrobeSearch.type='search';wardrobeSearch.placeholder='Find a costume…';wardrobeSearch.setAttribute('aria-label','Search pet costumes');wardrobeSearch.className='wardrobe-search';const wardrobeCount=document.createElement('p');wardrobeCount.className='note';wardrobeCount.setAttribute('role','status');featureSelect('wardrobe').before(wardrobeSearch,wardrobeCount);wardrobeSearch.oninput=()=>{const term=wardrobeSearch.value.toLowerCase();let count=0;for(const b of featureSelect('wardrobe').children){b.hidden=!b.textContent.toLowerCase().includes(term);if(!b.hidden)count++;}wardrobeCount.textContent=count+' of '+window.NookCompanion.OUTFITS.length+' costumes';};wardrobeSearch.oninput();
 function paintCompanionSettings() {
   if (featureSelect('phone-auto-start')) featureSelect('phone-auto-start').checked = companionConfig.phoneAutoStart;
   featureSelect("phone-details").checked = companionConfig.phoneDetails;
@@ -65,7 +67,7 @@ autoPhone.innerHTML = '<input type="checkbox" id="phone-auto-start"> Start phone
 document.querySelector('.phone-setup').append(autoPhone);
 autoPhone.querySelector('input').addEventListener('change', event => saveCompanion({ phoneAutoStart: event.target.checked }));
 featureSelect("seasonal-outfit").addEventListener("change", (event) =>
-  saveCompanion({ seasonal: event.target.checked }),
+  saveCompanion({ seasonal: event.target.checked,layered:false }),
 );
 featureSelect("music-enabled").addEventListener("change", (event) =>
   saveCompanion({ music: event.target.checked }),

@@ -4,6 +4,91 @@
 
 A Windows desktop companion for coding agents, with a compact notch and multi-provider AI chat.
 
+[Download Nook for Windows](https://github.com/hoeslovevid/Nook-Interactive-Assistant/releases/latest) · [Release notes](https://github.com/hoeslovevid/Nook-Interactive-Assistant/releases/tag/v0.11.0) · [Local AI setup](docs/NOOK-LOCAL.md)
+
+![Nook 0.11 notch moving through task activity and completion using sample sessions](assets/previews/notch.gif)
+
+## Projects and everyday tools
+
+- **Search · Ctrl+K:** search saved chat text, imported documents and indexed project sources, approved memories, current agent sessions, project spaces, reminders and settings. Search stays on this PC; previews never send content to an AI. Only currently retained chats and explicitly imported/indexed sources are searched.
+- **Home → Project spaces:** link conversations, documents, source projects and approved memories, with an optional preferred provider/model. Preview the switch first. Switching replaces active chat histories and clears temporary attachments, assistant context and prepared assistant actions. Within a space, only its selected approved memories can accompany future requests, still subject to each memory’s provider permissions. General restores its previous conversations. Previously transmitted messages cannot be recalled, and Nook Local’s separate local memory remains unchanged. Source links open local previews or Library; attaching content remains explicit. Spaces do not bypass chat retention or enable chat saving.
+- **Home → Reviewed routines:** save up to six approved app launches, saved profiles and focus timers. Preview all steps, then run them in order. Changes to the routine or app approvals invalidate the preview. A failed step, lock or cancellation stops remaining steps; completed actions stay applied. Routines cannot execute arbitrary shell commands and do not run on a schedule.
+- **Chat → Local reminders:** one-time, daily, weekday and weekly reminders, with pause, done and snooze controls. Times follow this PC’s local clock. Nook must be running; after sleep or restart, overdue occurrences are combined into one reminder. Native notifications obey global notification preferences and quiet hours. Reminders also appear in the hover notch.
+- **Chat → A calmer inbox:** related updates group by linked source project or agent. Grouping limits repeated native notifications; snooze a group for 15 minutes, one hour or eight hours. Optional quiet digest waits for quiet hours and snoozes to end and rechecks notification preferences. Approvals retain their separate review controls.
+- **Chat / hover notch → File shelf:** choose or drop up to twelve text, source, PNG or JPEG files (2 MB each, 12 MB shelf limit). Temporary snapshots expire after 30 minutes or closing Nook. Only explicitly pinned snapshots and their paths are stored, encrypted on this PC. Preview, copy a path, remove, or attach to a chat draft; nothing is sent automatically. Original files are never moved or deleted. Text snapshots use the existing 60,000-character attachment limit.
+- **Appearance → Make it your Nook:** combine independent hats, face accessories and clothing. Full costumes and seasonal outfits remain available; choosing one returns to full-costume mode. The animation studio now includes parcel delivery, gentle reminders, a little conductor, blanket settling, sparkles and a morning stretch. New choreography uses anticipation, follow-through, flexible shapes and settling, with the existing reduced-motion, visibility and battery controls. These are original Nook drawings and animations inspired by Coucou’s attention to character, without copying its companion artwork or sounds.
+- **Connections → Troubleshooting:** fixed, sanitized descriptions of recent model and voice failures, recovery links and a model-directory check. Review the exact redacted report before saving it. Reports exclude raw errors, prompts, keys, paths, file contents and account data; connection checks do not send chat messages.
+
+Run `npm run smoke:hub` for isolated desktop checks and dark/light screenshots in `dist/hub-qa/`. App launches, cloud services, microphone input and native notifications use fixtures in automated checks; real-device validation remains in [DEVICE-TESTING.md](docs/DEVICE-TESTING.md).
+
+<details>
+<summary>See project spaces, search, reminders and the file shelf</summary>
+
+### Switch projects with a review
+
+![Project spaces and the confirmation before switching active conversations and permitted memory](assets/previews/project-spaces.gif)
+
+Still images: [dark project dashboard](assets/previews/project-spaces.png) · [light project dashboard](assets/previews/project-spaces-light.png) · [local reminders](assets/previews/reminders.png).
+
+### Find it locally
+
+![Unified local search finding sources and reminders](assets/previews/unified-search.gif)
+
+[View the search screenshot](assets/previews/unified-search.png) or [approved memory controls](assets/previews/memory-center.png).
+
+### Keep files close
+
+![File shelf showing temporary and pinned snapshots with a local text preview](assets/previews/file-shelf.gif)
+
+[View the file shelf screenshot](assets/previews/file-shelf.png). Previewing and attaching prepare a draft; neither sends it to an AI.
+
+### Tools in the hover notch
+
+![Dark and light hover notch with project spaces, reviewed routines, reminders and the file shelf](assets/previews/notch-tools.gif)
+
+Still images: [black notch tools](assets/previews/notch-tools.png) · [light notch tools](assets/previews/notch-tools-light.png).
+
+</details>
+
+## A more personal Nook
+
+- **Everyday / All settings:** a saved view preference keeps detailed optional controls out of the everyday view. Settings search reveals advanced controls when needed. **Voice** starts with one guided path to the existing provider, microphone and voice controls.
+- **Notch activity queue:** browse one useful update at a time in the hover dashboard. Pending approvals take priority; browsing stays stable while you hover or use the keyboard. Opening a card does not approve anything. Toggle the queue in Appearance.
+- **Voice conversations:** assistant text appears as it streams. **Talk / interrupt** stops the current reply and starts the existing voice capture; **Stop reply** stops generation and speech. Optional **Start speaking before the reply finishes** queues sentences in order. Cloud speech can use more requests/credits in this mode. Only a fully parsed response can offer reviewed actions. Recognition still uses the configured speech engine and segmented capture; this is not a full-duplex cloud voice connection.
+- **Chat → Memory you control:** explicitly add, edit, pause or forget up to twenty short facts. Memory is off by default, encrypted locally and shared only with the providers checked for that fact. It applies to future chat and conversational-assistant requests, not connection tests or document-processing tools. Nook never extracts memories automatically. Existing Nook Local memory remains separate and local-only.
+- **Connections → Find the right model:** choose quick answers, coding, writing or images; optionally require local processing or set a maximum estimated reply cost. Recommendations use assigned roles, reported capabilities, recent measured response times and your entered prices. Unknown prices are excluded when a spending limit is set. Review and select a model; no request is sent automatically. These estimates do not impose a provider billing limit.
+- **Appearance → Wardrobe:** twenty-nine costumes, a costume search, and curated companion collections. New costumes include a detective, chef, robot, pirate, bee, hiker, fox, dragon, vampire, graduate, knight and flower crown. Import/export a reviewed JSON pet pack with existing outfits and colors. Packs contain no executable artwork or remote URLs. The animation studio adds Little victory, Oops & recover, Coffee break, Peekaboo and Thank you bow. Existing motion, battery and visibility settings still apply.
+- **Portfolio:** native balances on Bitcoin, Ethereum, Solana, Base and Arbitrum; explicitly selected ERC-20 contracts on the three EVM networks; read-only Kraken and Coinbase Advanced Trade accounts. Coinbase requires an ECDSA P-256 CDP key with View only; permissions are verified before reading paginated balances. Native/token values and prices are approximate. Duplicate wallets/contracts are refused. Public RPCs are rate limited and may be unavailable; failed sources produce partial data. No transfers, trading or automatic token discovery.
+- **Performance:** an on-demand responsiveness check samples display frames only while visible. Its target is 95% within 35 ms and no more than three frames above 50 ms; results depend on the display and system load. Frame scheduling, disk-status caching and stable chat elements remain in place. Signed builds now require signing and verify both the installed executable and installer against the requested publisher. Trusted signing still requires owner-supplied certificate secrets; normal releases remain unsigned.
+
+Run `npm run smoke:refined` for isolated desktop coverage and visual artifacts. Paid AI/speech/exchange services are simulated in this check. Source integration follows the official [Coinbase key-permissions API](https://docs.cdp.coinbase.com/api-reference/advanced-trade-api/rest-api/data-api/get-api-key-permissions), [Coinbase authentication](https://docs.cdp.coinbase.com/coinbase-app/authentication-authorization/api-key-authentication), [Arbitrum RPC documentation](https://docs.arbitrum.io/arbitrum-essentials/reference/node-providers), and [Ethereum read-only calls](https://geth.ethereum.org/docs/interacting-with-geth/rpc/ns-eth).
+
+### A companion with character
+
+![Nook’s animation studio showing original parcel, reminder, conductor, blanket, sparkle and stretch performances](assets/previews/pet-performances.gif)
+
+[View the animation studio screenshot](assets/previews/pet-studio.png). Motion follows the app’s visibility, battery and reduced-motion settings.
+
+<details>
+<summary>Mix a hat, face accessory and clothing</summary>
+
+![Layered pet outfits with independently selected hats, face accessories and clothing](assets/previews/layered-outfits.gif)
+
+Still images: [dark outfit controls](assets/previews/layered-outfits.png) · [light outfit controls](assets/previews/layered-outfits-light.png).
+
+</details>
+
+## More connections, voices and personal tools
+
+- **Connections:** Qwen and Kimi/Moonshot have their own key cards and model browsers. Qwen supports the HTTPS endpoint supplied by your workspace console; Anthropic supports an optional company gateway using its native Messages API. Keys go to the displayed destination. Kimi defaults to `kimi-k2.6` with thinking disabled; newer thinking models preserve reasoning across follow-up turns and encrypted saved chats. Reasoning stays outside the visible transcript.
+- **Voice → Cloud voice studio:** optionally save an ElevenLabs key, search your voices, preview, and choose separate chat/assistant voices. Speaking through ElevenLabs sends the spoken text to that service and can consume credits. It never silently switches engines after an error. Windows speech stays available locally. Temporary generated audio is removed after playback or cancellation.
+- **Voice → Contacts:** add entries or preview a CSV/vCard import. Contacts are encrypted on this PC. Named recipients are matched locally after an email draft is accepted for review; choose the intended address explicitly. The full address book is never supplied to the model. Emails remain unsent reviewed drafts.
+- **Voice → Approved applications:** discover installed Windows apps or choose a local executable and save a spoken name. Requests such as “Open Code” produce a one-use review before launch. Only approved apps are accepted, with no extra arguments or shell commands. Remove an approval to revoke it.
+- **Voice → Dictation:** temporary paste now requests exclusion from Windows clipboard history and cloud sync by default, then restores the prior formats if the clipboard still contains the inserted text. Changed/protected targets are still refused. Third-party clipboard managers may handle exclusion flags differently.
+- **Companion & devices → Portfolio:** explicitly enable manual holdings, public BTC/ETH/SOL wallet balances, or read-only Kraken balances. Kraken key permissions are checked before reading balances; trading, withdrawal and unknown permissions are refused. CoinGecko supplies prices and sparklines, with an optional Demo key. Unsupported tokens/fiat and missing prices are marked as partial data. This feature has no trading or transfer actions. Wallet addresses are sent to their public balance services; setup and keys are encrypted locally. The notch widget offers refresh and balance masking. Refreshes are deduplicated, rate limited, and stopped on lock/sleep; automatic refresh runs only when the widget is visible.
+
+Chat streaming now updates the changed bubble while retaining completed replies. Visible pets share one frame scheduler per window, and unchanged local-model status reuses cached disk metadata. Wallet requests run at most four at once. Run `npm run smoke:expansion` for isolated UI checks; paid APIs and application launches use fixtures in this test.
+
 ## Sources, recovery and reviewed tools
 
 Open **Library & tools** under **More settings**, from Chat, or from the **Sources** button in notch chat.
@@ -77,7 +162,10 @@ Open **Chats & everyday tools** in the app, or use **Ctrl+K** to find a tool.
 
 Real app recordings with local sample data—no API key needed for the walkthrough.
 
-![Animated Nook notch showing reading, editing, terminal work, completion, and an approval](assets/previews/notch.gif)
+The compact task animation is shown at the top of this page. The recordings below were refreshed for **v0.11.0**; newer project tools and pet performances appear beside their feature descriptions above.
+
+<details>
+<summary>Explore the full app gallery: tasks, approvals, chat, themes and settings</summary>
 
 ![Animated app walkthrough and companion wardrobe](assets/previews/app-tour.gif)
 
@@ -121,9 +209,13 @@ Real app recordings with local sample data—no API key needed for the walkthrou
 
 ![Animated custom-agent identity, event mapping, and sample-event setup](assets/previews/custom-agents.gif)
 
-These clips show the real Nook interface using isolated sample sessions and simulated provider/service data. Usage, service balances, and failures are examples; no API credentials or personal account data are used in the recordings. Existing clips have also been refreshed for the latest interface.
+These clips show the real Nook interface using isolated sample sessions and simulated provider/service data. Usage, service balances, and failures are examples; no real API credentials or personal account data are used in the recordings.
+
+</details>
 
 Prefer still images? See the [welcome screen](assets/previews/welcome.png), [model connections](assets/previews/models.png), and [phone session details](assets/previews/phone-details.png).
+
+New in 0.11: [Nook Local setup](assets/previews/nook-local.png), [guided voice setup](assets/previews/guided-voice.png), [project spaces](assets/previews/project-spaces.png), [reminders](assets/previews/reminders.png), and [layered outfits](assets/previews/layered-outfits-light.png). Phone images illustrate the existing companion; the desktop images and animated gallery were recaptured for this release.
 
 The latest source UI has a compact toolbar, animated task companion, line-numbered changes, queue-aware approvals, and a quieter chat composer. See the [task workbench](assets/previews/notch-workbench.png), [approval card](assets/previews/notch-approval.png), and [chat view](assets/previews/notch-chat.png). The app includes a live workspace status strip and consistent navigation icons. These screenshots use isolated sample sessions.
 
@@ -147,11 +239,13 @@ Versions 0.1.0 and 0.2.0 need a one-time manual upgrade using the latest install
 
 Install dependencies with npm install, then run npm start. Run npm test for the test suite.
 
+To refresh the documentation media on Windows, run Electron with `scripts/capture-previews.cjs`, then `npm run previews:release`. Encode the recorded frames with `python scripts/encode-previews.py` and `python scripts/encode-previews.py --release` (Pillow required). Both recorders use isolated profiles and simulated services; files under `dist/` are excluded from Git and the installer. Review the generated media before publishing it.
+
 ## Appearance and performance
 
 Preview the default [black app](assets/previews/black-theme.png) and [black notch](assets/previews/black-notch.png), the [appearance controls](assets/previews/customization.png) and [guided model setup](assets/previews/model-setup.png). These screenshots use isolated sample data.
 
-**Appearance** offers four dark themes—Black (default), Graphite, Midnight, and Forest—and three light themes: Pearl (cool white), Sand (warm cream), and Mint (soft green). Selecting a theme applies matching app and notch colors; fine-tune the notch colors afterward. Your theme and custom colors are saved between launches. Comfortable or compact spacing, a 520–820 px expanded notch width (clamped to your display), and corner controls are also available. Animation modes apply to the app, notch, and desktop companion: Full caps companion drawing at 30 fps, Economy at 15 fps, and Reduced draws still poses when they change. Windows reduced motion always takes priority.
+**Appearance** offers four dark themes—Black (default), Graphite, Midnight, and Forest—and three light themes: Pearl (cool white), Sand (warm cream), and Mint (soft green). Selecting a theme applies matching app and notch colors; fine-tune the notch colors afterward. Your theme and custom colors are saved between launches. Comfortable or compact spacing, a 520–820 px expanded notch width (clamped to your display), and corner controls are also available. Animation modes apply to the app, notch, and desktop companion: Full uses adaptive companion drawing up to 60 fps when active, Economy at 15 fps, and Reduced draws still poses when they change. Windows reduced motion always takes priority.
 
 Hidden and offscreen companion previews stop drawing. Unchanged chat transcripts and provider choices retain their existing interface elements; pointer tracking stops after the gaze settles. Each provider retains up to 200 recent chat messages in memory. Activity recaps reuse unchanged history and refresh the rolling week at least every minute, using at most the last 2,000 log lines within a 4 MB tail to keep lifetime log growth from blocking the interface.
 
@@ -343,7 +437,7 @@ Run `npm run smoke:modern` for isolated UI checks using synthetic microphone aud
 
 ## Shared voice, direct layout editing and reviewed context
 
-Voice now owns the shared microphone, speech language and engine used by chat dictation, global dictation, meeting capture and spoken assistant replies. Choose Windows speech, downloaded Whisper, downloaded Parakeet, or OpenAI transcription. OpenAI sends the recorded audio to its service using your saved key. Speaker separation remains an explicit local Parakeet mode. The optional English “Hey Nook” trigger uses a Windows English recognizer and the Windows default input; the utterance after the trigger uses the shared setup. **Speak a reply** works without enabling the keyword listener. A short microphone calibration shows input levels and a recognized sample. Dictation corrections can be explicitly remembered in the local dictionary; Nook does not learn them automatically.
+Voice now owns the shared microphone, speech language and engine used by chat dictation, global dictation, meeting capture and spoken assistant replies. Choose Windows speech, downloaded Whisper, downloaded Parakeet, or OpenAI transcription. OpenAI sends the recorded audio to its service using your saved key. Speaker separation remains an explicit local Parakeet mode. The optional Windows “Hey Nook” trigger uses a Windows English recognizer and the Windows default input. Choose Parakeet wake listening in Voice for a selected-microphone local wake phrase instead; download its package first. **Speak a reply** works without enabling the keyword listener. A short microphone calibration shows input levels and a recognized sample. Dictation corrections can be explicitly remembered in the local dictionary; Nook does not learn them automatically.
 
 The live notch preview has a draggable and keyboard-operable width handle, separate compact/expanded widths, widget ordering with drag-and-drop or Move buttons, and widget sizes. Apply saves the expanded width to the current monitor. Native notch bounds account for webview zoom and clamp to available display space. The companion stays in the toolbar during expansion. Optional page accents, a visible recording timer, actionable voice messages and quieter background startup add Coucou-inspired polish. Set **Show the app window when launched manually** under Appearance; `--background` starts in the tray.
 
@@ -356,3 +450,25 @@ Dragging the desktop pet onto a window, or choosing Window context, opens a crop
 The Performance page includes a manual device-readiness record. The [release device checklist](docs/DEVICE-TESTING.md) distinguishes automated simulations from physical tests. `npm run smoke:refinements` checks the shared voice path, synthetic microphone calibration, reviewed context, meeting tasks/exports, model choices, preview layout, Spotify controls, zoom and suspend/resume in isolated app data. Physical microphone accuracy, phone biometrics, real network handoff, Narrator behavior and upgrade recovery still require device testing.
 
 Spotify's expanded controls add available-device selection, seek, shuffle, repeat and supported volume controls. Playback access depends on your Spotify account and application permissions. Automatic player refresh runs only while its view is visible, and server cooldowns are respected. Connect Spotify in Connection health, then refresh the player/devices in Companion & devices or the notch widget view.
+
+## Glances, voice control and pet finishes
+
+Appearance now has opening/closing delays, a compact glance-first mode, priority choices, and separate automatic expansion preferences for approvals, voice capture and agent work. Approvals remain reviewable in compact mode. One interaction controller cancels stale timers and holds the notch available during presses, drags and dialogs. Glances cycle manually through pending approvals, active agents, voice capture and music.
+
+Choose six original pet finishes (Porcelain, Obsidian, Matcha, Peach, Moonstone and Aurora), five additional accessories (Orbit explorer, Studio artist, Little sprout, Golden hour and Cloud hoodie), and Expressive/Calm/Minimal motion. Finishes apply to the app, notch and floating pet. Existing wardrobe previews and system reduced-motion preferences remain effective.
+
+Voice offers an optional local Parakeet wake listener, custom phrase, selected microphone, silence-gated short segments and a visible listening state. Nothing downloads or starts listening until enabled. It processes bounded voiced segments locally; only recognized commands after the phrase are eligible for the separately enabled AI sending option. Say the phrase with the request, or pause and give the request within twenty seconds. Audio and unrelated transcripts are not retained. Recognition accuracy, language support and CPU latency depend on the model and microphone. Lock, sleep, Stop and other recording sessions release the wake microphone. The Windows listener remains available as a separate option.
+
+Right Ctrl, Right Alt and Right Shift can be used for dictation alongside the existing function-key combinations. Other keys cancel modifier capture, and AltGr combinations are excluded. Modifier keys cannot be exclusively reserved from other apps; use the 30-second practice screen to check your keyboard. Practice suppresses shortcut recording and does not need to enable normal dictation. The installed-voice picker searches by voice and language, matches the speech language, previews before saving, and separates chat and assistant voices and speeds.
+
+Assistant conversations can propose focus timers, playback, Spotify searches, service views, widget changes and email drafts. Tool proposals first produce an action preview; a separate Confirm & run is required to execute a tool. When opted in, context includes bounded agent status and connected service summaries. No arbitrary commands or approvals are model tools. Connection checkpoints distinguish saved keys, directory checks and explicit small chat tests, with separate recovery guidance. Chat tests can incur provider charges.
+
+Updates have opt-in Beta and default Stable channels, no automatic downgrades, local interrupted-startup reporting, and recovery links. See [Signing and release channels](docs/SIGNING.md) and [device checks](docs/DEVICE-TESTING.md). Signing workflows are prepared; trusted Windows certificates and production Android keystores still require owner configuration. Normal releases remain unsigned until that transition is deliberately completed.
+
+### Nook Local
+
+Chat on your PC with no API key or separate AI app. Open **Connections → Nook Local** to download Lite or Balanced, then choose **Chat with this model**. Setup verifies the runtime and model; local chat works offline with configurable CPU use, idle unloading, and optional encrypted memory. These small Qwen models are best for short chats and summaries. See [Nook Local setup and privacy](docs/NOOK-LOCAL.md).
+
+### Pet animation studio
+
+Open **Appearance → A little more alive** to preview task performances, expressions, gentle petting, and notch entrances. Play, pause, scrub, step a frame, or slow down a clip. Body flexibility, props, accents, touch, entrances, and voice expressions have independent preferences. Active pets can draw at up to 60 fps; Economy caps at 15 fps, reduced motion stays still, and hidden pets stop drawing. Windows speech uses real synthesizer mouth-shape timings, and listening reacts to existing microphone capture without opening another stream.

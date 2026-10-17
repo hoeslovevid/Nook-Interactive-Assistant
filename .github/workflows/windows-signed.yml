@@ -1,0 +1,55 @@
+name: Signed Windows installer
+on:
+  workflow_dispatch:
+    inputs:
+      publisher:
+        description: Exact publisher name on the Windows code-signing certificate
+        required: true
+        type: string
+permissions:
+  contents: read
+jobs:
+  signed:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run smoke:notch
+      - run: npm run smoke:polish
+      - run: npm run smoke:expansion
+      - run: npm run smoke:refined
+      - run: npm run smoke:hub
+      - name: Build and verify signed installer
+        shell: pwsh
+        env:
+          WIN_CSC_LINK: ${{ secrets.NOOK_WINDOWS_CERTIFICATE }}
+          WIN_CSC_KEY_PASSWORD: ${{ secrets.NOOK_WINDOWS_CERTIFICATE_PASSWORD }}
+          NOOK_PUBLISHER: ${{ inputs.publisher }}
+        run: |
+          if (-not $env:WIN_CSC_LINK -or -not $env:NOOK_PUBLISHER) { throw 'Configure the Windows signing certificate secrets and publisher first.' }
+          node node_modules/electron-builder/cli.js --win --x64 --publish never --config.forceCodeSigning=true --config.win.verifyUpdateCodeSignature=true "--config.win.publisherName=$env:NOOK_PUBLISHER"
+          if ($LASTEXITCODE -ne 0) { throw 'Signed installer build failed' }
+          $signedFiles = @(Get-ChildItem dist/Nook-Setup-*.exe) + @(Get-Item -LiteralPath dist/win-unpacked/Nook.exe)
+          if ($signedFiles.Count -lt 2) { throw 'Missing signed installer or application' }
+          $signedFiles | ForEach-Object {
+            $signature = Get-AuthenticodeSignature -LiteralPath $_.FullName
+            if ($signature.Status -ne 'Valid') { throw 'Authenticode signature validation failed' }
+            $publisher = $signature.SignerCertificate.GetNameInfo([System.Security.Cryptography.X509Certificates.X509NameType]::SimpleName, $false)
+            if ($publisher -cne $env:NOOK_PUBLISHER) { throw 'Signed publisher does not match the selected identity' }
+          }
+      - run: node scripts/prepare-update-channel.cjs
+      - run: node scripts/verify-release.cjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Nook-Windows-signed
+          path: |
+            dist/Nook-Setup-*.exe
+            dist/Nook-Setup-*.exe.blockmap
+            dist/latest.yml
+            dist/beta.yml
+          if-no-files-found: error

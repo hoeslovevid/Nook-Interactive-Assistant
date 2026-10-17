@@ -1,17 +1,36 @@
-## Install Nook 0.10.1 on Windows
+## Install Nook 0.11.0
 
-Download **Nook-Setup-0.10.1-x64.exe**, or use **Updates → Check for updates → Download update → Restart and install** in Nook. Existing settings and provider credentials are retained. Public updates do not need a GitHub token.
+Download **Nook-Setup-0.11.0-x64.exe**, or open **Updates → Check for updates → Download update → Restart and install**. Existing settings and provider credentials are retained. Public updates do not require a GitHub token.
 
-## Fixed in 0.10.1
+## A more personal companion
 
-- **The notch stays open when you return to it.** Moving off the notch and back before its close delay expired left an old timer running. It could collapse the notch underneath your pointer and make it appear to refresh repeatedly. Re-entry now cancels that timer; leaving normally still closes the notch.
-- **Background updates preserve your controls.** Music playback and agent updates rebuilt the hover dashboard, replacing buttons while they were being pressed or focused. Widgets now retain their identity and update their text, counts, and status in place. Playback position and unrelated agent progress no longer rebuild the dashboard or restart its companion animations.
-- **Regression checks before release.** A new desktop check verifies hover re-entry, normal collapse, keyboard focus, real pointer clicks across background updates, retained chat drafts/selections, stable window bounds, and no renderer reloads. It runs in both release and desktop-quality workflows.
+- **A livelier pet:** 34 performances in the animation studio, flexible body motion, layered expressions, task props, gentle petting, and speech/microphone reactions. New parcel, reminder, conductor, blanket, sparkle and stretch performances use anticipation and settling. Hidden previews pause; reduced motion and battery settings remain available.
+- **Make it your Nook:** 29 full costumes, independently selectable hats, face accessories and clothing, six skins, curated appearance collections, and reviewed import/export of color-and-costume packs.
+- **A calmer notch:** stable hover controls, an activity queue, project switching, reviewed routine launchers, reminders and a file shelf. Typing, focus and pointer interactions survive background updates.
+- **New gallery:** refreshed recordings of the actual app, new animations of the pet and workspace tools, and dark/light screenshots beside the relevant README sections. Recordings use isolated sample data and simulated services.
+
+## Projects and everyday tools
+
+- **Unified search · Ctrl+K** finds retained chats, imported/indexed sources, approved memories, current sessions, reminders, spaces and settings locally.
+- **Project spaces** link conversations, sources, permitted memories and an optional preferred model. Switch with a review; return to the most recently selected conversation for each provider. Sources are attached explicitly and memory still respects each provider permission.
+- **Reviewed routines** run up to six approved app, saved-profile and focus-timer steps in order. Failures, cancellation or locking stop later steps. Completed steps remain applied; arbitrary commands and scheduled execution are excluded.
+- **Local reminders** support once, daily, weekdays, weekly, pause and snooze. Nook must be running; overdue occurrences are combined after resuming.
+- **Grouped notifications** reduce repeated alerts, support project/agent snoozes and an optional quiet digest, and keep approvals separate.
+- **File shelf** holds temporary snapshots and stores only explicitly pinned files encrypted. Preview, copy a path or attach a draft without automatically sending. Original files remain untouched.
+- **Troubleshooting** shows sanitized model/voice failures, recovery links, connection checks and reviewed redacted exports.
+
+## More choices for AI and voice
+
+- **Nook Local** manages a verified llama.cpp runtime and downloadable Lite/Balanced models for on-device chat, optional local memory and idle unloading. Models require a separate download and sufficient RAM; unavailable local models never silently fall back to a cloud provider. See [Nook Local setup](https://github.com/hoeslovevid/Nook-Interactive-Assistant/blob/master/docs/NOOK-LOCAL.md).
+- Dedicated **Qwen and Kimi/Moonshot** connections join the existing providers. Model selection adds task/cost recommendations, clearer key setup, provider-scoped approved memory and better reasoning/stream handling.
+- Guided microphone/provider/voice setup, interruptible streamed assistant replies, optional sentence-by-sentence speech and optional ElevenLabs voices. Paid providers require their own API keys and may charge for requests.
+- Optional encrypted contacts, approved application launchers, clipboard privacy controls, and expanded read-only portfolio integrations. Coinbase/Kraken permission checks reject trading/transfer access. Market and RPC data may be partial or approximate; no trading or transfers are performed.
+- Everyday/All settings modes and an on-demand responsiveness check make configuration easier to navigate. Startup health and Stable/Beta recovery controls provide more useful recovery paths.
 
 ## Downloads and verification
 
-The Windows installer supports Windows 10 and 11 on 64-bit Intel/AMD PCs. **Nook-Android-0.10.1-debug.apk** is an Android 11+ test build; a differently signed previous debug build may require uninstalling and pairing again. Windows installers remain unsigned.
+Windows 10/11, Intel/AMD 64-bit. **Nook-Android-0.11.0-debug.apk** is an Android 11+ test build; a differently signed earlier debug build may require uninstalling and pairing again. Apple signing and physical-device validation remain owner setup tasks. Windows installers remain unsigned; the optional signed-build workflow requires the owner's certificate.
 
-The 219 automated tests and isolated desktop checks use simulated provider responses rather than paid AI calls. Release publication requires Android compilation/lint, notch stability checks, the broader desktop interaction checks, packaged Windows smoke checks, and installer/update checksum verification. Physical-device and upgrade/recovery validation remain documented in [DEVICE-TESTING.md](https://github.com/hoeslovevid/Nook-Interactive-Assistant/blob/master/docs/DEVICE-TESTING.md).
+The release checks **296 automated tests**, isolated desktop interactions, Android compilation/lint, packaged Windows startup/native resources, and installer/update metadata integrity. AI, cloud speech, account services and microphone input use fixtures in automated desktop checks; these do not establish live-service or physical-device behavior. See [device testing](https://github.com/hoeslovevid/Nook-Interactive-Assistant/blob/master/docs/DEVICE-TESTING.md).
 
-Installer **.blockmap**, **latest.yml**, and **SHA256SUMS.txt** are included for in-app updates and download verification.
+Installer **.blockmap**, **latest.yml**, and **SHA256SUMS.txt** accompany the downloads for updates and verification. Browse the [updated screenshot gallery](https://github.com/hoeslovevid/Nook-Interactive-Assistant#see-nook-in-motion).

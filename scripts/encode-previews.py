@@ -4,10 +4,13 @@ from pathlib import Path
 from PIL import Image
 root = Path(__file__).resolve().parent.parent
 destination = root / 'assets' / 'previews'
-for name, width in [('notch', 620), ('app-tour', 720), ('workbench', 620), ('approvals', 620), ('chat', 620), ('wardrobe', 720), ('app-settings', 720), ('themes', 840), ('usage-dashboard', 620), ('chat-handoff', 620), ('service-companions', 620), ('sound-studio', 840), ('custom-agents', 840)]:
-    if len(sys.argv) > 1 and name not in sys.argv[1:]:
+release = '--release' in sys.argv
+names = [name for name in sys.argv[1:] if name != '--release']
+source = root / 'dist' / ('release-preview-frames' if release else 'preview-frames')
+for name, width in ([('project-spaces', 840), ('file-shelf', 840), ('unified-search', 840), ('pet-performances', 840), ('layered-outfits', 840), ('notch-tools', 660)] if release else [('notch', 620), ('app-tour', 720), ('workbench', 620), ('approvals', 620), ('chat', 620), ('wardrobe', 720), ('app-settings', 720), ('themes', 840), ('usage-dashboard', 620), ('chat-handoff', 620), ('service-companions', 620), ('sound-studio', 840), ('custom-agents', 840)]):
+    if names and name not in names:
         continue
-    files = sorted((root / 'dist' / 'preview-frames' / name).glob('*.png'))
+    files = sorted((source / name).glob('*.png'))
     frames = [Image.open(file).convert('RGB') for file in files]
     if not frames:
         raise RuntimeError(f'No recorded frames for {name}')

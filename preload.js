@@ -2,6 +2,14 @@ const { contextBridge, ipcRenderer, webUtils } = require("electron");
 let latestStateRevision = 0;
 
 contextBridge.exposeInMainWorld("nook", {
+  hub(action,value){return ipcRenderer.invoke('nook:hub',{action,value});},
+  refined(action,value){return ipcRenderer.invoke('nook:refined',{action,value});},
+  extensions(action,value){return ipcRenderer.invoke('nook:extensions',{action,value});},
+  petInput(value){ipcRenderer.send('nook:pet-input',value);},
+  onPetAudio(callback){ipcRenderer.on('nook:pet-audio',(_event,value)=>callback(value));},
+  localAI(action,value){return ipcRenderer.invoke('nook:local-ai',{action,value});},
+  wakeAudio(value){return ipcRenderer.invoke('nook:wake-audio',value);},
+  onWakeStart(callback){ipcRenderer.on('nook:wake-start',(_event,value)=>callback(value));},
   setOpen(open, height, reducedMotion) {
     ipcRenderer.send("nook:set-open", open, height, reducedMotion);
   },

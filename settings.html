@@ -17,7 +17,7 @@
 <link rel="stylesheet" href="experience.css" />
 <link rel="stylesheet" href="everyday.css" />
 <link rel="stylesheet" href="studio.css" /><link rel="stylesheet" href="controls.css" /><link rel="stylesheet" href="workspace-next.css" /><link rel="stylesheet" href="library.css" /><link rel="stylesheet" href="ios-notch.css" />
-</head>
+<link rel="stylesheet" href="polish.css"><link rel="stylesheet" href="local-ai.css"><link rel="stylesheet" href="extensions.css"><link rel="stylesheet" href="pet-playground.css"><link rel="stylesheet" href="refined.css" /><link rel="stylesheet" href="hub.css"></head>
   <body><a class="skip-link" href="#workspace-main">Skip to content</a>
     <aside>
       <div class="brand">
@@ -99,7 +99,7 @@
             <label>Text size<select name="fontScale"><option value="1">Default</option><option value="1.15">Larger · 115%</option><option value="1.3">Largest · 130%</option></select></label><label>Contrast<select name="contrast"><option value="normal">Standard</option><option value="high">High contrast</option></select></label><label>Notch surface<select name="surface"><option value="solid">Solid</option><option value="frosted">Frosted</option></select></label><label>Notch opacity<input type="range" name="opacity" min="85" max="100" value="100"></label><p class="note">Frosted surfaces use Windows background material when available; other systems keep a tinted surface. Strong contrast remains available.</p>
             <label>Theme<select name="theme" id="app-theme"><optgroup label="Dark"><option value="black">Black (default)</option><option value="graphite">Graphite</option><option value="midnight">Midnight</option><option value="forest">Forest</option></optgroup><optgroup label="Light"><option value="pearl">Pearl · cool white</option><option value="sand">Sand · warm cream</option><option value="mint">Mint · soft green</option></optgroup></select></label>
             <label>Spacing<select name="density"><option value="comfortable">Comfortable</option><option value="compact">Compact</option></select></label>
-            <label>Animation<select name="motion"><option value="full">Full · 30 fps companion</option><option value="economy">Economy · 15 fps companion</option><option value="reduced">Reduced · still companion</option></select></label>
+            <label>Animation<select name="motion"><option value="full">Full · adaptive companion</option><option value="economy">Economy · 15 fps companion</option><option value="reduced">Reduced · still companion</option></select></label>
             <label>Expanded notch width <span id="notch-width-value">620 px</span><input type="range" name="notchWidth" min="520" max="820" step="20" value="620"></label>
             <p class="note">Choose a theme for the app and a matching notch palette, then fine-tune the colors below. Motion applies to every companion and respects Windows reduced motion.</p>
           </div>
@@ -413,7 +413,7 @@
     <script src="lib/appearance.js"></script>
     <script src="lib/lifelike.js"></script>
     <script src="lib/experience.js"></script>
-    <script src="lib/seed.js"></script>
+    <script src="lib/frame-clock.js"></script><script src="lib/pet-performance.js"></script><script src="lib/seed.js"></script>
     <script src="lib/provider-guides.js"></script>
     <script src="settings.js"></script>
     <script src="settings-enhance.js"></script>
@@ -437,5 +437,5 @@
 <script src="everyday-ui.js"></script>
 <script src="personality-ui.js"></script>
 <script src="lib/audio.js"></script><script src="lib/studio.js"></script><script src="studio-ui.js"></script>
-<script src="controls-ui.js"></script><script src="voice-workspace-ui.js"></script><script src="voice-advanced-ui.js"></script><script src="assistant-ui.js"></script><script src="workspace-next-ui.js"></script><script src="library-ui.js"></script><script src="companion-scenes-ui.js"></script><script src="connected-phone-ui.js"></script><script src="voice-setup-ui.js"></script><script src="meeting-review-ui.js"></script><script src="preview-editor-ui.js"></script><script src="next-ui.js"></script><script src="context-review-ui.js"></script><script src="readiness-ui.js"></script></body>
+<script src="controls-ui.js"></script><script src="voice-workspace-ui.js"></script><script src="voice-advanced-ui.js"></script><script src="assistant-ui.js"></script><script src="workspace-next-ui.js"></script><script src="library-ui.js"></script><script src="companion-scenes-ui.js"></script><script src="connected-phone-ui.js"></script><script src="voice-setup-ui.js"></script><script src="meeting-review-ui.js"></script><script src="preview-editor-ui.js"></script><script src="next-ui.js"></script><script src="context-review-ui.js"></script><script src="readiness-ui.js"></script><script src="polish-ui.js"></script><script src="local-ai-ui.js"></script><script src="pet-playground-ui.js"></script><script src="extensions-ui.js"></script><script src="lib/activity-queue.js"></script><script src="lib/responsiveness.js"></script><script src="refined-ui.js"></script><script src="hub-ui.js"></script><script src="pet-layers-ui.js"></script></body>
 </html>

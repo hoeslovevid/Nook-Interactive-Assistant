@@ -87,6 +87,7 @@ window.nook.onState((state) => {
   updateMood();
 });
 seed.addEventListener("click", () => {
+  if(seed.dataset.petInteractions==='false')return;
   seed.classList.add("is-squish");
   window.setTimeout(() => seed.classList.remove("is-squish"), 450);
 });

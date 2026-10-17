@@ -183,6 +183,7 @@ function waveform() {
       samples.length /
       24,
   );
+  window.NookSeed.audio({kind:'input',active:true,level,duration:180});
   for (const [i, bar] of Array.from(
     featureNode("voice-wave").children,
   ).entries())
@@ -237,6 +238,7 @@ async function stopVoice(cancel = false) {
   }
 }
 function releaseVoiceResources() {
+  window.NookSeed.audio({kind:'input',active:false,level:0});
   if (voiceProcessor) {voiceProcessor.onaudioprocess = null;try {voiceProcessor.disconnect();} catch {}}
   try {voiceSource?.disconnect(); voiceAnalyser?.disconnect();} catch {}
   voiceStream?.getTracks().forEach(track => {track.onended = null; track.stop();});

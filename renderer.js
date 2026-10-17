@@ -27,7 +27,7 @@ const extrasBox = document.querySelector("#extras");
 const diffBox = document.querySelector("#diff");
 const fileChip = document.querySelector("#file-chip");
 
-const PROVIDER_NAMES = ["chatgpt", "gemini", "claude", "openrouter", "deepseek", "mistral", "groq", "xai", "ollama", "lmstudio", "custom"];
+const PROVIDER_NAMES = ["chatgpt", "gemini", "claude", "openrouter", "deepseek", "mistral", "groq", "xai", "ollama", "lmstudio", "custom", "nook", "qwen", "moonshot"];
 
 let hovering = false;
 let pinned = false;
@@ -83,7 +83,9 @@ function updateCompanion() {
   if (state) window.NookCompanion.agentColor(seed, state, selectedSession);
   seed.dataset.mood = window.NookMotion.companionMood({task:activeSession && activeSession.task,pending:waiting(),drop:island.classList.contains("is-drop"),receiving,thinking:sending||Boolean(state?.chatBusy||state?.comparison?.busy),celebrating,dancing:Boolean(state?.features?.music?.playing),working,hover:hovering||welcome,sleeping:!chatting&&!welcome&&!working&&!hovering&&!held&&!pinned&&!expanded});
   document.body.classList.toggle("is-thinking", sending);
+  if(!waiting()&&!receiving&&document.body.classList.contains('is-recording'))seed.dataset.mood='listening';
   if(!waiting()&&!receiving&&state?.flow?.current&&['starting','recording','transcribing'].includes(state.flow.current.phase))seed.dataset.mood=state.flow.current.phase==='transcribing'?'thinking':'listening';
+  if(!waiting()&&!receiving&&!working&&!sending&&state?.localAI?.downloading){seed.dataset.mood='downloading';const p=state.localAI.progress;seed.dataset.taskProgress=p?String(p.received/p.total):'-1';}else delete seed.dataset.taskProgress;
   if (state?.demoMood) seed.dataset.mood = state.demoMood;
   for (const canvas of document.querySelectorAll('.focus-pet,.task-pet')) {
     canvas.dataset.mood = seed.dataset.mood;
@@ -91,7 +93,7 @@ function updateCompanion() {
   }
 }
 function celebrateCompanion() {
-  celebrating = true; updateCompanion(); window.clearTimeout(celebrationTimer);
+  celebrating = true; updateCompanion();if(!waiting())window.NookSeed.react(seed,seenCelebrate%2?'triumph':'bow',1200); window.clearTimeout(celebrationTimer);
   celebrationTimer = window.setTimeout(() => { celebrating = false; seed.classList.remove("is-happy", "is-hop"); updateCompanion(); }, 1200);
 }
 
@@ -100,21 +102,17 @@ function waiting() {
 }
 
 function shellMode() {
-  if (waiting() || pinned || held || expanded || welcome || chatting || document.activeElement?.matches('input,textarea,select,[contenteditable=true]') || document.body.classList.contains('is-recording') || document.querySelector("dialog[open],.voice-language-picker:not([hidden])")) {
-    return "open";
-  }
-  if (hovering && state && (state.prefs?.openOnHover || state.everyday?.settings?.hoverDashboard)) {
-    return "open";
-  }
-  if (hovering) {
-    return "peek";
-  }
-  if(['starting','armed','listening'].includes(state?.studio?.wake?.phase))return 'peek';
-  return "asleep";
+  return window.NookInteraction.mode({pending:waiting(),pinned,held,expanded,welcome,chatting,hovering,
+    focused:Boolean(document.activeElement?.matches('input,textarea,select,[contenteditable=true]')),
+    recording:document.body.classList.contains('is-recording'),overlay:Boolean(document.querySelector('dialog[open],.voice-language-picker:not([hidden])')),
+    voiceActive:['starting','recording','transcribing','diarizing'].includes(state?.flow?.current?.phase),agentsActive:(state?.sessions||[]).some(s=>!s.finished),pressing:interaction.snapshot().pressing,wake:['starting','armed','listening','processing'].includes(state?.studio?.wake?.phase),
+    openOnHover:Boolean(state?.prefs?.openOnHover||state?.everyday?.settings?.hoverDashboard)},state?.look);
 }
 
+let previousPetShell="";
 function renderShell() {
   const next = shellMode();
+  if(next!==previousPetShell){window.NookSeed.entrance(seed,next,previousPetShell);previousPetShell=next;}
   document.body.classList.toggle("is-open", next === "open");
   document.body.classList.toggle("is-peek", next === "peek");
   document.body.classList.toggle("is-asleep", next === "asleep");
@@ -328,6 +326,7 @@ function paintProviders(models) {
   providerSignature = signature;
   providerSelect.replaceChildren();
   const labels = {
+    qwen:"Qwen",moonshot:"Kimi",nook:"Nook Local",
     chatgpt: "ChatGPT",
     gemini: "Gemini",
     claude: "Claude",
@@ -596,14 +595,14 @@ function paint() {
   const label = providerSelect.options[providerSelect.selectedIndex]
     ? providerSelect.options[providerSelect.selectedIndex].textContent
     : "Chat";
-  const local = provider === "ollama" || provider === "lmstudio";
+  const local = provider === "nook" || provider === "ollama" || provider === "lmstudio";
   chatInput.placeholder = `Ask ${label}`;
   const attached = state && state.attachment;
   fileChip.hidden = !attached;
   fileChip.textContent = attached ? attached.name + " ×" : "";
   keyStatus.textContent =
     chatError ||
-    (local ? `${label} uses the server on this PC.` : provider === "custom" ? "Custom server · API key is optional; use Models to configure it." : keys[provider] ? `${label} key saved` : `Add the ${label} key in the Nook app.`);
+    (local ? provider==='nook'?`Nook Local · ${state?.localAI?.phase||'not installed'} · on this PC`:`${label} uses the server on this PC.` : provider === "custom" ? "Custom server · API key is optional; use Models to configure it." : keys[provider] ? `${label} key saved` : `Add the ${label} key in the Nook app.`);
   if (state?.demo) keyStatus.textContent = 'Sample chat · replies stay on this PC · no API charges';
   paintChatRecovery();
 
@@ -612,15 +611,17 @@ function paint() {
   if (nextTranscript !== transcriptSignature) {
   transcriptSignature = nextTranscript;
   const stick = transcript.scrollHeight - transcript.scrollTop - transcript.clientHeight < 24;
-  transcript.replaceChildren();
-  for (const message of chatMessages) {
+  const existing=new Map([...transcript.querySelectorAll('.bubble[data-message-key]')].map(b=>[b.dataset.messageKey,b]));
+  const keep=new Set();transcript.querySelector('.chat-empty')?.remove();let cursor=transcript.firstElementChild;
+  for (const [index,message] of chatMessages.entries()) {
     if (message.provider !== provider) {
       continue;
     }
-    const bubble = document.createElement("div");
+    const key=provider+':'+(message.id||index),signature=JSON.stringify([message.role,message.content,message.status,message.error,Boolean(sending||state?.chatBusyProviders?.includes(provider))]);
+    const bubble=existing.get(key)||document.createElement('div');keep.add(key);if(bubble!==cursor)transcript.insertBefore(bubble,cursor);cursor=bubble.nextElementSibling;if(bubble._nookMessageSignature===signature)continue;bubble._nookMessageSignature=signature;bubble.dataset.messageKey=key;bubble.replaceChildren();
     bubble.className = "bubble";
     bubble.dataset.role = message.role;
-    transcript.appendChild(bubble);
+    if(!bubble.isConnected)transcript.appendChild(bubble);
     const who = document.createElement("strong");
     who.textContent = message.role === "user" ? "You" : label;
     bubble.appendChild(who);
@@ -634,6 +635,7 @@ function paint() {
     bubble.append(content);
     window.NookChatControls?.decorate(bubble,message);
   }
+  for(const [key,bubble]of existing)if(!keep.has(key))bubble.remove();
   if (!transcript.children.length) {
     const empty = document.createElement("div"); empty.className = "chat-empty";
     const title = document.createElement("strong"); title.textContent = "A little space to think.";
@@ -647,18 +649,12 @@ function paint() {
   renderShell();
 }
 
-function wake() {
-  // Re-entry can happen before the delayed leave handler clears hovering.
-  window.clearTimeout(leaveTimer);
-  leaveTimer = 0;
-  if (hovering) {
-    return;
-  }
-  hovering = true;
-  if(state?.everyday?.settings?.hoverDashboard && !held && !pinned && !expanded && !chatting && !new URLSearchParams(location.search).has('detached'))showCard('widgets');
-  welcome = false;
-  renderShell();
-}
+const interaction=window.NookInteraction.create({
+  enter(){hovering=true;if(state?.everyday?.settings?.hoverDashboard&&!held&&!pinned&&!expanded&&!chatting&&!new URLSearchParams(location.search).has('detached'))showCard('widgets');welcome=false;renderShell();},
+  blocked:()=>Boolean(document.querySelector('dialog[open]')||document.body.classList.contains('is-recording')),
+  leave(){hovering=false;if(!pinned&&!waiting()){expanded=false;held=false;}aimX=aimY=0;wakeEye();renderShell();}
+});
+function wake(){interaction.enter(state?.look);}
 
 let dragX = 0;
 let dragY = 0;
@@ -683,22 +679,13 @@ window.addEventListener("mousemove", (event) => {
   }
 });
 
-island.addEventListener("mouseleave", () => {
-  window.clearTimeout(leaveTimer);
-  const hoverDelay = state && (state.prefs?.openOnHover || state.everyday?.settings?.hoverDashboard) ? 700 : 0;
-  const wait = Math.max(hoverDelay, holdUntil - Date.now());
-  leaveTimer = window.setTimeout(() => {
-    hovering = false;
-    if (!pinned && !waiting()) {
-      expanded = false;
-      held = false;
-    }
-    aimX = 0;
-    aimY = 0;
-    wakeEye();
-    renderShell();
-  }, Math.max(0, wait));
-});
+island.addEventListener('mouseleave',()=>interaction.leave(state?.look,Math.max(0,holdUntil-Date.now())));
+island.addEventListener('pointerdown',()=>interaction.press());
+window.addEventListener('pointerup',()=>{interaction.release();if(!island.matches(':hover'))interaction.leave(state?.look);});
+window.addEventListener('pointercancel',()=>{interaction.release();interaction.leave(state?.look);});
+island.addEventListener('dragenter',()=>{interaction.press();wake();});
+island.addEventListener('drop',()=>interaction.release());
+window.addEventListener('dragend',()=>{interaction.release();if(!island.matches(':hover'))interaction.leave(state?.look);});
 
 island.addEventListener("click", (event) => {
   if (event.target.closest("button, input, select, textarea, a")) {
@@ -965,7 +952,7 @@ const API_RECOVERY = {
 function paintChatRecovery() {
   window.clearTimeout(chatRetryTimer);
   const failure=chatFailure?.provider===provider?chatFailure:null;
-  const panel=document.querySelector('#chat-error-panel');panel.hidden=!chatError;
+  const panel=document.querySelector('#chat-error-panel');panel.hidden=!chatError;panel.querySelector('canvas').dataset.mood=chatFailure?.kind==='rate'?'dizzy':'uncertain';
   document.querySelector('#chat-error-copy').textContent=chatError;
   document.querySelector('#chat-error-title').textContent=failure?.kind==='quota'?'API quota needs attention':failure?.kind==='rate-limit'?'API rate limit reached':failure?.kind==='limit'?'API limit reached':'Request could not complete';
   const action=provider==='chatgpt'?API_RECOVERY[failure?.action]:null;
@@ -1049,7 +1036,9 @@ function showWelcome() {
 
 reducedMotion.addEventListener("change", () => renderShell());
 window.nook.onWelcome(showWelcome);
+let initialProviderPicked=false;
 window.nook.onState((next) => {
+  if(next.localAI&&!initialProviderPicked){initialProviderPicked=true;if(next.localAI.settings.defaultChat)switchChatProvider('nook');}
   if (next.pending?.id !== state?.pending?.id) { tucked = false; attention = false; if(next.pending)window.NookPalette?.close(); }
   const wasDemo = Boolean(state?.demo);
   if (next.demo && !wasDemo) beforeTour = { provider, pinned, held, expanded, welcome, tucked, card, selectedSession };

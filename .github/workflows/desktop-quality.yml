@@ -21,6 +21,12 @@ jobs:
       - run: npm test
       - run: npm run smoke:notch
       - run: npm run smoke:refinements
+      - run: npm run smoke:polish
+      - run: npm run smoke:local-ui
+      - run: npm run smoke:pet
+      - run: npm run smoke:expansion
+      - run: npm run smoke:refined
+      - run: npm run smoke:hub
       - name: Check visual-test result
         shell: pwsh
         run: |
@@ -33,3 +39,9 @@ jobs:
           path: |
             dist/refinements-qa/
             dist/notch-stability-qa/
+            dist/polish-qa/
+            dist/local-ai-ui/
+            dist/pet-animation-qa/
+            dist/expansion-qa/
+            dist/refined-qa/
+            dist/hub-qa/

@@ -39,7 +39,7 @@ require('../lib/chat-transport').completeChat = async (_provider, _key, _history
   return answer;
 };
 app.on('web-contents-created', (_event, contents) => contents.on('console-message', (_event, level, message) => { if (level >= 3) errors.push(message); }));
-const watchdog = setTimeout(() => { fs.writeFileSync(path.join(output,'done.json'),JSON.stringify({ok:false,error:'Preview capture timed out',errors})); app.exit(1); },180000);
+const watchdog = setTimeout(() => { fs.writeFileSync(path.join(output,'done.json'),JSON.stringify({ok:false,error:'Preview capture timed out',errors})); app.exit(1); },300000);
 require(path.join(root, "main.js"));
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 async function record(window, name, count) {
@@ -66,8 +66,10 @@ app.whenReady().then(async () => {
     const notch = windows.find((w) =>
       w.webContents.getURL().endsWith("index.html"),
     );
+    settings.show();settings.focus();
     const run = code => settings.webContents.executeJavaScript(code);
     const notchRun = code => notch.webContents.executeJavaScript(code);
+    await run("window.nook.refined('preferences',{advanced:true})");
     if (customOnly) await run("window.NookTour.finish()");
     if (!customOnly) {
     await settings.webContents.executeJavaScript("window.NookTour.start()");
@@ -82,11 +84,11 @@ app.whenReady().then(async () => {
     }
     await settings.webContents.executeJavaScript("window.NookTour.finish();");
     await delay(200);
-    await settings.webContents.executeJavaScript('showPage("companion");');
+    await settings.webContents.executeJavaScript('showPage("look");');
     await delay(250);
     for (const outfit of ["cap", "glasses", "headphones", "crown", "raincoat", "sunvisor", "wizard", "festive"]) {
       await settings.webContents.executeJavaScript(
-        `{ const tile=document.querySelector('.outfit-option[data-outfit="${outfit}"]'); tile.click(); tile.scrollIntoView({block:'center'}); }`,
+        `{ const tile=document.querySelector('#wardrobe .outfit-option[data-outfit="${outfit}"]'); tile.click(); tile.scrollIntoView({block:'center'}); }`,
       );
       await delay(150);
       await record(settings, "app-tour", 10);

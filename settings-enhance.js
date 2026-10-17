@@ -1,7 +1,7 @@
 // Compact connection cards keep setup available without overwhelming the page.
 const connectionForms = Array.from(keysPage.querySelectorAll('.key-card'));
-const cloudProviders = ['chatgpt','gemini','claude','openrouter','deepseek','mistral','groq','xai'];
-const localProviders = ['ollama','lmstudio','custom'];
+const cloudProviders = ['chatgpt','gemini','claude','openrouter','deepseek','mistral','groq','xai','qwen','moonshot'];
+const localProviders = ['nook','ollama','lmstudio','custom'];
 let connectionFilter = 'all';
 let configuredKeys = {};
 const filterBar = document.createElement('div'); filterBar.className = 'connection-filters'; filterBar.setAttribute('role','group'); filterBar.setAttribute('aria-label','Filter connections');

@@ -93,6 +93,8 @@ function fillLookForm(next) {
 }
 
 const SERVICE_CARDS = [
+  ["qwen","Qwen","Connect directly to Alibaba Cloud Model Studio."],
+  ["moonshot","Kimi · Moonshot","Connect directly to the Moonshot API."],
   ["deepseek", "DeepSeek", "Chat with DeepSeek using your API key."],
   ["mistral", "Mistral", "Chat with Mistral using your API key."],
   ["groq", "Groq", "Fast inference for open models."],
@@ -154,8 +156,8 @@ connectionSearch.addEventListener("input", () => {
 });
 const modelIntro = document.createElement("p"); modelIntro.className = "connection-intro"; modelIntro.textContent = "Cloud & local models"; keysPage.querySelector("header").after(modelIntro);
 const serviceIntro = document.createElement("p"); serviceIntro.className = "connection-intro"; serviceIntro.textContent = "Workspace integrations"; keysPage.append(serviceIntro);
-for (const [id] of SERVICE_CARDS.filter(card => !["openrouter", "deepseek", "mistral", "groq", "xai"].includes(card[0]))) keysPage.append(keysPage.querySelector('[data-provider="' + id + '"]'));
-const defaults = { chatgpt: "gpt-4.1-mini", gemini: "gemini-3.8-flash", openrouter: "openai/gpt-4.1-mini", deepseek: "deepseek-chat", mistral: "mistral-small-latest", groq: "llama-3.3-70b-versatile", xai: "grok-4.3" };
+for (const [id] of SERVICE_CARDS.filter(card => !["openrouter", "deepseek", "mistral", "groq", "xai", "qwen", "moonshot"].includes(card[0]))) keysPage.append(keysPage.querySelector('[data-provider="' + id + '"]'));
+const defaults = {qwen:"qwen-plus",moonshot:"kimi-k2.6", chatgpt: "gpt-4.1-mini", gemini: "gemini-3.8-flash", openrouter: "openai/gpt-4.1-mini", deepseek: "deepseek-chat", mistral: "mistral-small-latest", groq: "llama-3.3-70b-versatile", xai: "grok-4.3" };
 for (const field of document.querySelectorAll("#look-form [data-model]")) field.closest("label").remove();
 for (const form of document.querySelectorAll(".key-card")) {
   const id = form.dataset.provider;
@@ -164,6 +166,7 @@ for (const form of document.querySelectorAll(".key-card")) {
     const input = document.createElement("input"); input.dataset.model = id; input.maxLength = 80; input.value = defaults[id];
     label.append(input); form.querySelector(".key-row").before(label);
   }
+  if(['claude','qwen'].includes(id)){const label=document.createElement('label');label.className='model-field';label.textContent=id==='claude'?'Anthropic API / company gateway (HTTPS)':'API address for your Qwen region / workspace';const input=document.createElement('input');input.type='url';input.dataset.url=id+'Url';input.placeholder=id==='claude'?'https://api.anthropic.com/v1/messages':'https://dashscope-intl.aliyuncs.com/compatible-mode/v1';label.append(input);form.append(label);const hint=document.createElement('p');hint.className='note';hint.textContent='Your key and prompts go to this address. Saving a new address clears previous connection checks.';form.append(hint);}
   if (id === "custom") {
     form.classList.remove("local-card");
     const row = document.createElement("div"); row.className = "key-row";
@@ -297,7 +300,7 @@ document.querySelectorAll("[data-model], [data-url]").forEach((field) => {
     try {
       const result = await window.nook.saveModel(patch);
       const key = field.dataset.model || field.dataset.url;
-      if (note) note.textContent = result[key] === value ? 'Model settings saved.' : 'Use HTTPS for a cloud endpoint, or localhost for a local server. Previous address kept.';
+      if(['claudeUrl','qwenUrl'].includes(key)&&result[key]){field.value=result[key];if(note)note.textContent='API endpoint saved. Check the connection before sending.';}else if (note) note.textContent = result[key] === value ? 'Model settings saved.' : 'Use HTTPS for a cloud endpoint, or localhost for a local server. Previous address kept.';
     } catch (_) { if (note) note.textContent = 'Could not save model settings. Try again.'; }
   });
 });

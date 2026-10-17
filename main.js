@@ -20,7 +20,7 @@ const fs = require("fs");
 const os = require("os");
 const path = require("path");
 const { present, decisionOutput, describeTurn, validAnswers } = require("./lib/decisions");
-const { PROVIDERS, cleanModel, cleanLocalUrl, cleanRemoteUrl } = require("./lib/chat");
+const { PROVIDERS, cleanModel, cleanLocalUrl, cleanRemoteUrl, cleanGatewayUrl } = require("./lib/chat");
 const { textDiff } = require("./lib/diff");
 const {
   mergeClaudeSettings,
@@ -36,7 +36,7 @@ const {
 } = require("./lib/install-hooks");
 const { createRelay } = require("./lib/relay");
 const { createModelDiscovery } = require('./lib/model-discovery');
-const modelDiscovery = createModelDiscovery();
+const modelDiscovery = createModelDiscovery({managed:()=>localAI?.models()||{ok:false,models:[],error:"Nook Local is starting."}});
 const providerGuides = require('./lib/provider-guides');
 const { normalizeLook, lookToCss, appBackground } = require("./lib/appearance");
 const { previewHandoff, copyHandoff } = require('./lib/chat-handoff');
@@ -76,10 +76,12 @@ const { LANGUAGES, translate } = require("./lib/i18n");
 const { pluginSource, ampSource, hermesManifest } = require("./lib/plugins");
 const { recentMessages } = require('./lib/chat-memory');
 const { completeChat: rawCompleteChat } = require("./lib/chat-transport");
-let libraryKit;
+let libraryKit,localAI,expansionKit,refinedKit,hubKit;
 async function completeChat(provider,key,history,options={},onDelta,transport){
+  if(options.allowMemory){const memory=refinedKit?.memory.context(provider,hubKit?.memoryIds());if(memory)options={...options,system:[options.system,memory].filter(Boolean).join('\n\n')};}
   const start=Date.now();let ok=false,usage={input:null,output:null,cached:null};
-  try{const result=await rawCompleteChat(provider,key,history,{...options,onUsage(next){for(const field of ['input','output','cached'])if(next[field]!=null)usage[field]=next[field];options.onUsage?.(next);}},onDelta,transport);ok=true;return result;}
+  try{const generate=provider==='nook'?async(_provider,...args)=>{if(!localAI)throw new Error('Nook Local is starting.');return localAI.complete(...args);}:rawCompleteChat;const result=await generate(provider,key,history,{...options,onUsage(next){for(const field of ['input','output','cached'])if(next[field]!=null)usage[field]=next[field];options.onUsage?.(next);}},onDelta,transport);ok=true;return result;}
+  catch(error){hubKit?.issue('models',error.details?.kind||error.message,provider);throw error;}
   finally{libraryKit?.recordUsage({provider,model:options.model||'',ms:Date.now()-start,ok,...usage});}
 }
 const { createChatSession } = require('./lib/chat-session');
@@ -150,12 +152,12 @@ const chatBusyProviders = new Set();
 const chatSession = createChatSession({messages,complete:completeChat,getSettings(provider){
   if(!Object.hasOwn(PROVIDERS,provider))throw new Error('Unknown chat provider.');
   const spec=PROVIDERS[provider],key=readKeys()[provider];if(['bearer','anthropic'].includes(spec.auth)&&!key)throw new Error('Save a '+spec.label+' API key first.');
-  const models=readModels();return {key,model:models[provider],url:provider==='ollama'?models.ollamaUrl:provider==='lmstudio'?models.lmstudioUrl:models.customUrl,greeting:displayName,context:studioKit?.context(provider)};
-},onChange(){libraryKit?.checkpointReplies(messages);chatBusyProviders.clear();for(const id of chatSession.busyProviders())chatBusyProviders.add(id);if(!chatBusyProviders.size)everydayKit?.checkpoint(messages);broadcast();},onSent(provider,model){handoffUndo.delete(provider);experienceKit?.recent(provider,model);},onDone(reply){
+  const models=readModels();return {key,model:models[provider],url:models[provider+'Url'],greeting:displayName,allowMemory:true,context:studioKit?.context(provider)};
+},onChange(){libraryKit?.checkpointReplies(messages);chatBusyProviders.clear();for(const id of chatSession.busyProviders())chatBusyProviders.add(id);if(!chatBusyProviders.size){everydayKit?.checkpoint(messages);hubKit?.syncChats();}broadcast();},onSent(provider,model){handoffUndo.delete(provider);experienceKit?.recent(provider,model);},onDone(reply){
   libraryKit?.completed(reply.provider);celebrate++;
   everydayKit?.notice({kind:'chat',id:reply.id,title:PROVIDERS[reply.provider].label+' replied',agent:reply.provider});
   const prefs=experienceKit?.snapshot().settings,alerts=workspaceKit?.snapshot().settings;
-  if(prefs?.spokenReplies&&!readPrefs().muted&&!isQuiet(alerts)&&!alerts?.mutedAgents?.includes(reply.provider))speechKit?.speak({text:reply.content,voice:prefs.speechVoice,rate:prefs.speechRate});
+  if(prefs?.spokenReplies&&!readPrefs().muted&&!isQuiet(alerts)&&!alerts?.mutedAgents?.includes(reply.provider))speechKit?.speak({text:reply.content,provider:prefs.speechProvider,voice:prefs.speechVoice,rate:prefs.speechRate});
 }});
 const lookCssKeys = new Map();
 const lookRequests = new Map();
@@ -840,12 +842,12 @@ function readKeys() { return { ...(credentialKit?.status().ready ? {} : readLega
 async function saveKey(provider, key) {
   if (!knownSecret(provider)) throw new Error('Unknown key.');
   if (!credentialKit) throw new Error('Credential Manager is not ready.');
-  await credentialKit.set(provider, key);
+  await credentialKit.set(provider, key);connectionHealth.delete(provider);studioKit?.invalidate(provider);
 }
 async function clearKey(provider) {
   if (!knownSecret(provider)) throw new Error('Unknown key.');
   if (!credentialKit) throw new Error('Credential Manager is not ready.');
-  await credentialKit.remove(provider);
+  await credentialKit.remove(provider);connectionHealth.delete(provider);studioKit?.invalidate(provider);
 }
 
 function modelsPath() {
@@ -861,11 +863,12 @@ function readModels() {
   next.ollamaUrl = cleanLocalUrl(saved.ollamaUrl, PROVIDERS.ollama.url);
   next.lmstudioUrl = cleanLocalUrl(saved.lmstudioUrl, PROVIDERS.lmstudio.url);
   next.customUrl = cleanRemoteUrl(saved.customUrl, PROVIDERS.custom.url);
+  for(const id of ['claude','qwen']){try{next[id+'Url']=cleanGatewayUrl(saved[id+'Url'],id);}catch{next[id+'Url']=PROVIDERS[id].url;}}
   return next;
 }
 
 function writeModels(patch) {
-  const next = readModels();
+  const next = readModels(),before={...next};
   const source = patch && typeof patch === "object" ? patch : {};
   for (const name of Object.keys(PROVIDERS)) {
     if (typeof source[name] === "string") {
@@ -881,16 +884,17 @@ function writeModels(patch) {
   if (typeof source.customUrl === "string") {
     next.customUrl = cleanRemoteUrl(source.customUrl, next.customUrl);
   }
+  for(const id of ['claude','qwen'])if(Object.hasOwn(source,id+'Url'))next[id+'Url']=cleanGatewayUrl(source[id+'Url'],id);
   fs.mkdirSync(path.dirname(modelsPath()), { recursive: true });
   fs.writeFileSync(modelsPath(), `${JSON.stringify(next, null, 2)}\n`, "utf8");
-  settingsCache.delete(modelsPath());
+  settingsCache.delete(modelsPath());for(const name of Object.keys(PROVIDERS))if(before[name]!==next[name]||before[name+'Url']!==next[name+'Url']){connectionHealth.delete(name);studioKit?.invalidate(name);}
   return next;
 }
 
 function keyStatus(keys = readKeys()) {
   const status = {};
   for (const [name, spec] of Object.entries(PROVIDERS)) {
-    status[name] = spec.local || spec.auth === "none" ? true : Boolean(keys[name]);
+    status[name] = name==='nook'?Boolean(localAI?.snapshot().installed.length):spec.local || spec.auth === "none" ? true : Boolean(keys[name]);
   }
   return status;
 }
@@ -1494,7 +1498,8 @@ function currentState() {
     push: pushBridge ? pushBridge.snapshot() : null,
     models: readModels(), connections: Object.fromEntries(connectionHealth),
     look: readLook(), effectiveMotion: runtimeMode().economy && readLook().motion === "full" ? "economy" : readLook().motion,
-    messages: recentMessages(messages,200),
+    localAI:localAI?.snapshot(),extensions:expansionKit?.snapshot(),refined:refinedKit?.snapshot(),hub:hubKit?.snapshot(),
+    messages: recentMessages(messages,200).map(({reasoning_content,...message})=>message),
     chatBusy: chatBusyProviders.size > 0,
     chatBusyProviders: [...chatBusyProviders],
     handoffUndo: [...handoffUndo.keys()],
@@ -1508,6 +1513,7 @@ function currentState() {
   return sample;
 }
 
+function petAudio(value){for(const target of [win,appWin,pet,chatWin])if(target&&!target.isDestroyed()&&(target!==appWin||target.isVisible()))target.webContents.send('nook:pet-audio',value);}
 function broadcast() {
   const state = currentState();
   if (!state.demo) pushBridge?.update(state);
@@ -1651,18 +1657,19 @@ app.on("second-instance", () => {
 
 if (gotLock) {
   app.whenReady().then(async () => {
-    credentialKit = require('./lib/credential-store').createCredentialStore({ directory: app.getPath('userData'), providers: [...Object.keys(PROVIDERS), ...SERVICES, 'update-access', 'phone-relay', 'spotify-oauth', 'brave-search', 'remote-relay'], decrypt: value => safeStorage.decryptString(Buffer.from(value, 'base64')) });
+    credentialKit = require('./lib/credential-store').createCredentialStore({ directory: app.getPath('userData'), providers: [...Object.keys(PROVIDERS), ...SERVICES, 'update-access', 'phone-relay', 'spotify-oauth', 'brave-search', 'remote-relay','elevenlabs','portfolio-kraken','portfolio-coinbase','coingecko'], decrypt: value => safeStorage.decryptString(Buffer.from(value, 'base64')) });
     await credentialKit.init();
     customAgents = require("./lib/custom-agents").createCustomAgents(app.getPath("userData"));
     soundKit = require("./lib/sound-settings").createSoundSettings(app.getPath("userData"));
     workspaceKit = createWorkspace({ directory: app.getPath('userData'),
-      onEvent(event) { everydayKit?.notice(event); },
+      onEvent(event) { everydayKit?.notice(event);hubKit?.ingest(event); },
       encrypt: text => { if (!safeStorage.isEncryptionAvailable()) throw new Error('Encryption unavailable'); return safeStorage.encryptString(text).toString('base64'); },
       decrypt: text => safeStorage.decryptString(Buffer.from(text, 'base64')),
       notify(event) {
+        if(hubKit&&!hubKit.shouldNotify(event))return;
         if (!Notification.isSupported()) return;
         const notice = new Notification({ title: 'Nook · ' + locale.t(event.title, readPrefs().resolvedLanguage), body: event.agent ? event.agent + ' · ' + locale.t('Click to review in Nook', readPrefs().resolvedLanguage) : locale.t('Click to review in Nook', readPrefs().resolvedLanguage), icon: path.join(__dirname, 'assets', 'icon.png'), silent: readPrefs().muted });
-        notice.on('click', () => { if (event.kind === 'ci') { openServicePage('github'); return; } showNook(); attention(); if (event.sessionId) win?.webContents.send('nook:command', 'session:' + event.sessionId); });
+        notice.on('click', () => { if(event.kind==='reminders'){navigateSettings('everyday');return;}if (event.kind === 'ci') { openServicePage('github'); return; } showNook(); attention(); if (event.sessionId) win?.webContents.send('nook:command', 'session:' + event.sessionId); });
         notice.show();
       },
     });
@@ -1672,7 +1679,7 @@ if (gotLock) {
     });
     pushBridge = require('./lib/phone-push').createPushBridge({ directory: app.getPath('userData'), getSettings: () => workspaceKit.snapshot().settings, getSecret: () => readKeys()['phone-relay'],
       encrypt: text => { if (!safeStorage.isEncryptionAvailable()) throw new Error(); return safeStorage.encryptString(text).toString('base64'); }, decrypt: text => safeStorage.decryptString(Buffer.from(text, 'base64')) });
-    powerMonitor.on('lock-screen', () => { featureKit?.clearContextPreviews();flowKit?.suspend();studioKit?.suspend();pushBridge.lock(true); broadcast(); }); powerMonitor.on('unlock-screen', () => { studioKit?.resume();flowKit?.resume();pushBridge.lock(false); broadcast(); });
+    powerMonitor.on('lock-screen', () => { expansionKit?.portfolio.suspend(); localAI?.suspend();hubKit?.suspend();featureKit?.clearContextPreviews();flowKit?.suspend();studioKit?.suspend();pushBridge.lock(true); broadcast(); }); powerMonitor.on('unlock-screen', () => { expansionKit?.portfolio.resume(); localAI?.resume();hubKit?.resume();studioKit?.resume();flowKit?.resume();pushBridge.lock(false); broadcast(); });
     const phoneCertificate=require('./lib/phone-certificate').createPhoneCertificate({directory:app.getPath('userData'),encrypt:value=>{if(!safeStorage.isEncryptionAvailable())throw new Error('Secure phone pairing requires Windows encryption.');return safeStorage.encryptString(value).toString('base64');},decrypt:value=>safeStorage.decryptString(Buffer.from(value,'base64'))});
     featureKit = installFeatures({ app, ipcMain, desktopCapturer, clipboard, getState: currentState, getRuntime: runtimeMode, unifiedSpeech:bytes=>flowKit?.transcribeBuffer(bytes),getSpeechSettings:()=>flowKit?.settings(),saveSpeech:patch=>flowKit?.saveSpeech(patch),readVoiceKey: () => readKeys().chatgpt,readRelayKey:()=>readKeys()['remote-relay'], decide: handleDecision, broadcast, setAttachment: addAttachment, onDraft: () => navigateSettings('companion'), serviceDetail: readServiceDetail, serviceAction: (id, input) => serviceDetails.act(id, input), registerDevice: input => pushBridge.register(input), revokeDevices: () => pushBridge.revoke(), historySearch: query => workspaceKit.search(query), historyDetail: id => workspaceKit.detail(id), phoneChat:(provider,text,device)=>studioKit?.phoneChat(provider,text,device),forgetPhone:device=>studioKit?.forgetPhone(device),getPhoneTls:()=>phoneCertificate.load(), transcribeOffline:bytes=>flowKit?.transcribeOffline(bytes) });
     updateKit = createUpdateController({app, updater: app.isPackaged && process.platform === 'win32' ? require('electron-updater').autoUpdater : null, onChange: broadcast, getToken: () => readKeys()['update-access'] || '',
@@ -1713,10 +1720,14 @@ if (gotLock) {
     let retentionTicks=0;
     focusTimer=setInterval(()=>{try{const expired=++retentionTicks%3600===0&&everydayKit.expire();if(everydayKit.tick()){celebrate++;broadcast();}else if(expired)broadcast();}catch{}},1000);focusTimer.unref();
     setupDisplayBehavior();
-    speechKit = createSpeechOutput({onChange:broadcast});
-    studioKit=require('./lib/studio-main').installStudio({app,ipcMain,broadcast,getState:currentState,readKeys,readModels,writeModels,complete:completeChat,discover:(provider,refresh)=>modelDiscovery.discover(provider,readModels(),readKeys()[provider],refresh),messages,chatSession,everyday:everydayKit,experience:experienceKit,speech:speechKit,features:()=>featureKit.snapshot(),credential:credentialKit,encrypt:text=>{if(!safeStorage.isEncryptionAvailable())throw new Error('Windows encryption is unavailable.');return safeStorage.encryptString(text).toString('base64');},decrypt:text=>safeStorage.decryptString(Buffer.from(text,'base64')),openUrl:url=>shell.openExternal(url),showChat(provider,command){showNook();win?.webContents.send('nook:command','provider:'+provider);if(command)win?.webContents.send('nook:command',command);},showService:id=>{showNook();win?.webContents.send('nook:command','service:'+id);},applyProfile,followDisplay(){if(win?.isFocused()||currentState().pending)return String(screen.getDisplayMatching(win?.getBounds()||screen.getPrimaryDisplay().bounds).id);const desired=targetBounds(mode);if(!boundsNow||boundsNow.x!==desired.x||boundsNow.y!==desired.y)animateTo(mode);return String(chosenDisplay().id);},startVoice:send=>flowKit.startAssistant(send),controlMedia:action=>featureKit.controlMedia(action),foreground:require('./lib/foreground').createForegroundWatcher()});
+    localAI=require('./lib/local-ai').createLocalAI({directory:app.getPath('userData'),onChange:broadcast,encrypt:text=>{if(!safeStorage.isEncryptionAvailable()||safeStorage.getSelectedStorageBackend?.()==='basic_text')throw new Error('Secure Windows storage is unavailable.');return safeStorage.encryptString(text).toString('base64');},decrypt:text=>safeStorage.decryptString(Buffer.from(text,'base64'))});
+    const cloudVoice=require('./lib/cloud-voice').createCloudVoice({directory:app.getPath('userData'),readKey:()=>credentialKit.snapshot().elevenlabs,onAudio:petAudio});
+    speechKit = createSpeechOutput({onChange:broadcast,onAudio:petAudio,cloud:cloudVoice});
+    expansionKit=require('./lib/expansion-main').installExpansion({directory:app.getPath('userData'),ipcMain,dialog,credential:credentialKit,speech:speechKit,broadcast,encrypt:text=>{if(!safeStorage.isEncryptionAvailable()||safeStorage.getSelectedStorageBackend?.()==='basic_text')throw new Error('Secure Windows storage is unavailable.');return safeStorage.encryptString(text).toString('base64');},decrypt:text=>safeStorage.decryptString(Buffer.from(text,'base64')),isSettings:sender=>sender===appWin?.webContents,openPath:file=>shell.openPath(file),launch:(exe,args)=>new Promise((resolve,reject)=>{const child=spawn(exe,args,{windowsHide:false,detached:false,stdio:'ignore'});child.once('error',()=>reject(new Error('Windows could not launch this app.')));child.once('spawn',resolve);}),getState:currentState});
+    refinedKit=require('./lib/refined-main').installRefined({directory:app.getPath('userData'),ipcMain,dialog,broadcast,isSettings:sender=>sender===appWin?.webContents,encrypt:text=>{if(!safeStorage.isEncryptionAvailable()||safeStorage.getSelectedStorageBackend?.()==='basic_text')throw new Error('Secure Windows storage is unavailable.');return safeStorage.encryptString(text).toString('base64');},decrypt:text=>safeStorage.decryptString(Buffer.from(text,'base64')),routingState:()=>({models:readModels(),keys:readKeys(),roles:studioKit?.snapshot().settings.roles,health:studioKit?.routingHealth(),connections:Object.fromEntries(connectionHealth),rates:libraryKit?.snapshot().rates,usage:libraryKit?.snapshot().recentUsage,lock:studioKit?.snapshot().settings.modelLock}),isBusy:()=>chatSession.busyProviders().length>0,applyModel:selection=>{writeModels({[selection.provider]:selection.model});showNook();win?.webContents.send('nook:command','provider:'+selection.provider);win?.webContents.send('nook:open-chat');broadcast();},saveCompanion:patch=>featureKit.saveSettings(patch),getCompanion:()=>featureKit.snapshot().companion});
+    studioKit=require('./lib/studio-main').installStudio({personal:expansionKit.personal,app,ipcMain,broadcast,getState:currentState,readKeys,readModels,writeModels,complete:completeChat,discover:(provider,refresh)=>modelDiscovery.discover(provider,readModels(),readKeys()[provider],refresh),messages,chatSession,everyday:everydayKit,experience:experienceKit,speech:speechKit,features:()=>featureKit.snapshot(),credential:credentialKit,encrypt:text=>{if(!safeStorage.isEncryptionAvailable())throw new Error('Windows encryption is unavailable.');return safeStorage.encryptString(text).toString('base64');},decrypt:text=>safeStorage.decryptString(Buffer.from(text,'base64')),openUrl:url=>shell.openExternal(url),showChat(provider,command){showNook();win?.webContents.send('nook:command','provider:'+provider);if(command)win?.webContents.send('nook:command',command);},showService:id=>{showNook();win?.webContents.send('nook:command','service:'+id);},applyProfile,followDisplay(){if(win?.isFocused()||currentState().pending)return String(screen.getDisplayMatching(win?.getBounds()||screen.getPrimaryDisplay().bounds).id);const desired=targetBounds(mode);if(!boundsNow||boundsNow.x!==desired.x||boundsNow.y!==desired.y)animateTo(mode);return String(chosenDisplay().id);},getLocalAI:()=>localAI?.models(),localWakeFactory:callbacks=>require('./lib/local-wake').createLocalWake({BrowserWindow,ipcMain,getSettings:()=>studioKit?.snapshot().settings||{},getSpeech:()=>flowKit.settings(),ready:()=>Boolean(flowKit?.wakeReady()),transcribe:(bytes,signal)=>flowKit.transcribeWake(bytes,signal),...callbacks}),startVoice:send=>flowKit.startAssistant(send),controlMedia:action=>featureKit.controlMedia(action),foreground:require('./lib/foreground').createForegroundWatcher()});
     for(const event of ['on-battery','on-ac'])powerMonitor.on(event,()=>{broadcast();refreshBackground();});
-    flowKit=require('./lib/flow-main').installFlow({app,ipcMain,BrowserWindow,screen,dialog,clipboard,broadcast,getState:currentState,complete:completeChat,chatOptions:provider=>({...readModels(),key:readKeys()[provider],model:readModels()[provider],url:provider==='ollama'?readModels().ollamaUrl:provider==='lmstudio'?readModels().lmstudioUrl:readModels().customUrl}),encrypt:text=>{if(!safeStorage.isEncryptionAvailable())throw new Error('Windows encryption is unavailable.');return safeStorage.encryptString(text).toString('base64');},decrypt:text=>safeStorage.decryptString(Buffer.from(text,'base64')),suspendWake:()=>studioKit?.pauseWake(),resumeWake:()=>studioKit?.resumeWake(),onTranscript:current=>{if(current.kind!=='assistant')libraryKit?.checkpointVoice(current);},onAssistant:(text,options)=>studioKit.voiceTranscript(text,options),transcribeCloud:(bytes,language,signal)=>featureKit.transcribeCloud(bytes,language,signal)});
+    flowKit=require('./lib/flow-main').installFlow({onIssue:e=>hubKit?.issue('voice',e.message),app,ipcMain,BrowserWindow,screen,dialog,clipboard,onPetAudio:petAudio,broadcast,getState:currentState,complete:completeChat,chatOptions:provider=>({...readModels(),key:readKeys()[provider],model:readModels()[provider],url:readModels()[provider+'Url']}),encrypt:text=>{if(!safeStorage.isEncryptionAvailable())throw new Error('Windows encryption is unavailable.');return safeStorage.encryptString(text).toString('base64');},decrypt:text=>safeStorage.decryptString(Buffer.from(text,'base64')),suspendWake:()=>studioKit?.pauseWake(),resumeWake:()=>studioKit?.resumeWake(),onTranscript:current=>{if(current.kind!=='assistant')libraryKit?.checkpointVoice(current);},onAssistant:(text,options)=>studioKit.voiceTranscript(text,options),onSpeechChange:()=>studioKit?.resumeWake(),transcribeCloud:(bytes,language,signal)=>featureKit.transcribeCloud(bytes,language,signal)});
     libraryKit=require('./lib/library-main').installLibrary({app,ipcMain,dialog,broadcast,getState:currentState,encrypt:text=>{if(!safeStorage.isEncryptionAvailable()||safeStorage.getSelectedStorageBackend?.()==='basic_text')throw new Error('Secure Windows storage is unavailable.');return safeStorage.encryptString(text).toString('base64');},decrypt:text=>safeStorage.decryptString(Buffer.from(text,'base64')),addAttachment,showLibrary:()=>navigateSettings('library'),showChat:(draft,provider,kind)=>{showNook();if(provider)win?.webContents.send('nook:command','provider:'+provider);else win?.webContents.send('nook:open-chat');if(draft)win?.webContents.send('nook:command',(kind==='source'?'source-draft:':kind==='restore'?'restore-draft:':'draft:')+draft);},restoreVoice:(text,title)=>{flowKit.restore(text,title);navigateSettings('voice');},task:title=>everydayKit.task('add',{title}),applyPack:async pack=>{
       if(chatBusyProviders.size||pending.length)throw new Error('Finish the current reply or waiting approval before importing preferences.');
       const before=require('./lib/library-data').portable(currentState(),'settings');
@@ -1724,8 +1735,20 @@ if (gotLock) {
       try{apply(pack);}catch(error){try{apply(before);}catch{}throw error;}
       applyLookEverywhere();registerShortcuts();refreshTray();refreshBackground(false);animateTo(mode);broadcast();
     }});
-    powerMonitor.on('suspend',()=>{suspended=true;featureKit?.clearContextPreviews();speechKit.stop();flowKit?.suspend();studioKit?.suspend?.();broadcast();});
-    powerMonitor.on('resume',()=>{suspended=false;studioKit?.resume();flowKit?.resume();refreshBackground();broadcast();});
+    hubKit=require('./lib/hub-main').installHub({directory:app.getPath('userData'),ipcMain,dialog,broadcast,isSettings:sender=>sender===appWin?.webContents,getState:currentState,everyday:everydayKit,library:libraryKit,memory:refinedKit.memory,personal:expansionKit.personal,profiles:experienceKit,applyProfile,validateModel:selection=>{if(!Object.hasOwn(PROVIDERS,selection.provider)||!cleanModel(selection.model,''))throw Error('Choose an available provider and model.');const spec=PROVIDERS[selection.provider];if(['bearer','anthropic'].includes(spec.auth)&&!readKeys()[selection.provider])throw Error('Save this provider’s API key first.');if(selection.provider==='nook'&&!localAI.models().models.includes(selection.model))throw Error('Install this Nook Local model first.');},applySpace:async(space,ids)=>{
+      const beforeModels=readModels(),beforeIds=Object.values(everydayKit.snapshot().active),beforeMessages=messages.map(m=>({...m})),beforeFiles=attachmentTray.snapshot().files;
+      const undo=()=>{writeModels(beforeModels);everydayKit.selectChats(beforeIds);messages.splice(0,messages.length,...beforeMessages);attachmentTray.clear();for(const file of beforeFiles)attachmentTray.add(file);attachment=attachmentTray.snapshot().files.at(-1)||null;broadcast();};
+      chatSession.ensure();everydayKit.checkpoint(messages);
+      try{
+        if(space?.model)writeModels({[space.model.provider]:space.model.model});
+        const selected=everydayKit.selectChats(ids);messages.splice(0,messages.length,...selected);
+        studioKit.clearSummaries();studioKit.resetAssistant();chatSession.forget();attachmentTray.clear();attachment=null;handoffUndo.clear();
+        undo.commit=()=>{if(space?.model)win?.webContents.send('nook:command','provider:'+space.model.provider);};
+        return undo;
+      }catch(error){try{undo();}catch{}throw error;}
+    },openChat:id=>{if(chatBusyProviders.size||pending.length)throw Error('Finish the current reply or approval first.');const entry=everydayKit.chat('open',{id});messages.splice(0,messages.length,...messages.filter(m=>m.provider!==entry.provider),...entry.messages);showNook();win?.webContents.send('nook:command','provider:'+entry.provider);win?.webContents.send('nook:open-chat');broadcast();},openPage:navigateSettings,attach:file=>{addAttachment(file);showNook();win?.webContents.send('nook:open-chat');broadcast();},clipboard,showFile:file=>shell.showItemInFolder(file),notifyReminder:event=>workspaceKit.alert(event),canDigest:item=>{const p=workspaceKit.snapshot().settings;return !suspended&&p.notifications&&!isQuiet(p)&&(!item||p[item.kind]!==false&&!p.mutedAgents.includes(item.agent));},notifyDigest:info=>{if(!Notification.isSupported())return;const notice=new Notification({title:'Nook · Update digest',body:info.count+' updates across '+info.groups+' groups. Click to review.',icon:path.join(__dirname,'assets','icon.png'),silent:readPrefs().muted});notice.on('click',()=>navigateSettings('everyday'));notice.show();},checkConnection:provider=>modelDiscovery.discover(provider,readModels(),readKeys()[provider],true),version:app.getVersion(),encrypt:text=>{if(!safeStorage.isEncryptionAvailable()||safeStorage.getSelectedStorageBackend?.()==='basic_text')throw Error('Secure Windows storage is unavailable.');return safeStorage.encryptString(text).toString('base64');},decrypt:text=>safeStorage.decryptString(Buffer.from(text,'base64'))});
+    powerMonitor.on('suspend',()=>{expansionKit?.portfolio.suspend();localAI?.suspend();hubKit?.suspend();suspended=true;featureKit?.clearContextPreviews();speechKit.stop();flowKit?.suspend();studioKit?.suspend?.();broadcast();});
+    powerMonitor.on('resume',()=>{expansionKit?.portfolio.resume();localAI?.resume();hubKit?.resume();suspended=false;studioKit?.resume();flowKit?.resume();refreshBackground();broadcast();});
     createWindow();
     createTray();
 
@@ -1787,7 +1810,8 @@ ipcMain.on("nook:set-open", (_event, open, height, reducedMotion) => {
     }
   }
   if (win && !win.isDestroyed()) {
-    if (win.isFocusable() !== (next === 'open')) win.setFocusable(next === "open");
+    const focusable=next==='open'||next==='peek'&&win.isFocused();
+    if(win.isFocusable()!==focusable)win.setFocusable(focusable);
   }
   if (next === mode) {
     if (resized) {
@@ -2284,8 +2308,12 @@ ipcMain.handle('nook:tour-step', (_event, step) => {
   if (!demoOn || !Number.isInteger(step) || step < 0 || step >= TOUR_STEPS.length) return { ok: false };
   demoStep = step; demoAnswered = false; broadcast(); showNook(); return { ok: true };
 });
+ipcMain.handle('nook:local-ai',async(event,{action,value}={})=>{try{if(!localAI)throw new Error('Nook Local is starting.');if(['install','save','remove','memory','memory-save','memory-clear'].includes(action)&&event.sender!==appWin?.webContents)throw new Error('Manage Nook Local from the app settings.');
+ if(action==='snapshot')return {ok:true,...localAI.snapshot()};if(action==='install'){const result=await localAI.install(value);writeModels({nook:value});broadcast();return result;}if(action==='cancel'){localAI.cancelDownload();return {ok:true};}if(action==='unload'){localAI.unload();return {ok:true};}if(action==='save'){const result=localAI.save(value);if(value?.model)writeModels({nook:result.settings.model});return {ok:true,...result};}if(action==='remove')return {ok:true,...localAI.remove(value)};if(action==='memory')return {ok:true,...localAI.memories()};if(action==='memory-save')return localAI.saveMemories(value);if(action==='memory-clear')return localAI.clearMemories();
+ if(action==='use'){if(!localAI.snapshot().installed.includes(value))throw new Error('Download that local model first.');writeModels({nook:value});showNook();win?.webContents.send('nook:command','provider:nook');broadcast();return {ok:true};}throw new Error('Unknown Nook Local action.');}catch(error){return {ok:false,error:error.message};}});
 ipcMain.handle('nook:update', (_event, input) => {
   if (!updateKit) return {ok:false,message:'Updates are not ready yet.'};
+  if(input?.action==='channel')return updateKit.setChannel(input.value);
   if (input?.action === 'automatic') return updateKit.setAutomatic(input.value);
   if (['check','download','install'].includes(input?.action)) return updateKit[input.action]();
   return updateKit.snapshot();
@@ -2340,6 +2368,7 @@ ipcMain.handle('nook:pet-drop', async (_event, point) => {
 });
 
 app.on("before-quit", () => {
+  localAI?.stop();expansionKit?.stop();hubKit?.stop();
   libraryKit?.stop();flowKit?.stop();studioKit?.stop();chatSession.dispose();comparisonAbort?.abort();speechKit?.stop();clearTimeout(backgroundTimer);clearInterval(focusTimer);fullscreenWatcher?.stop();
   workspaceKit?.stop();
   pushBridge?.stop();
@@ -2386,9 +2415,9 @@ ipcMain.handle('nook:speech-output',async (_event,input)=>{
   if(!speechKit)return {ok:false,error:'Speech is starting.'};
   if(input?.action==='stop')return speechKit.stop();
   if(input?.action==='voices')return speechKit.voices();
-  if(input?.action==='speak'){
+  if(['speak','preview'].includes(input?.action)){
     if(readPrefs().muted||isQuiet(workspaceKit?.snapshot().settings))return {ok:false,error:'Speech is muted by your sound or quiet-hours settings.'};
-    const prefs=experienceKit.snapshot().settings;return speechKit.speak({text:input.value,voice:prefs.speechVoice,rate:prefs.speechRate});
+    const prefs=experienceKit.snapshot().settings;return speechKit.speak(input.action==='preview'?{text:input.value?.text,provider:'windows',voice:String(input.value?.voice||'').slice(0,120),rate:input.value?.rate}:{text:input.value,provider:prefs.speechProvider,voice:prefs.speechVoice,rate:prefs.speechRate});
   }
   return {ok:false,error:'Unknown speech action.'};
 });
@@ -2422,7 +2451,7 @@ async function compareModels(input){
   if(comparison.busy)throw new Error('Stop or finish the current comparison first.');
   const text=typeof input?.text==='string'?input.text.trim():'';
   if(!text||text.length>2000||!Array.isArray(input?.models)||input.models.length!==2)throw new Error('Enter a prompt and choose two models.');
-  const selected=input.models.map(value=>{if(!Object.hasOwn(PROVIDERS,value?.provider))throw new Error('Choose two known providers.');const spec=PROVIDERS[value.provider];const model=cleanModel(value.model,'');if(!model)throw new Error('Enter a valid model ID.');const key=readKeys()[value.provider];if(['bearer','anthropic'].includes(spec.auth)&&!key)throw new Error('Connect '+spec.label+' first.');const models=readModels();return {provider:value.provider,model,key,url:value.provider==='ollama'?models.ollamaUrl:value.provider==='lmstudio'?models.lmstudioUrl:models.customUrl};});
+  const selected=input.models.map(value=>{if(!Object.hasOwn(PROVIDERS,value?.provider))throw new Error('Choose two known providers.');const spec=PROVIDERS[value.provider];const model=cleanModel(value.model,'');if(!model)throw new Error('Enter a valid model ID.');const key=readKeys()[value.provider];if(['bearer','anthropic'].includes(spec.auth)&&!key)throw new Error('Connect '+spec.label+' first.');const models=readModels();return {provider:value.provider,model,key,url:models[value.provider+'Url']};});
   comparisonAbort=new AbortController();const controller=comparisonAbort;
   comparison={busy:true,prompt:text,results:selected.map(({provider,model})=>({provider,model,content:'',status:'streaming'}))};broadcast();let last=0;
   await Promise.all(selected.map(async(options,index)=>{const reply=comparison.results[index];try{reply.content=await completeChat(options.provider,options.key,[{role:'user',content:text}],options,delta=>{reply.content=delta;if(Date.now()-last>120){last=Date.now();broadcast();}},{signal:controller.signal});reply.status=controller.signal.aborted?'stopped':'complete';}catch(error){reply.status=controller.signal.aborted?'stopped':'error';reply.error=error.message;}finally{broadcast();}}));
@@ -2444,6 +2473,7 @@ ipcMain.handle('nook:everyday',async(event,{action,value}={})=>{
       if(value?.action==='export'){const entry=everydayKit.chat('detail',value);const result=await localDialog('showSaveDialog',chatWin||appWin||win,{title:'Export conversation',defaultPath:'Nook-conversation.md',filters:[{name:'Markdown',extensions:['md']}]});if(result.canceled)return {ok:false,cancelled:true};fs.writeFileSync(result.filePath,'# '+entry.name+'\n\n'+entry.messages.map(m=>'## '+(m.role==='user'?'You':PROVIDERS[entry.provider].label)+'\n\n'+m.content).join('\n\n'),'utf8');return {ok:true};}
       if(value?.action==='delete'){const ids=everydayKit.chat('detail',value).messages.map(m=>m.id);chatSession.forget(ids);studioKit?.clearSummaries(ids);}
       if(value?.action==='clear'){chatSession.forget();studioKit?.clearSummaries();}
+      if(value?.action==='open'&&hubKit&&!hubKit.canOpenChat(value.id))throw Error('This chat is outside the active project space. Link it or return to General first.');
       const before=everydayKit.snapshot().active,result=everydayKit.chat(value?.action,value);
       if(value?.action==='detail')return {ok:true,conversation:result};
       if(value?.action==='open'){messages.splice(0,messages.length,...messages.filter(m=>m.provider!==result.provider),...result.messages);handoffUndo.delete(result.provider);}

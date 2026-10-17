@@ -1,0 +1,31 @@
+{
+  "runtime": {
+    "version": "b11669",
+    "name": "llama-b11669-bin-win-cpu-x64.zip",
+    "size": 19537886,
+    "sha256": "37b3efcf962847ca869745fd4ccf7f5e7e8dacfeff9fa3523b4ca8cdc66d632b",
+    "url": "https://github.com/ggml-org/llama.cpp/releases/download/b11669/llama-b11669-bin-win-cpu-x64.zip"
+  },
+  "models": {
+    "nook-lite": {
+      "name": "Nook Local Lite",
+      "base": "Qwen3.5-0.8B",
+      "file": "Qwen3.5-0.8B-Q4_0.gguf",
+      "size": 563036064,
+      "sha256": "57d1997790d1744fba5b40a7317df71ea5e2acee28c47e78f0cce39c0703f8cf",
+      "url": "https://huggingface.co/ggml-org/Qwen3.5-0.8B-GGUF/resolve/8fea620810c4afa23dd6443f999a48574c1611a3/Qwen3.5-0.8B-Q4_0.gguf",
+      "license": "Apache-2.0",
+      "source": "https://huggingface.co/ggml-org/Qwen3.5-0.8B-GGUF"
+    },
+    "nook-balanced": {
+      "name": "Nook Local Balanced",
+      "base": "Qwen2.5-1.5B-Instruct",
+      "file": "qwen2.5-1.5b-instruct-q4_k_m.gguf",
+      "size": 1117320736,
+      "sha256": "6a1a2eb6d15622bf3c96857206351ba97e1af16c30d7a74ee38970e434e9407e",
+      "url": "https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF/resolve/91cad51170dc346986eccefdc2dd33a9da36ead9/qwen2.5-1.5b-instruct-q4_k_m.gguf",
+      "license": "Apache-2.0",
+      "source": "https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF"
+    }
+  }
+}

@@ -5,7 +5,7 @@ const fs = require("fs"),
 const yaml = require("js-yaml");
 const output = process.argv[2] || "dist";
 const manifest = yaml.load(
-  fs.readFileSync(path.join(output, "latest.yml"), "utf8"),
+  fs.readFileSync(path.join(output, require('../package.json').version.includes('-beta.')?'beta.yml':'latest.yml'), "utf8"),
 );
 const version = require("../package.json").version;
 assert.equal(

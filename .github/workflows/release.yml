@@ -53,6 +53,18 @@ jobs:
         run: npm run smoke:notch
       - name: Check desktop interactions
         run: npm run smoke:refinements
+      - name: Check voice and appearance refinements
+        run: npm run smoke:polish
+      - name: Check Nook Local setup and chat
+        run: npm run smoke:local-ui
+      - name: Check pet animation studio
+        run: npm run smoke:pet
+      - name: Check voice, contacts, approved apps and portfolio
+        run: npm run smoke:expansion
+      - name: Check personal workspace refinements
+        run: npm run smoke:refined
+      - name: Verify project tools and layered companion
+        run: npm run smoke:hub
       - name: Verify desktop interaction results
         shell: pwsh
         run: |
@@ -65,9 +77,16 @@ jobs:
           path: |
             dist/refinements-qa/
             dist/notch-stability-qa/
+            dist/polish-qa/
+            dist/local-ai-ui/
+            dist/pet-animation-qa/
+            dist/expansion-qa/
+            dist/refined-qa/
+            dist/hub-qa/
       - run: npm run dist
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
+      - run: node scripts/prepare-update-channel.cjs
       - run: node scripts/verify-release.cjs
       - run: npm run smoke:packaged
       - uses: actions/download-artifact@v4
@@ -93,6 +112,7 @@ jobs:
             dist/Nook-Setup-*.exe
             dist/Nook-Setup-*.exe.blockmap
             dist/latest.yml
+            dist/beta.yml
             dist/SHA256SUMS.txt
             dist/Nook-Android-*-debug.apk
           if-no-files-found: error
@@ -102,15 +122,20 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          $isBeta = $env:GITHUB_REF_NAME -match '-beta\.\d+$'
+          $previewFlags = @()
+          if ($isBeta) { $previewFlags = @('--prerelease') }
           gh release view $env:GITHUB_REF_NAME *> $null
           if ($LASTEXITCODE -ne 0) {
-            gh release create $env:GITHUB_REF_NAME --draft --verify-tag --title "Nook $env:GITHUB_REF_NAME" --notes-file .github/RELEASE_NOTES.md
+            gh release create $env:GITHUB_REF_NAME --draft --verify-tag --title "Nook $env:GITHUB_REF_NAME" --notes-file .github/RELEASE_NOTES.md @previewFlags
             if ($LASTEXITCODE -ne 0) { throw "Unable to create release" }
           }
           $assets = @(Get-ChildItem dist/Nook-Setup-*.exe,dist/Nook-Setup-*.exe.blockmap,dist/Nook-Android-*-debug.apk | ForEach-Object { $_.FullName }) + @("dist/SHA256SUMS.txt")
           gh release upload $env:GITHUB_REF_NAME @assets --clobber
           if ($LASTEXITCODE -ne 0) { throw "Unable to upload release assets" }
-          gh release upload $env:GITHUB_REF_NAME dist/latest.yml --clobber
+          $metadataFile = if ($isBeta) { 'dist/beta.yml' } else { 'dist/latest.yml' }
+          gh release upload $env:GITHUB_REF_NAME $metadataFile --clobber
           if ($LASTEXITCODE -ne 0) { throw "Unable to upload update metadata" }
-          gh release edit $env:GITHUB_REF_NAME --draft=false --latest
+          if ($isBeta) { gh release edit $env:GITHUB_REF_NAME --draft=false --prerelease --latest=false }
+          else { gh release edit $env:GITHUB_REF_NAME --draft=false --prerelease=false --latest }
           if ($LASTEXITCODE -ne 0) { throw "Unable to publish release" }
