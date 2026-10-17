@@ -4,7 +4,7 @@
 
 A Windows desktop companion for coding agents, with a compact notch and multi-provider AI chat.
 
-[Download Nook for Windows](https://github.com/hoeslovevid/Nook-Interactive-Assistant/releases/latest) · [Release notes](https://github.com/hoeslovevid/Nook-Interactive-Assistant/releases/tag/v0.11.0) · [Local AI setup](docs/NOOK-LOCAL.md)
+[Download Nook for Windows](https://github.com/hoeslovevid/Nook-Interactive-Assistant/releases/latest) · [Release notes](https://github.com/hoeslovevid/Nook-Interactive-Assistant/releases/tag/v0.11.1) · [Local AI setup](docs/NOOK-LOCAL.md)
 
 ![Nook 0.11 notch moving through task activity and completion using sample sessions](assets/previews/notch.gif)
 
@@ -162,7 +162,7 @@ Open **Chats & everyday tools** in the app, or use **Ctrl+K** to find a tool.
 
 Real app recordings with local sample data—no API key needed for the walkthrough.
 
-The compact task animation is shown at the top of this page. The recordings below were refreshed for **v0.11.0**; newer project tools and pet performances appear beside their feature descriptions above.
+The compact task animation is shown at the top of this page. The recordings below were refreshed for the **0.11 series**; newer project tools and pet performances appear beside their feature descriptions above.
 
 <details>
 <summary>Explore the full app gallery: tasks, approvals, chat, themes and settings</summary>

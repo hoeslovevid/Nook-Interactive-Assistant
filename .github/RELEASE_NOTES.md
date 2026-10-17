@@ -1,6 +1,8 @@
-## Install Nook 0.11.0
+## Install Nook 0.11.1
 
-Download **Nook-Setup-0.11.0-x64.exe**, or open **Updates → Check for updates → Download update → Restart and install**. Existing settings and provider credentials are retained. Public updates do not require a GitHub token.
+Download **Nook-Setup-0.11.1-x64.exe**, or open **Updates → Check for updates → Download update → Restart and install**. Existing settings and provider credentials are retained. Public updates do not require a GitHub token.
+
+This is the first published installer in the 0.11 series. It includes the features below and verifies animated and reduced-motion behavior independently of the build machine’s Windows accessibility preferences. Nook continues to respect your own motion settings.
 
 ## A more personal companion
 
@@ -29,7 +31,7 @@ Download **Nook-Setup-0.11.0-x64.exe**, or open **Updates → Check for updates 
 
 ## Downloads and verification
 
-Windows 10/11, Intel/AMD 64-bit. **Nook-Android-0.11.0-debug.apk** is an Android 11+ test build; a differently signed earlier debug build may require uninstalling and pairing again. Apple signing and physical-device validation remain owner setup tasks. Windows installers remain unsigned; the optional signed-build workflow requires the owner's certificate.
+Windows 10/11, Intel/AMD 64-bit. **Nook-Android-0.11.1-debug.apk** is an Android 11+ test build; a differently signed earlier debug build may require uninstalling and pairing again. Apple signing and physical-device validation remain owner setup tasks. Windows installers remain unsigned; the optional signed-build workflow requires the owner's certificate.
 
 The release checks **296 automated tests**, isolated desktop interactions, Android compilation/lint, packaged Windows startup/native resources, and installer/update metadata integrity. AI, cloud speech, account services and microphone input use fixtures in automated desktop checks; these do not establish live-service or physical-device behavior. See [device testing](https://github.com/hoeslovevid/Nook-Interactive-Assistant/blob/master/docs/DEVICE-TESTING.md).
 
