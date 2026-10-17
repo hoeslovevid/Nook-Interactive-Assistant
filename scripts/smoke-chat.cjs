@@ -48,7 +48,7 @@ server.listen(0,'127.0.0.1',()=>{
   app.whenReady().then(async()=>{
     const findings = {};
     try {
-      await delay(2000);
+      await require('./desktop-fixture.cjs').waitForDesktop(BrowserWindow);
       const notch=BrowserWindow.getAllWindows().find(w=>w.webContents.getURL().endsWith('index.html'));
       const settings=BrowserWindow.getAllWindows().find(w=>w.webContents.getURL().endsWith('settings.html'));
       const run=code=>notch.webContents.executeJavaScript(code);

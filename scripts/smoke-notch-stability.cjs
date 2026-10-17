@@ -11,7 +11,7 @@ const errors=[],requests=[];app.on('web-contents-created',(_event,w)=>w.on('cons
 const delay=ms=>new Promise(r=>setTimeout(r,ms)),watchdog=setTimeout(()=>{fs.writeFileSync(path.join(output,'result.json'),JSON.stringify({ok:false,error:'Timed out',errors}));app.exit(1);},60000);
 require('../main');
 app.whenReady().then(async()=>{try{
- await delay(1800);const notch=BrowserWindow.getAllWindows().find(w=>w.webContents.getURL().endsWith('index.html')),settings=BrowserWindow.getAllWindows().find(w=>w.webContents.getURL().endsWith('settings.html')),nr=code=>notch.webContents.executeJavaScript(code);let loads=0;notch.webContents.on('did-finish-load',()=>loads++);
+ await require('./desktop-fixture.cjs').waitForDesktop(BrowserWindow);const notch=BrowserWindow.getAllWindows().find(w=>w.webContents.getURL().endsWith('index.html')),settings=BrowserWindow.getAllWindows().find(w=>w.webContents.getURL().endsWith('settings.html')),nr=code=>notch.webContents.executeJavaScript(code);let loads=0;notch.webContents.on('did-finish-load',()=>loads++);
  await settings.webContents.executeJavaScript('window.NookTour.finish()');
  // A leave timer must be cancelled even when hovering is still true on re-entry.
  await nr('interaction.reset();pinned=false;held=false;expanded=false;chatting=false;welcome=false;hovering=false;wake();island.dispatchEvent(new MouseEvent("mouseleave"))');await delay(120);await nr('island.dispatchEvent(new MouseEvent("mouseenter"))');await delay(850);
